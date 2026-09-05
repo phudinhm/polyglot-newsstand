@@ -66,7 +66,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
                   type="button"
                   onClick={() => update({ theme: theme.id })}
                   data-selected={settings.theme === theme.id}
-                  className="chip !justify-start !rounded-xl !px-3 !py-2.5 text-left"
+                  className="chip !h-auto !justify-start !whitespace-normal !rounded-xl !px-3 !py-2.5 text-left"
                 >
                   <span className="flex flex-col items-start gap-0.5">
                     <span className="text-sm font-medium">{theme.label}</span>

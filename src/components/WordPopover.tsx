@@ -91,11 +91,22 @@ export function WordPopover({
     setSaved(true);
   }
 
-  // Anchored to the tapped word on desktop, a bottom sheet on phones.
-  const style: React.CSSProperties = {
-    left: Math.min(Math.max(query.x, 16), (typeof window !== "undefined" ? window.innerWidth : 400) - 300),
-    top: query.y + 12,
-  };
+  // Anchored to the tapped word on a wide screen, a bottom sheet on a phone.
+  // The inline coordinates have to stay off on mobile, or they would override
+  // the sheet positioning from the class list and push the card off screen.
+  const [anchor, setAnchor] = useState<React.CSSProperties | undefined>(undefined);
+  useEffect(() => {
+    if (window.innerWidth < 640) {
+      setAnchor(undefined);
+      return;
+    }
+    const CARD_WIDTH = 304;
+    const CARD_HEIGHT = 260;
+    setAnchor({
+      left: Math.min(Math.max(query.x - CARD_WIDTH / 2, 16), window.innerWidth - CARD_WIDTH - 16),
+      top: Math.min(query.y + 14, window.innerHeight - CARD_HEIGHT),
+    });
+  }, [query.x, query.y]);
 
   return (
     <>
@@ -103,7 +114,7 @@ export function WordPopover({
       <div
         role="dialog"
         aria-label={`Meaning of ${query.word}`}
-        style={style}
+        style={anchor}
         className="fixed inset-x-3 bottom-3 z-50 w-auto rounded-xl border border-border bg-surface p-4 shadow-[var(--shadow)] sm:inset-auto sm:w-[19rem]"
       >
         <div className="flex items-start justify-between gap-3">
