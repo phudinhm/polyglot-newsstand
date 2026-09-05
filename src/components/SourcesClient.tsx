@@ -1,15 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { CATEGORY_LABELS, LEVEL_LABELS, SOURCES } from "@/lib/sources";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
+import {
+  getCustomSources,
+  removeCustomSource,
+  type CustomSource,
+} from "@/lib/customSources";
+import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
 import { CheckIcon, ExternalIcon, PlusIcon } from "./Icons";
 
 export function SourcesClient() {
   const [settings, update] = useSettings();
   const [lang, setLang] = useState<"all" | "de" | "en">("all");
+  const [custom, setCustom] = useState<CustomSource[]>([]);
   const selected = useMemo(() => new Set(settings.sources), [settings.sources]);
+
+  useEffect(() => {
+    setCustom(getCustomSources());
+  }, []);
 
   const visible = SOURCES.filter((s) => lang === "all" || s.lang === lang);
   const grouped = useMemo(() => {
@@ -33,15 +44,52 @@ export function SourcesClient() {
     update({ sources: next.size ? Array.from(next) : settings.sources });
   }
 
+  const onShelf = settings.sources.length;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <header className="mb-5">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Sources</h1>
         <p className="mt-1 text-sm text-muted">
-          {settings.sources.length} on your shelf. The newsstand only fetches what you select, so a
-          shorter list means a faster feed.
+          {onShelf} on your shelf, out of {SOURCES.length} curated plus whatever you add. The
+          newsstand only fetches what you select, so a shorter list means a faster feed.
         </p>
       </header>
+
+      <div className="mb-6">
+        <AddSourceForm
+          count={custom.length}
+          onAdded={(created) => {
+            setCustom(getCustomSources());
+            if (!settings.sources.includes(created.id)) {
+              update({ sources: [...settings.sources, created.id] });
+            }
+          }}
+        />
+      </div>
+
+      {custom.length > 0 && (
+        <section className="mb-7">
+          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">
+            Your sources
+          </h2>
+          <div className="space-y-2">
+            {custom.map((source) => (
+              <CustomSourceRow
+                key={source.id}
+                source={source}
+                enabled={selected.has(source.id)}
+                onToggle={() => toggle(source.id)}
+                onRemove={() => {
+                  removeCustomSource(source.id);
+                  setCustom(getCustomSources());
+                  update({ sources: settings.sources.filter((id) => id !== source.id) });
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {(["all", "de", "en"] as const).map((value) => (
@@ -57,7 +105,9 @@ export function SourcesClient() {
         ))}
         <button
           type="button"
-          onClick={() => update({ sources: SOURCES.map((s) => s.id) })}
+          onClick={() =>
+            update({ sources: [...SOURCES.map((s) => s.id), ...custom.map((c) => c.id)] })
+          }
           className="chip"
         >
           Select everything
@@ -83,9 +133,7 @@ export function SourcesClient() {
                 return (
                   <div
                     key={source.id}
-                    className={`card flex items-start gap-3 p-3.5 transition-colors ${
-                      on ? "border-accent/45" : ""
-                    }`}
+                    className={`card flex items-start gap-3 p-3.5 ${on ? "border-accent/45" : ""}`}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { SettingsDrawer } from "./SettingsDrawer";
+import { ContinueReading } from "./ContinueReading";
 import { BookmarkIcon, CardsIcon, NewspaperIcon, SlidersIcon } from "./Icons";
 
 const NAV = [
@@ -25,8 +26,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isReader && (
-        <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md">
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <header className="glass sticky top-0 z-30 border-b border-border">
+          <div className="mx-auto flex h-[var(--header-height)] max-w-5xl items-center gap-3 px-4">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               <span
                 aria-hidden
@@ -68,26 +69,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
       )}
 
-      <main id="main">{children}</main>
+      <main id="main" className={isReader ? "" : "pb-20 sm:pb-0"}>
+        {children}
+      </main>
 
       {!isReader && (
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden">
-          <div className="flex">
-            {NAV.map(({ href, label, Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={isActive(href) ? "page" : undefined}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] ${
-                  isActive(href) ? "text-accent" : "text-muted"
-                }`}
-              >
-                <Icon width={20} height={20} />
-                {label}
-              </Link>
-            ))}
-          </div>
-        </nav>
+        <>
+          <ContinueReading />
+          <nav className="glass fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] sm:hidden">
+            <div className="flex">
+              {NAV.map(({ href, label, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={isActive(href) ? "page" : undefined}
+                  className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
+                    isActive(href) ? "text-accent" : "text-muted"
+                  }`}
+                >
+                  <Icon width={20} height={20} />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </>
       )}
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />

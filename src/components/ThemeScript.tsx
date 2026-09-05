@@ -15,6 +15,7 @@ export function ThemeScript() {
       lineHeight: DEFAULT_SETTINGS.lineHeight,
       measure: DEFAULT_SETTINGS.measure,
       tracking: DEFAULT_SETTINGS.tracking,
+      texture: DEFAULT_SETTINGS.texture,
     })};
     var raw = localStorage.getItem(${JSON.stringify(SETTINGS_KEY)});
     var s = raw ? Object.assign({}, d, JSON.parse(raw)) : d;
@@ -25,6 +26,7 @@ export function ThemeScript() {
     var r = document.documentElement;
     r.dataset.theme = theme;
     r.dataset.font = s.font || d.font;
+    r.dataset.texture = s.texture === false ? 'off' : 'on';
     r.style.setProperty('--reading-size', (s.fontSize || d.fontSize) + 'px');
     r.style.setProperty('--reading-leading', String(s.lineHeight || d.lineHeight));
     r.style.setProperty('--reading-measure', (s.measure || d.measure) + 'ch');

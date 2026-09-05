@@ -24,6 +24,8 @@ export interface Settings {
   bilingual: boolean;
   /** Tap a word for an instant lookup. */
   wordLookup: boolean;
+  /** The faint paper grain over the whole page. */
+  texture: boolean;
   sources: string[];
 }
 
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   layout: "lines",
   bilingual: false,
   wordLookup: true,
+  texture: true,
   sources: DEFAULT_SOURCE_IDS,
 };
 
@@ -91,6 +94,7 @@ export function applySettings(s: Settings): void {
       : s.theme;
   root.dataset.theme = resolved;
   root.dataset.font = s.font;
+  root.dataset.texture = s.texture === false ? "off" : "on";
   root.style.setProperty("--reading-size", `${s.fontSize}px`);
   root.style.setProperty("--reading-leading", String(s.lineHeight));
   root.style.setProperty("--reading-measure", `${s.measure}ch`);

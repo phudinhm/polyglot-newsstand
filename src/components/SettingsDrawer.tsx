@@ -191,6 +191,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
               onChange={(bilingual) => update({ bilingual })}
             />
             <Toggle
+              label="Paper texture"
+              hint="A faint grain over the page, so it reads as a sheet rather than a screen."
+              checked={settings.texture}
+              onChange={(texture) => update({ texture })}
+            />
+            <Toggle
               label="Tap a word to look it up"
               hint="Opens a small card with the meaning and a one-tap save to your vocabulary."
               checked={settings.wordLookup}

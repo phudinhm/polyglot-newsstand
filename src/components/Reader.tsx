@@ -9,7 +9,9 @@ import { getVocab, isSaved, toggleSaved } from "@/lib/store";
 import { formatDate } from "@/lib/format";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import type { Article, SourceLang } from "@/lib/types";
+import { setReadingNow } from "@/lib/reading";
 import { SettingsDrawer } from "./SettingsDrawer";
+import { ReaderToolbar } from "./ReaderToolbar";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -52,6 +54,7 @@ export function Reader({
   const [progress, setProgress] = useState(0);
   const [knownWords, setKnownWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const lang = article?.lang ?? fallbackLang;
   const tr = useTranslator(lang, settings.target);
@@ -93,16 +96,35 @@ export function Reader({
     }
   }, [url]);
 
-  // Reading progress, which doubles as a gentle sense of pace.
+  // Reading progress, which doubles as a gentle sense of pace and feeds the
+  // "continue reading" bar shown on the other pages.
   useEffect(() => {
+    if (!article) return;
+    let lastWrite = 0;
     const onScroll = () => {
       const height = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(height > 0 ? Math.min(100, (window.scrollY / height) * 100) : 0);
+      const pct = height > 0 ? Math.min(100, (window.scrollY / height) * 100) : 0;
+      setProgress(pct);
+      const now = Date.now();
+      if (now - lastWrite > 1500) {
+        lastWrite = now;
+        setReadingNow({
+          url,
+          title: article.title,
+          sourceName: source?.name ?? article.siteName ?? "",
+          lang: article.lang,
+          sourceId,
+          progress: pct,
+        });
+      }
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [article]);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      onScroll();
+    };
+  }, [article, url, sourceId, source]);
 
   // --------------------------------------------------------------- flat lines
   const lines: Line[] = useMemo(() => {
@@ -228,7 +250,7 @@ export function Reader({
         aria-hidden
       />
 
-      <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur-md">
+      <header className="glass sticky top-0 z-30 border-b border-border">
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
           <Link href="/" className="btn px-2 py-1.5" aria-label="Back to the newsstand">
             <ArrowLeftIcon />
@@ -297,7 +319,7 @@ export function Reader({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 pb-28 pt-8">
         {loading && (
           <div className="space-y-3">
             <div className="skeleton h-7 w-4/5" />
@@ -327,10 +349,19 @@ export function Reader({
 
         {article && (
           <article>
-            <h1 className="reading !max-w-[var(--reading-measure)] text-balance text-2xl font-bold leading-tight sm:text-[1.85rem]">
+            {article.leadImage && !imageFailed && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={article.leadImage}
+                alt=""
+                onError={() => setImageFailed(true)}
+                className="reading mb-6 !max-w-[var(--reading-measure)] w-full rounded-xl border border-border object-cover"
+              />
+            )}
+            <h1 className="reading !max-w-[var(--reading-measure)] text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]">
               {article.title}
             </h1>
-            <p className="reading mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <p className="reading mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs !leading-normal text-muted">
               {article.byline && <span>{article.byline}</span>}
               {article.publishedAt && <span>{formatDate(article.publishedAt)}</span>}
               <span>
@@ -510,6 +541,8 @@ export function Reader({
           onClose={closeWord}
         />
       )}
+
+      {article && <ReaderToolbar />}
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

@@ -14,10 +14,20 @@ beyond `next build`.
 **Reading**
 
 - One shelf for many publications. German and English feeds sit side by side, filtered by language,
-  category and a reading-difficulty label.
+  category, month and a reading-difficulty label, sorted newest first by default.
+- A front page rather than a list: a lead story with its preview image, then day headings and
+  cards carrying each publisher's thumbnail.
+- The header, tab bar and floating controls are frosted glass, and the page carries a faint paper
+  grain so it reads as a sheet rather than a screen. Both can be switched off.
+- A greeting in the corner that changes with the hour and rotates through German, English and
+  Vietnamese.
+- A continue-reading bar follows you around the app while an article is open, with a progress ring,
+  so wandering off to the vocabulary list costs nothing.
 - Articles are stripped of navigation, cookie walls and related-story rails, then rebuilt as clean
   paragraphs of sentences.
 - Four backgrounds: Paper, Sepia, Slate and Ink, plus a System option that follows your device.
+- A floating toolbar inside the reader for the two things you actually reach for mid-article: text
+  size and background.
 - Full typographic control: text size, line spacing, line width in characters, letter spacing, and a
   serif or sans reading face. German text is hyphenated automatically, which matters when a single
   compound noun can run to thirty characters.
@@ -45,7 +55,17 @@ Around forty curated feeds, weighted towards learners at both ends:
 | --- | --- | --- |
 | Easy | Nachrichtenleicht (Leichte Sprache) | VOA Learning English |
 | Medium | DW, tagesschau, ZDF heute, taz, Tagesspiegel, NDR, WDR, euronews, Golem, kicker | BBC, Guardian, NPR, Al Jazeera, DW English, The Verge, euronews |
-| Advanced | ZEIT, SPIEGEL, FAZ, SZ, Deutschlandfunk, Handelsblatt, WirtschaftsWoche, heise | NYT, FT, CNBC, MarketWatch, Ars Technica, Nature, SPIEGEL International |
+| Advanced | ZEIT, SPIEGEL, FAZ, SZ, Deutschlandfunk, Handelsblatt, WirtschaftsWoche, manager magazin, heise | NYT, FT, CNBC, MarketWatch, HBR, MIT Sloan, McKinsey, IMF, Ars Technica, Nature, SPIEGEL International |
+
+Business and research are deliberately well covered on both sides: Handelsblatt, WirtschaftsWoche,
+manager magazin and tagesschau Wirtschaft in German; Business Insider, HBR, MIT Sloan Management
+Review, the World Economic Forum, McKinsey, the IMF and World Bank blogs in English.
+
+**Adding your own.** The Sources page takes any RSS, Atom or RDF feed. It will also follow a
+publisher that has no working feed at all, or a standing topic search, by routing through the
+public Google News RSS endpoint. One-click follows are included for Deloitte, PwC, KPMG, EY, BCG,
+Bain and Statista, which is the practical way to read the advisory firms. Anything you add stays in
+your browser.
 
 Deutsche Welle publishes the same stories in German and English, which makes it easy to read one
 version and check yourself against the other.
