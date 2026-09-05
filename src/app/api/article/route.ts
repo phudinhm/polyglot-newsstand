@@ -1,0 +1,62 @@
+import { NextResponse } from "next/server";
+import { TtlCache } from "@/lib/cache";
+import { extractArticle } from "@/lib/extract";
+import { assertSafeUrl, FetchError, fetchText } from "@/lib/fetcher";
+import type { Article, SourceLang } from "@/lib/types";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const articleCache = new TtlCache<Article>(30 * 60 * 1000, 300);
+
+export async function GET(req: Request) {
+  const params = new URL(req.url).searchParams;
+  const target = params.get("url");
+  const lang = (params.get("lang") === "en" ? "en" : "de") as SourceLang;
+
+  if (!target) {
+    return NextResponse.json({ error: "Missing ?url" }, { status: 400 });
+  }
+
+  try {
+    const safe = assertSafeUrl(target);
+    const cacheKey = `${safe.toString()}|${lang}`;
+    const cached = articleCache.get(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
+    const html = await fetchText(safe.toString(), {
+      timeoutMs: 15_000,
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    });
+    const article = extractArticle(html, safe.toString(), lang);
+
+    if (!article.blocks.length) {
+      return NextResponse.json(
+        {
+          error:
+            "This publisher does not let us read the article text. Open it on their site, or pick another source.",
+          url: safe.toString(),
+        },
+        { status: 422 },
+      );
+    }
+
+    articleCache.set(cacheKey, article);
+    return NextResponse.json(article, {
+      headers: { "cache-control": "public, s-maxage=1800, stale-while-revalidate=3600" },
+    });
+  } catch (err) {
+    const status = err instanceof FetchError && err.status ? err.status : 502;
+    return NextResponse.json(
+      {
+        error:
+          status === 403 || status === 401
+            ? "The publisher blocked this request, which usually means a paywall."
+            : err instanceof Error
+              ? err.message
+              : "Could not load the article.",
+      },
+      { status: status === 403 || status === 401 ? 451 : status },
+    );
+  }
+}
