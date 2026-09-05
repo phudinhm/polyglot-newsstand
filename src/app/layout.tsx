@@ -1,0 +1,58 @@
+import type { Metadata, Viewport } from "next";
+import Link from "next/link";
+import { ThemeScript } from "@/components/ThemeScript";
+import { AppShell } from "@/components/AppShell";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Polyglot Newsstand",
+    template: "%s · Polyglot Newsstand",
+  },
+  description:
+    "Read German and English news line by line, with English and Vietnamese translation on tap, in a reading environment built for long sessions.",
+  applicationName: "Polyglot Newsstand",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  appleWebApp: { capable: true, title: "Newsstand", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4ecd8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0d0f" },
+  ],
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
+      <body>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 btn"
+        >
+          Skip to content
+        </a>
+        <AppShell>{children}</AppShell>
+        <footer className="mx-auto max-w-5xl px-4 pb-24 pt-10 text-xs text-muted sm:pb-10">
+          <p>
+            Headlines and article text belong to the publishers linked from each story.
+            Polyglot Newsstand shows them for personal reading and language practice, and always
+            links back to{" "}
+            <Link href="/sources" className="underline underline-offset-2">
+              the original source
+            </Link>
+            .
+          </p>
+        </footer>
+      </body>
+    </html>
+  );
+}

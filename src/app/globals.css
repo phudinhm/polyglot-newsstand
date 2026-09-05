@@ -1,0 +1,488 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Theme tokens.
+
+   Every colour lives here as a CSS variable, so switching theme is one data
+   attribute on <html> and nothing needs to re-render.
+   --------------------------------------------------------------------------- */
+
+:root,
+[data-theme="paper"] {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f2f1ec;
+  --fg: #1b1a18;
+  --muted: #64615b;
+  --border: #e5e2da;
+  --accent: #9c5227;
+  --accent-fg: #ffffff;
+  --highlight: rgba(156, 82, 39, 0.1);
+  --translation: #3d6555;
+  --shadow: 0 1px 2px rgba(28, 27, 25, 0.04), 0 10px 30px rgba(28, 27, 25, 0.07);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E");
+}
+
+[data-theme="sepia"] {
+  --bg: #f4ecd8;
+  --surface: #faf4e4;
+  --surface-2: #ece1c8;
+  --fg: #40362a;
+  --muted: #786852;
+  --border: #ddd0b2;
+  --accent: #94542a;
+  --accent-fg: #fdf8ec;
+  --highlight: rgba(148, 84, 42, 0.12);
+  --translation: #3c6350;
+  --shadow: 0 1px 2px rgba(64, 54, 42, 0.05), 0 10px 30px rgba(64, 54, 42, 0.09);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E");
+}
+
+[data-theme="slate"] {
+  --bg: #1e2126;
+  --surface: #262a30;
+  --surface-2: #2f343b;
+  --fg: #dfe1e4;
+  --muted: #9aa0a8;
+  --border: #373c44;
+  --accent: #e3a06a;
+  --accent-fg: #20232a;
+  --highlight: rgba(227, 160, 106, 0.14);
+  --translation: #8fc4ad;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+[data-theme="ink"] {
+  --bg: #0c0d0f;
+  --surface: #141618;
+  --surface-2: #1c1f22;
+  --fg: #d5d7d9;
+  --muted: #8b8e93;
+  --border: #24272b;
+  --accent: #dd9a63;
+  --accent-fg: #14161a;
+  --highlight: rgba(221, 154, 99, 0.12);
+  --translation: #85bfa7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* Reading controls, written from JS by applySettings(). */
+:root {
+  --reading-size: 19px;
+  --reading-leading: 1.75;
+  --reading-measure: 66ch;
+  --reading-tracking: 0em;
+
+  --font-reading-serif: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype",
+    Palatino, "Book Antiqua", Georgia, ui-serif, serif;
+  --font-reading-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --reading-family: var(--font-reading-serif);
+  --header-height: 3.5rem;
+}
+
+[data-font="sans"] {
+  --reading-family: var(--font-reading-sans);
+}
+
+/* Expose the tokens to Tailwind utilities: bg-bg, text-fg, border-border ... */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-translation: var(--translation);
+  --font-ui: var(--font-ui);
+}
+
+/* --------------------------------------------------------------------- base */
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/*
+ * The paper grain.
+ *
+ * Baked into a background image on the body rather than painted as an overlay
+ * element: an overlay would need a stacking context above the content, and
+ * anything that raises body's children breaks position: fixed and sticky on
+ * the header, the tab bar and the continue-reading bar. This costs nothing and
+ * cannot interfere with layout.
+ */
+body {
+  background-image: var(--grain);
+  background-attachment: fixed;
+  background-size: 240px 240px;
+}
+
+[data-texture="off"] body {
+  background-image: none;
+}
+
+::selection {
+
+  background: var(--highlight);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Frosted glass, the way iOS does it: blur plus a saturation lift so colour
+   showing through the bar stays alive instead of going grey. */
+.glass {
+  background-color: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.glass-strong {
+  background-color: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+}
+
+/*
+ * Without backdrop-filter there is no blur to separate the panel from the text
+ * under it, so fall back to something close to opaque. Legibility first.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: color-mix(in srgb, var(--bg) 95%, transparent);
+  }
+
+  .glass-strong {
+    background-color: var(--bg);
+  }
+}
+
+/* ------------------------------------------------------------------ reading */
+
+.reading {
+  font-family: var(--reading-family);
+  font-size: var(--reading-size);
+  line-height: var(--reading-leading);
+  letter-spacing: var(--reading-tracking);
+  max-width: var(--reading-measure);
+  margin-inline: auto;
+}
+
+/* German compounds are long; hyphenation keeps the right edge from tearing. */
+.reading [lang="de"],
+.reading[lang="de"] {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+.reading p,
+.reading .para {
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.sentence {
+  border-radius: 6px;
+  transition: background-color 120ms ease;
+  cursor: pointer;
+}
+
+.sentence:hover {
+  background-color: var(--highlight);
+}
+
+.sentence[data-active="true"] {
+  background-color: var(--highlight);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Line-by-line mode: one sentence per row, translation directly beneath. */
+.sentence-row {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 0.25em 0.55em;
+  margin-inline-start: -0.55em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.sentence-row:hover {
+  background-color: var(--highlight);
+}
+
+.sentence-row[data-active="true"] {
+  background-color: var(--highlight);
+}
+
+.translation {
+  color: var(--translation);
+  font-size: 0.88em;
+  line-height: 1.55;
+  letter-spacing: 0;
+  padding: 0.15em 0.55em 0.35em;
+  margin-inline-start: -0.55em;
+  border-inline-start: 2px solid color-mix(in srgb, var(--translation) 45%, transparent);
+  animation: reveal 160ms ease-out;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.word {
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 100ms ease, box-shadow 100ms ease;
+}
+
+.word:hover {
+  background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.word[data-known="true"] {
+  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.reading h2,
+.reading h3 {
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin-block: 1.6em 0.5em;
+}
+
+.reading h2 {
+  font-size: 1.32em;
+}
+
+.reading h3 {
+  font-size: 1.14em;
+}
+
+.reading .para + .para {
+  margin-top: 1.05em;
+}
+
+.reading .quote {
+  border-inline-start: 3px solid var(--accent);
+  padding-inline-start: 0.9em;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ chrome */
+
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.thumb {
+  background-color: var(--surface-2);
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.chip:hover {
+  color: var(--fg);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.chip[data-selected="true"] {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 500;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--fg);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn:hover {
+  background-color: var(--surface-2);
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.06);
+  background-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input {
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--fg);
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+/* Hide scrollbars on horizontal chip rails without losing the scroll. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    color-mix(in srgb, var(--surface-2) 60%, var(--bg)) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* The "continue reading" bar slides in rather than appearing. */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slide-in-right {
+  animation: slide-in-right 220ms ease-out;
+}
+
+.slide-in-up {
+  animation: slide-in-up 220ms ease-out;
+}
+
+/* Comfortable tap targets on phones. */
+@media (max-width: 640px) {
+  .sentence-row {
+    padding-block: 0.35em;
+  }
+}

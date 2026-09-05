@@ -1,0 +1,13 @@
+{
+  "name": "Polyglot Newsstand",
+  "short_name": "Newsstand",
+  "description": "German and English news, read line by line with English and Vietnamese translation.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4ecd8",
+  "theme_color": "#94542a",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
