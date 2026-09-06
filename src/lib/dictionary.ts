@@ -10,6 +10,12 @@ import type { SourceLang } from "./types";
  * which is far more reliable to read than the rendered page.
  */
 
+/** A sentence showing the word at work, which is how a word actually sticks. */
+export interface DictionaryExample {
+  text: string;
+  translation?: string;
+}
+
 export interface DictionarySense {
   partOfSpeech: string;
   definitions: string[];
@@ -29,6 +35,8 @@ export interface DictionaryEntry {
   senses: DictionarySense[];
   /** Phrases the word habitually appears in, which is how it is really used. */
   collocations?: string[];
+  /** Two or three sentences using the word, from the dictionary itself. */
+  examples?: DictionaryExample[];
   source: "wiktionary" | "translation";
   /** Wiktionary page for the word, so the reader can go deeper. */
   url?: string;
@@ -84,6 +92,8 @@ function lemmaFromInflection(wikitext: string): { lemma: string; note?: string }
 
 function cleanWikiMarkup(text: string): string {
   return text
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "")
+    .replace(/<ref[^>]*\/>/gi, "")
     .replace(/\{\{[^}]*\}\}/g, "")
     .replace(/\[\[([^|\]]+\|)?([^\]]+)\]\]/g, "$2")
     .replace(/'''?/g, "")
@@ -103,6 +113,21 @@ function meanings(wikitext: string): string[] {
     .slice(0, 5);
 }
 
+/**
+ * The {{Beispiele}} block: real sentences, usually pulled from a newspaper,
+ * which is exactly the register this app is read in.
+ */
+function examples(wikitext: string): DictionaryExample[] {
+  const section = /\{\{Beispiele\}\}([\s\S]*?)(?:\n\{\{|\n===|$)/.exec(wikitext);
+  if (!section) return [];
+  return section[1]
+    .split("\n")
+    .map((line) => cleanWikiMarkup(line.replace(/^:?\s*\[[\d,\s a-z]*\]\s*/, "")))
+    .filter((line) => line.length >= 12 && line.length <= 220)
+    .slice(0, 3)
+    .map((text) => ({ text }));
+}
+
 /** {{Charakteristische Wortkombinationen}} is Wiktionary's collocation list. */
 function collocations(wikitext: string): string[] {
   const section = /\{\{Charakteristische Wortkombinationen\}\}([\s\S]*?)(?:\n\{\{|\n===|$)/.exec(
@@ -117,7 +142,8 @@ function collocations(wikitext: string): string[] {
     .slice(0, 8);
 }
 
-function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "source"> {
+/** Exported so the wikitext parsing can be tested against fixtures. */
+export function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "source"> {
   const genus = firstMatch(wikitext, /\|Genus=([mfn])/) ?? firstMatch(wikitext, /\{\{([mfn])\}\}/);
   const pos = partsOfSpeech(wikitext);
   const defs = meanings(wikitext);
@@ -129,6 +155,7 @@ function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "sou
     singular: firstMatch(wikitext, /\|Nominativ Singular\s*=\s*([^\n|}]+)/),
     plural: firstMatch(wikitext, /\|Nominativ Plural\s*=\s*([^\n|}]+)/),
     collocations: collocations(wikitext),
+    examples: examples(wikitext),
     senses: pos.length
       ? pos.map((p, i) => ({ partOfSpeech: p, definitions: i === 0 ? defs : [] }))
       : defs.length
@@ -141,7 +168,11 @@ function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "sou
  * English Wiktionary's REST endpoint returns clean definitions grouped by
  * language, which is exactly what a learner wants: German word, English gloss.
  */
-async function englishGlosses(word: string, lang: SourceLang): Promise<DictionarySense[]> {
+/** Definitions from English Wiktionary, and the examples that come with them. */
+async function englishGlosses(
+  word: string,
+  lang: SourceLang,
+): Promise<{ senses: DictionarySense[]; examples: DictionaryExample[] }> {
   try {
     const body = await fetchText(
       `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word)}`,
@@ -149,10 +180,17 @@ async function englishGlosses(word: string, lang: SourceLang): Promise<Dictionar
     );
     const json = JSON.parse(body) as Record<
       string,
-      { partOfSpeech: string; definitions: { definition: string }[] }[]
+      {
+        partOfSpeech: string;
+        definitions: {
+          definition: string;
+          examples?: string[];
+          parsedExamples?: { example?: string }[];
+        }[];
+      }[]
     >;
     const entries = json[lang] ?? [];
-    return entries
+    const senses = entries
       .map((entry) => ({
         partOfSpeech: entry.partOfSpeech,
         definitions: entry.definitions
@@ -162,8 +200,18 @@ async function englishGlosses(word: string, lang: SourceLang): Promise<Dictionar
       }))
       .filter((s) => s.definitions.length)
       .slice(0, 4);
+
+    const found = entries
+      .flatMap((entry) => entry.definitions)
+      .flatMap((d) => [...(d.parsedExamples ?? []).map((e) => e.example ?? ""), ...(d.examples ?? [])])
+      .map((text) => cleanWikiMarkup(text))
+      .filter((text) => text.length >= 12 && text.length <= 220)
+      .slice(0, 3)
+      .map((text) => ({ text }));
+
+    return { senses, examples: found };
   } catch {
-    return [];
+    return { senses: [], examples: [] };
   }
 }
 
@@ -202,14 +250,21 @@ export async function lookup(word: string, lang: SourceLang): Promise<Dictionary
 
   const glosses = await englishGlosses(matched, lang);
 
-  if (!wikitext && !glosses.length) return null;
+  if (!wikitext && !glosses.senses.length) return null;
 
   const parsed = wikitext
     ? parseGerman(matched, wikitext)
-    : { word: matched, senses: [] as DictionarySense[], collocations: [] as string[] };
+    : {
+        word: matched,
+        senses: [] as DictionarySense[],
+        collocations: [] as string[],
+        examples: [] as DictionaryExample[],
+      };
 
   // Prefer English glosses for the meaning; keep the native ones as backup.
-  const senses = glosses.length ? glosses : parsed.senses;
+  const senses = glosses.senses.length ? glosses.senses : parsed.senses;
+  // Prefer examples in the language being read: they are the point.
+  const showExamples = parsed.examples?.length ? parsed.examples : glosses.examples;
 
   return {
     ...parsed,
@@ -217,6 +272,7 @@ export async function lookup(word: string, lang: SourceLang): Promise<Dictionary
     lemma: inflection ? matched : parsed.word !== trimmed ? parsed.word : undefined,
     inflectionNote: inflection?.note,
     senses,
+    examples: showExamples,
     source: "wiktionary",
     url: `https://${host}/wiki/${encodeURIComponent(matched)}`,
   };

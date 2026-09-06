@@ -7,6 +7,7 @@ import { useSettings } from "@/hooks/useSettings";
 import type { DictionaryEntry } from "@/lib/dictionary";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CheckIcon, CloseIcon, ExternalIcon, PlusIcon, SpeakerIcon, SpinnerIcon } from "./Icons";
+import { CaseCard } from "./CaseCard";
 
 export interface WordQuery {
   word: string;
@@ -93,7 +94,7 @@ export function WordPopover({
       return;
     }
     const WIDTH = 340;
-    const HEIGHT = 340;
+    const HEIGHT = 460;
     setAnchor({
       left: Math.min(Math.max(query.x - WIDTH / 2, 16), window.innerWidth - WIDTH - 16),
       top: Math.min(query.y + 14, Math.max(16, window.innerHeight - HEIGHT)),
@@ -127,7 +128,7 @@ export function WordPopover({
         role="dialog"
         aria-label={`Dictionary entry for ${query.word}`}
         style={anchor}
-        className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] w-auto overflow-y-auto rounded-2xl border border-border bg-surface p-4 shadow-[var(--shadow)] sm:inset-auto sm:w-[21.25rem] sm:max-h-[22rem]"
+        className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] w-auto overflow-y-auto rounded-2xl border border-border bg-surface p-4 shadow-[var(--shadow)] sm:inset-auto sm:w-[22.5rem] sm:max-h-[30rem]"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -238,6 +239,32 @@ export function WordPopover({
                 </div>
               ))}
 
+              {lang === "de" && (
+                <CaseCard sentence={query.sentence} word={headword} article={entry.article} />
+              )}
+
+              {entry.examples && entry.examples.length > 0 && (
+                <div className="mt-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    In use
+                  </span>
+                  <ul className="mt-1.5 space-y-2">
+                    {entry.examples.slice(0, expanded ? 3 : 2).map((example, i) => (
+                      <li key={i} className="border-l-2 border-border pl-2.5">
+                        <p className="text-[13px] leading-relaxed" lang={lang}>
+                          {example.text}
+                        </p>
+                        {example.translation && (
+                          <p className="text-translation mt-0.5 text-[12.5px] leading-relaxed">
+                            {example.translation}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {entry.collocations && entry.collocations.length > 0 && (
                 <div className="mt-3">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -257,15 +284,18 @@ export function WordPopover({
                 </div>
               )}
 
-              {!expanded && ((entry.senses?.length ?? 0) > 2 || (entry.collocations?.length ?? 0) > 4) && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded(true)}
-                  className="mt-2 text-[12.5px] font-medium text-accent underline underline-offset-2"
-                >
-                  Show more
-                </button>
-              )}
+              {!expanded &&
+                ((entry.senses?.length ?? 0) > 2 ||
+                  (entry.collocations?.length ?? 0) > 4 ||
+                  (entry.examples?.length ?? 0) > 2) && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(true)}
+                    className="mt-2 text-[12.5px] font-medium text-accent underline underline-offset-2"
+                  >
+                    Show more
+                  </button>
+                )}
             </>
           )}
         </div>

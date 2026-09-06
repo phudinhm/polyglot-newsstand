@@ -57,6 +57,22 @@ export async function GET(req: Request) {
     );
   }
 
+  // Examples are worth a second round trip: a sentence you can read beats a
+  // sentence you can only look at, and the whole entry is cached for a day.
+  if (entry?.examples?.length && lang !== target) {
+    const translated = await translate(
+      entry.examples.map((e) => e.text),
+      lang,
+      target,
+    ).catch(() => null);
+    if (translated) {
+      entry.examples = entry.examples.map((example, i) => ({
+        ...example,
+        translation: translated.translations[i] || undefined,
+      }));
+    }
+  }
+
   const body: DictionaryEntry & { translation?: string } = entry
     ? { ...entry, translation: translated ?? undefined }
     : {

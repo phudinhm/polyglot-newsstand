@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check:sources": "node scripts/check-sources.mjs"
+    "check:sources": "node scripts/check-sources.mjs",
+    "check:grammar": "node scripts/check-grammar.mjs",
+    "check:dictionary": "node scripts/check-dictionary.mjs",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

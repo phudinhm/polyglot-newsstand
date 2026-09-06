@@ -680,6 +680,8 @@ export const SOURCES: Source[] = [
     level: "medium",
     feed: "https://www.stern.de/feed/standard/all/",
     site: "https://www.stern.de",
+    note: "The feed works, but the site refuses our requests, so articles open as the feed summary.",
+    paywall: "hard",
   },
   {
     id: "focus",

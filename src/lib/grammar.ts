@@ -1,4 +1,14 @@
 import type { SourceLang } from "./types";
+import {
+  caseName,
+  CONTRACTIONS,
+  FIXED_CASE,
+  TWO_WAY,
+  findCase,
+  normalise,
+  readDeterminer,
+  stripPunctuation,
+} from "./cases";
 
 /**
  * A structural outline of a long sentence.
@@ -49,38 +59,6 @@ export interface SentenceStructure {
   /** True when there is genuinely nothing to say about this sentence. */
   trivial: boolean;
 }
-
-/**
- * Prepositions and the case each one governs. This is the single most useful
- * thing to be told about a German sentence and it is knowable exactly: the
- * lists are closed and every grammar agrees on them.
- */
-const PREPOSITION_CASE: Record<string, string> = {
-  durch: "accusative", für: "accusative", gegen: "accusative", ohne: "accusative",
-  um: "accusative", bis: "accusative", entlang: "accusative", wider: "accusative",
-  aus: "dative", außer: "dative", bei: "dative", mit: "dative", nach: "dative",
-  seit: "dative", von: "dative", zu: "dative", gegenüber: "dative",
-  ab: "dative", entgegen: "dative", gemäß: "dative", nebst: "dative",
-  während: "genitive", wegen: "genitive", trotz: "genitive", statt: "genitive",
-  anstatt: "genitive", innerhalb: "genitive", außerhalb: "genitive",
-  oberhalb: "genitive", unterhalb: "genitive", aufgrund: "genitive",
-  mittels: "genitive", angesichts: "genitive", hinsichtlich: "genitive",
-  infolge: "genitive", zwecks: "genitive", laut: "genitive or dative",
-};
-
-/** The two-way prepositions: accusative for movement, dative for position. */
-const TWO_WAY = new Set([
-  "an", "auf", "hinter", "in", "neben", "über", "unter", "vor", "zwischen",
-]);
-
-/** Contractions that hide a preposition and an article inside one word. */
-const CONTRACTIONS: Record<string, string> = {
-  am: "an + dem (dative)", ans: "an + das (accusative)", im: "in + dem (dative)",
-  ins: "in + das (accusative)", zum: "zu + dem (dative)", zur: "zu + der (dative)",
-  beim: "bei + dem (dative)", vom: "von + dem (dative)", aufs: "auf + das (accusative)",
-  fürs: "für + das (accusative)", vors: "vor + das (accusative)",
-  hinterm: "hinter + dem (dative)", übers: "über + das (accusative)",
-};
 
 const POSSESSIVES: Record<string, string> = {
   mein: "my", dein: "your", sein: "his or its", ihr: "her, its or their",
@@ -177,17 +155,19 @@ function finiteVerbOf(segment: string, kind: ClauseKind): Pick<Clause, "finiteVe
   const auxiliary = parts.find((p) => FINITE_AUX.has(p.bare));
   if (auxiliary) return { finiteVerb: auxiliary.raw, verbPosition: "second" };
 
-  // Failing that, lean on two rules that hold together: a declarative main
-  // clause puts the finite verb second, and German verbs are lowercase while
-  // nouns are not.
-  const second = parts[1];
-  if (
-    second &&
-    /^\p{Ll}/u.test(second.raw) &&
-    !FUNCTION_WORDS.has(second.bare) &&
-    second.bare.length > 2
-  ) {
-    return { finiteVerb: second.raw.replace(/[.,;:!?]$/, ""), verbPosition: "second" };
+  // Failing that, lean on rules that hold together. German verbs are lowercase
+  // where nouns are not, and the finite verb never sits directly behind a
+  // preposition or an article - that slot belongs to an adjective or a
+  // participle, which is what "Nach versuchten Angriffen" puts there.
+  for (let i = 1; i < parts.length; i++) {
+    const here = parts[i];
+    const previous = parts[i - 1];
+    if (!/^\p{Ll}/u.test(here.raw)) continue;
+    if (FUNCTION_WORDS.has(here.bare) || here.bare.length <= 2) continue;
+    if (SEPARABLE_PREFIXES.has(here.bare)) continue;
+    if (FIXED_CASE[previous.bare] || TWO_WAY.has(previous.bare) || CONTRACTIONS[previous.bare]) continue;
+    if (readDeterminer(previous.bare)) continue;
+    return { finiteVerb: here.raw.replace(/[.,;:!?]$/, ""), verbPosition: "second" };
   }
   return {};
 }
@@ -214,86 +194,320 @@ function segments(sentence: string): string[] {
 }
 
 /**
- * Point at the words that carry grammar rather than meaning. Even a short
- * sentence has a preposition governing a case or a possessive agreeing with
- * something, and those are exactly what a learner needs named.
+ * Prefixes that detach from their verb and wait at the end of the clause.
+ * Closed class, and the reason a learner meets "an" at a full stop and reads
+ * it as a preposition when it is half a verb.
  */
-function annotateWords(sentence: string): WordNote[] {
-  const seen = new Set<string>();
-  const notes: WordNote[] = [];
+const SEPARABLE_PREFIXES = new Set([
+  "ab", "an", "auf", "aus", "bei", "dar", "ein", "fest", "fort", "frei",
+  "her", "heim", "hin", "los", "mit", "nach", "statt", "teil", "vor", "wahr",
+  "weg", "weiter", "zu", "zurück", "zusammen", "zurecht", "voran", "voraus",
+  "vorbei", "vorüber", "entgegen", "gegenüber", "hinzu", "davon", "dazu",
+  "empor", "nieder", "über", "um", "unter", "durch", "wieder",
+]);
 
-  for (const raw of words(sentence)) {
-    const word = bare(raw);
-    if (!word || seen.has(word)) continue;
+/** Finite forms whose infinitive cannot be reached by stripping an ending. */
+const IRREGULAR_INFINITIVE: Record<string, string> = {
+  nimmt: "nehmen", nehmen: "nehmen", gibt: "geben", geben: "geben",
+  hält: "halten", halten: "halten", fällt: "fallen", fallen: "fallen",
+  fährt: "fahren", fahren: "fahren", läuft: "laufen", laufen: "laufen",
+  tritt: "treten", treten: "treten", sieht: "sehen", sehen: "sehen",
+  spricht: "sprechen", sprechen: "sprechen", bricht: "brechen",
+  wirft: "werfen", werfen: "werfen", trägt: "tragen", tragen: "tragen",
+  lädt: "laden", schlägt: "schlagen", zieht: "ziehen", ziehen: "ziehen",
+  ruft: "rufen", rufen: "rufen", geht: "gehen", gehen: "gehen",
+  steht: "stehen", stehen: "stehen", kommt: "kommen", kommen: "kommen",
+  liegt: "liegen", liegen: "liegen", stellt: "stellen", setzt: "setzen",
+  bringt: "bringen", bringen: "bringen", findet: "finden", finden: "finden",
+  hört: "hören", sieht_zu: "zusehen",
+};
+
+/**
+ * Rebuild the infinitive of a finite verb well enough to name the split verb.
+ * Regular German is regular here, and the irregulars that matter are listed
+ * above, so this is a reconstruction rather than a guess.
+ */
+function infinitiveOf(finite: string): string | null {
+  const verb = normalise(finite);
+  if (!verb || verb.length < 3) return null;
+  if (IRREGULAR_INFINITIVE[verb]) return IRREGULAR_INFINITIVE[verb];
+  if (verb.endsWith("en")) return verb;
+  if (verb.endsWith("t")) {
+    const stem = verb.slice(0, -1);
+    if (/[aeiouäöü]$/.test(stem) || /(er|el)$/.test(stem)) return `${stem}n`;
+    return `${stem}en`;
+  }
+  return null;
+}
+
+interface Governed {
+  stem: string;
+  lemma: string;
+  preposition: string;
+  kasus: "accusative" | "dative";
+}
+
+/**
+ * Verbs married to a preposition. The preposition here has lost its own
+ * meaning: "warten auf" is one vocabulary item, and reading "auf" as "on"
+ * is exactly the wrong move.
+ */
+const VERB_PREPOSITIONS: Governed[] = [
+  { stem: "wart", lemma: "warten auf", preposition: "auf", kasus: "accusative" },
+  { stem: "denk", lemma: "denken an", preposition: "an", kasus: "accusative" },
+  { stem: "erinner", lemma: "sich erinnern an", preposition: "an", kasus: "accusative" },
+  { stem: "glaub", lemma: "glauben an", preposition: "an", kasus: "accusative" },
+  { stem: "freu", lemma: "sich freuen über", preposition: "über", kasus: "accusative" },
+  { stem: "sprech", lemma: "sprechen über", preposition: "über", kasus: "accusative" },
+  { stem: "spricht", lemma: "sprechen über", preposition: "über", kasus: "accusative" },
+  { stem: "red", lemma: "reden über", preposition: "über", kasus: "accusative" },
+  { stem: "bericht", lemma: "berichten über", preposition: "über", kasus: "accusative" },
+  { stem: "diskutier", lemma: "diskutieren über", preposition: "über", kasus: "accusative" },
+  { stem: "informier", lemma: "informieren über", preposition: "über", kasus: "accusative" },
+  { stem: "beschwer", lemma: "sich beschweren über", preposition: "über", kasus: "accusative" },
+  { stem: "handel", lemma: "es handelt sich um", preposition: "um", kasus: "accusative" },
+  { stem: "bitt", lemma: "bitten um", preposition: "um", kasus: "accusative" },
+  { stem: "kümmer", lemma: "sich kümmern um", preposition: "um", kasus: "accusative" },
+  { stem: "sorg", lemma: "sorgen für", preposition: "für", kasus: "accusative" },
+  { stem: "interessier", lemma: "sich interessieren für", preposition: "für", kasus: "accusative" },
+  { stem: "acht", lemma: "achten auf", preposition: "auf", kasus: "accusative" },
+  { stem: "verzicht", lemma: "verzichten auf", preposition: "auf", kasus: "accusative" },
+  { stem: "reagier", lemma: "reagieren auf", preposition: "auf", kasus: "accusative" },
+  { stem: "hoff", lemma: "hoffen auf", preposition: "auf", kasus: "accusative" },
+  { stem: "verlass", lemma: "sich verlassen auf", preposition: "auf", kasus: "accusative" },
+  { stem: "vorbereit", lemma: "sich vorbereiten auf", preposition: "auf", kasus: "accusative" },
+  { stem: "einig", lemma: "sich einigen auf", preposition: "auf", kasus: "accusative" },
+  { stem: "teilnehm", lemma: "teilnehmen an", preposition: "an", kasus: "dative" },
+  { stem: "leid", lemma: "leiden unter", preposition: "unter", kasus: "dative" },
+  { stem: "arbeit", lemma: "arbeiten an", preposition: "an", kasus: "dative" },
+  { stem: "zweifel", lemma: "zweifeln an", preposition: "an", kasus: "dative" },
+  { stem: "beteilig", lemma: "sich beteiligen an", preposition: "an", kasus: "dative" },
+  { stem: "gehör", lemma: "gehören zu", preposition: "zu", kasus: "dative" },
+  { stem: "führ", lemma: "führen zu", preposition: "zu", kasus: "dative" },
+  { stem: "beitrag", lemma: "beitragen zu", preposition: "zu", kasus: "dative" },
+  { stem: "besteh", lemma: "bestehen aus", preposition: "aus", kasus: "dative" },
+  { stem: "stamm", lemma: "stammen aus", preposition: "aus", kasus: "dative" },
+  { stem: "rechn", lemma: "rechnen mit", preposition: "mit", kasus: "dative" },
+  { stem: "beschäftig", lemma: "sich beschäftigen mit", preposition: "mit", kasus: "dative" },
+  { stem: "frag", lemma: "fragen nach", preposition: "nach", kasus: "dative" },
+  { stem: "such", lemma: "suchen nach", preposition: "nach", kasus: "dative" },
+  { stem: "streb", lemma: "streben nach", preposition: "nach", kasus: "dative" },
+  { stem: "schütz", lemma: "schützen vor", preposition: "vor", kasus: "dative" },
+  { stem: "warn", lemma: "warnen vor", preposition: "vor", kasus: "dative" },
+  { stem: "abhäng", lemma: "abhängen von", preposition: "von", kasus: "dative" },
+  { stem: "profitier", lemma: "profitieren von", preposition: "von", kasus: "dative" },
+  { stem: "überzeug", lemma: "überzeugen von", preposition: "von", kasus: "dative" },
+  { stem: "erzähl", lemma: "erzählen von", preposition: "von", kasus: "dative" },
+];
+
+/**
+ * Nouns that carry their own preposition, which is how "Angriffe auf das
+ * Stromnetz" works: the "auf" belongs to the attack, not to the verb.
+ */
+const NOUN_PREPOSITIONS: Governed[] = [
+  { stem: "angriff", lemma: "der Angriff auf", preposition: "auf", kasus: "accusative" },
+  { stem: "anschlag", lemma: "der Anschlag auf", preposition: "auf", kasus: "accusative" },
+  { stem: "anspruch", lemma: "der Anspruch auf", preposition: "auf", kasus: "accusative" },
+  { stem: "antwort", lemma: "die Antwort auf", preposition: "auf", kasus: "accusative" },
+  { stem: "einfluss", lemma: "der Einfluss auf", preposition: "auf", kasus: "accusative" },
+  { stem: "bericht", lemma: "der Bericht über", preposition: "über", kasus: "accusative" },
+  { stem: "debatte", lemma: "die Debatte über", preposition: "über", kasus: "accusative" },
+  { stem: "streit", lemma: "der Streit über", preposition: "über", kasus: "accusative" },
+  { stem: "hinweis", lemma: "der Hinweis auf", preposition: "auf", kasus: "accusative" },
+  { stem: "reaktion", lemma: "die Reaktion auf", preposition: "auf", kasus: "accusative" },
+  { stem: "verzicht", lemma: "der Verzicht auf", preposition: "auf", kasus: "accusative" },
+  { stem: "grund", lemma: "der Grund für", preposition: "für", kasus: "accusative" },
+  { stem: "interesse", lemma: "das Interesse an", preposition: "an", kasus: "dative" },
+  { stem: "kritik", lemma: "die Kritik an", preposition: "an", kasus: "dative" },
+  { stem: "mangel", lemma: "der Mangel an", preposition: "an", kasus: "dative" },
+  { stem: "zweifel", lemma: "der Zweifel an", preposition: "an", kasus: "dative" },
+  { stem: "teilnahme", lemma: "die Teilnahme an", preposition: "an", kasus: "dative" },
+  { stem: "zugang", lemma: "der Zugang zu", preposition: "zu", kasus: "dative" },
+  { stem: "beitrag", lemma: "der Beitrag zu", preposition: "zu", kasus: "dative" },
+  { stem: "suche", lemma: "die Suche nach", preposition: "nach", kasus: "dative" },
+  { stem: "schutz", lemma: "der Schutz vor", preposition: "vor", kasus: "dative" },
+  { stem: "angst", lemma: "die Angst vor", preposition: "vor", kasus: "dative" },
+];
+
+/**
+ * Does this word start with that verb stem? Only a real word start counts, or
+ * one behind a ge- participle: "versuchten" is not a form of "suchen", and
+ * treating it as one is how "nach" gets called half of "suchen nach".
+ */
+function startsWithStem(word: string, stem: string): boolean {
+  if (word.length < 4) return false;
+  return word.startsWith(stem) || (word.startsWith("ge") && word.slice(2).startsWith(stem));
+}
+
+/** The noun a preposition is pointing at: the next capitalised word. */
+function headNounAfter(tokens: string[], from: number): string | undefined {
+  for (let i = from + 1; i < tokens.length && i <= from + 4; i++) {
+    const raw = stripPunctuation(tokens[i]);
+    if (/^\p{Lu}/u.test(raw)) return raw;
+  }
+  return undefined;
+}
+
+/**
+ * Point at the words that carry grammar rather than meaning, and name what
+ * each is actually doing. The order matters: a word that looks like a
+ * preposition is checked first against the jobs that outrank that reading -
+ * half of a split verb, or half of a fixed verb-plus-preposition pair.
+ */
+function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
+  const tokens = words(sentence);
+  const notes: WordNote[] = [];
+  const seen = new Set<string>();
+  const add = (note: WordNote) => {
+    if (seen.has(note.word.toLowerCase())) return;
+    seen.add(note.word.toLowerCase());
+    notes.push(note);
+  };
+
+  // Which tokens end a clause, so a prefix parked there can be spotted.
+  const clauseFinal = new Set<number>();
+  for (const clause of clauses) {
+    const last = words(clause.text).pop();
+    if (!last) continue;
+    const at = tokens.lastIndexOf(last);
+    if (at > 0) clauseFinal.add(at);
+  }
+  clauseFinal.add(tokens.length - 1);
+
+  // Which clause each token belongs to, walked in order so a repeated word
+  // does not get attributed to the wrong half of the sentence.
+  const clauseAt: (Clause | undefined)[] = [];
+  let cursor = 0;
+  for (const clause of clauses) {
+    for (let i = 0; i < words(clause.text).length; i++) clauseAt[cursor++] = clause;
+  }
+  const verbOf = (index: number) => clauseAt[index]?.finiteVerb;
+
+  tokens.forEach((raw, index) => {
+    const clean = stripPunctuation(raw);
+    const word = normalise(raw);
+    if (!word) return;
+
+    // A separable prefix sits where a preposition never does: at the very end
+    // of its clause, with the rest of its verb at the front.
+    if (SEPARABLE_PREFIXES.has(word) && clauseFinal.has(index) && index > 1) {
+      const verb = verbOf(index);
+      const infinitive = verb ? infinitiveOf(verb) : null;
+      add({
+        word: clean,
+        role: "Separable prefix",
+        detail: verb
+          ? infinitive
+            ? `not a preposition here: it is the front half of ${word}${infinitive}, split off and parked at the end. Read it together with ${verb}.`
+            : `not a preposition here: it belongs to ${verb} at the front of the clause, which German splits in two.`
+          : "not a preposition here: it is half of a separable verb, parked at the end of its clause.",
+      });
+      return;
+    }
 
     if (CONTRACTIONS[word]) {
-      seen.add(word);
-      notes.push({
-        word: raw.replace(/[.,;:!?]$/, ""),
+      const c = CONTRACTIONS[word];
+      add({
+        word: clean,
         role: "Contraction",
-        detail: `${CONTRACTIONS[word]} - a preposition and its article merged`,
+        detail: `${c.preposition} + ${c.article} in one word, so the noun after it is ${caseName(c.kasus)}.`,
       });
-      continue;
+      return;
     }
 
-    if (TWO_WAY.has(word)) {
-      seen.add(word);
-      notes.push({
-        word: raw,
-        role: "Two-way preposition",
-        detail: "accusative when something moves there, dative when it is already there",
+    const isPreposition = FIXED_CASE[word] || TWO_WAY.has(word);
+    if (isPreposition) {
+      // A preposition welded to a verb or a noun is one vocabulary item, and
+      // translating it on its own is what makes a sentence stop making sense.
+      const context = tokens.map(normalise);
+      // Also try the verb put back together with its separable prefix, so
+      // "nimmt ... teil" can be recognised as teilnehmen an.
+      const rejoined = clauses.flatMap((clause) => {
+        const parts = words(clause.text).map(normalise);
+        const prefix = parts.find((t) => SEPARABLE_PREFIXES.has(t));
+        const infinitive = clause.finiteVerb ? infinitiveOf(clause.finiteVerb) : null;
+        return prefix && infinitive ? [prefix + infinitive] : [];
       });
-      continue;
-    }
+      const governedByVerb = VERB_PREPOSITIONS.find(
+        (g) => g.preposition === word && [...context, ...rejoined].some((t) => startsWithStem(t, g.stem)),
+      );
+      const before = [context[index - 1], context[index - 2]].filter(Boolean);
+      const governedByNoun = NOUN_PREPOSITIONS.find(
+        (g) => g.preposition === word && before.some((t) => startsWithStem(t, g.stem)),
+      );
+      const governed = governedByNoun ?? governedByVerb;
 
-    if (PREPOSITION_CASE[word]) {
-      seen.add(word);
-      notes.push({
-        word: raw,
+      if (governed) {
+        add({
+          word: clean,
+          role: "Part of a fixed pair",
+          detail: `${governed.lemma} is a fixed pair, and it takes the ${caseName(governed.kasus)}. ${clean} carries no meaning of its own here, so do not translate it separately.`,
+        });
+        return;
+      }
+
+      const noun = headNounAfter(tokens, index);
+      const finding = noun ? findCase(sentence, noun) : null;
+
+      if (TWO_WAY.has(word)) {
+        add({
+          word: clean,
+          role: "Two-way preposition",
+          detail:
+            finding && finding.certain && finding.trigger
+              ? finding.reason
+              : noun
+                ? `accusative for movement toward, dative for staying put. Nothing in front of ${noun} marks which, so the meaning of the verb decides.`
+                : "accusative when something moves there, dative when it is already there.",
+        });
+        return;
+      }
+
+      add({
+        word: clean,
         role: "Preposition",
-        detail: `takes the ${PREPOSITION_CASE[word]}`,
+        detail: `always takes the ${caseName(FIXED_CASE[word])}${
+          finding?.determiner && finding.certain ? `: ${clean} ${finding.determiner} ${noun}` : ""
+        }.`,
       });
-      continue;
+      return;
     }
 
-    // Possessives inflect, so match the stem rather than the exact form.
-    const stem = Object.keys(POSSESSIVES).find(
+    const possessive = Object.keys(POSSESSIVES).find(
       (base) => word === base || (word.startsWith(base) && word.length - base.length <= 2),
     );
-    if (stem) {
-      seen.add(word);
-      notes.push({
-        word: raw,
+    if (possessive) {
+      add({
+        word: clean,
         role: "Possessive",
-        detail: `${POSSESSIVES[stem]} - its ending agrees with the noun that follows, not the owner`,
+        detail: `${POSSESSIVES[possessive]} - its ending agrees with the noun that follows, not with the owner.`,
       });
-      continue;
+      return;
     }
 
     if (REFLEXIVES.has(word)) {
-      seen.add(word);
-      notes.push({
-        word: raw,
+      add({
+        word: clean,
         role: "Reflexive pronoun",
-        detail: "the verb turns its action back on the subject",
+        detail: "the verb turns its action back on the subject.",
       });
-      continue;
+      return;
     }
 
     if (FINITE_AUX.has(word)) {
-      seen.add(word);
-      const modal = /^(kann|können|konnte|könnte|muss|müssen|musste|müsste|soll|sollen|sollte|will|wollen|wollte|darf|dürfen|durfte|dürfte|mag|mögen|möchte)/.test(
-        word,
-      );
-      notes.push({
-        word: raw,
+      const modal =
+        /^(kann|können|konnte|könnte|muss|müssen|musste|müsste|soll|sollen|sollte|will|wollen|wollte|darf|dürfen|durfte|dürfte|mag|mögen|möchte)/.test(
+          word,
+        );
+      add({
+        word: clean,
         role: modal ? "Modal verb" : "Auxiliary verb",
         detail: modal
-          ? "sends the main verb, as an infinitive, to the end of the clause"
-          : "carries the tense; the main verb sits at the end as a participle or infinitive",
+          ? "sends the main verb, as an infinitive, to the end of the clause."
+          : "carries the tense; the main verb waits at the end as a participle or infinitive.",
       });
     }
-  }
+  });
 
   return notes.slice(0, 8);
 }
@@ -330,7 +544,7 @@ export function analyseSentence(sentence: string, lang: SourceLang): SentenceStr
     notes.push("um … zu introduces a purpose: in order to.");
   }
 
-  const wordNotes = annotateWords(trimmed);
+  const wordNotes = annotateWords(trimmed, clauses);
 
   return {
     clauses,

@@ -13,6 +13,7 @@ import type { Article, SourceLang } from "@/lib/types";
 import { setReadingNow } from "@/lib/reading";
 import { noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
+import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
 import { cancelSpeech, isPaused, pauseSpeech, resumeSpeech, speak, speechSupported } from "@/lib/tts";
 import { useScrollActivity } from "@/hooks/useScrollActivity";
@@ -24,6 +25,7 @@ import { isCommon } from "@/lib/frequency";
 import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
+import { SourceAvatar } from "./SourceAvatar";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -87,6 +89,11 @@ export function Reader({
   const lang = article?.lang ?? fallbackLang;
   const tr = useTranslator(lang, settings.target);
   const source = sourceId ? SOURCE_BY_ID.get(sourceId) : undefined;
+  // The paper's own name, shown in full rather than cut off mid-word.
+  const publisher = source?.name ?? article?.siteName;
+  // A refusal is worth remembering: the shelf can stop offering this paper
+  // rather than letting the same wall be walked into again.
+  const [remembered, setRemembered] = useState(false);
   const suppressClick = useRef(false);
   const longPress = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -122,6 +129,8 @@ export function Reader({
         const known = recallItem(url);
         if (known?.summary) {
           setBlocked(true);
+          // Remember it now, so the shelf acts on it even if this tab is closed.
+          if (sourceId) noteBlocked(sourceId);
           setArticle({
             url,
             title: known.title,
@@ -429,19 +438,30 @@ export function Reader({
           chromeActive ? "opacity-100" : "opacity-30 hover:opacity-100 focus-within:opacity-100"
         }`}
       >
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
-          <Link href="/" className="btn px-2 py-1.5" aria-label={t("reader.back")}>
+        <div className="mx-auto flex max-w-3xl items-center gap-1.5 px-3 py-2.5 sm:gap-2">
+          <Link href="/" className="btn !px-1.5 !py-1.5 sm:!px-2" aria-label={t("reader.back")}>
             <ArrowLeftIcon />
           </Link>
-          <span className="min-w-0 flex-1 truncate text-sm text-muted">
-            {source?.name ?? article?.siteName ?? "Reading"}
-          </span>
+          {source ? (
+            <Link
+              href={`/s/${source.id}`}
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-muted hover:text-fg"
+              title={source.name}
+            >
+              <SourceAvatar name={source.name} site={source.site} size={18} />
+              <span className="truncate text-[13px] font-medium">{source.name}</span>
+            </Link>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[13px] text-muted">
+              {article?.siteName ?? t("reader.back")}
+            </span>
+          )}
 
           {article && speechSupported() && readingAloud && (
             <button
               type="button"
               onClick={togglePause}
-              className="btn px-2 py-1.5"
+              className="btn !px-1.5 !py-1.5 sm:!px-2"
               aria-label={paused ? t("reader.resume") : t("reader.pause")}
               title={paused ? t("reader.resume") : t("reader.pause")}
             >
@@ -453,7 +473,7 @@ export function Reader({
             <button
               type="button"
               onClick={toggleReadAloud}
-              className={`btn px-2 py-1.5 ${readingAloud ? "btn-primary" : ""}`}
+              className={`btn !px-1.5 !py-1.5 sm:!px-2 ${readingAloud ? "btn-primary" : ""}`}
               aria-pressed={readingAloud}
               aria-label={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
               title={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
@@ -462,32 +482,44 @@ export function Reader({
             </button>
           )}
 
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
-            {(["en", "vi"] as const).map((t) => (
+          <button
+            type="button"
+            onClick={() => update({ target: settings.target === "en" ? "vi" : "en" })}
+            className="btn !px-1.5 !py-1.5 text-xs font-semibold sm:hidden"
+            aria-label={t("reader.translateInto")}
+            title={t("reader.translateInto")}
+          >
+            {settings.target === "en" ? "EN" : "VI"}
+          </button>
+
+          <div className="hidden items-center gap-1 rounded-lg border border-border bg-surface p-0.5 sm:flex">
+            {(["en", "vi"] as const).map((target) => (
               <button
-                key={t}
+                key={target}
                 type="button"
-                onClick={() => update({ target: t })}
+                onClick={() => update({ target })}
                 className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                  settings.target === t ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
+                  settings.target === target ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
                 }`}
-                aria-pressed={settings.target === t}
+                aria-pressed={settings.target === target}
               >
-                {t === "en" ? "EN" : "VI"}
+                {target === "en" ? "EN" : "VI"}
               </button>
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => update({ bilingual: !settings.bilingual })}
-            className={`btn hidden px-2 py-1.5 sm:inline-flex ${settings.bilingual ? "btn-primary" : ""}`}
-            aria-pressed={settings.bilingual}
-            aria-label={t("reader.showAll")}
-            title={t("reader.showAll")}
-          >
-            <LanguagesIcon />
-          </button>
+          <span className="hidden sm:contents">
+            <button
+              type="button"
+              onClick={() => update({ bilingual: !settings.bilingual })}
+              className={`btn !px-2 !py-1.5 ${settings.bilingual ? "btn-primary" : ""}`}
+              aria-pressed={settings.bilingual}
+              aria-label={t("reader.showAll")}
+              title={t("reader.showAll")}
+            >
+              <LanguagesIcon />
+            </button>
+          </span>
 
           <button
             type="button"
@@ -504,7 +536,7 @@ export function Reader({
                 }),
               );
             }}
-            className={`btn px-2 py-1.5 ${saved ? "btn-primary" : ""}`}
+            className={`btn !px-1.5 !py-1.5 sm:!px-2 ${saved ? "btn-primary" : ""}`}
             aria-pressed={saved}
             aria-label={t("reader.save")}
           >
@@ -514,7 +546,7 @@ export function Reader({
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="btn px-2 py-1.5"
+            className="btn !px-1.5 !py-1.5 sm:!px-2"
             aria-label={t("reader.settings")}
           >
             <SlidersIcon />
@@ -566,7 +598,21 @@ export function Reader({
               {article.title}
             </h1>
             <p className="reading mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs !leading-normal text-muted">
-              {article.byline && <span>{article.byline}</span>}
+              {publisher && (
+                <span className="inline-flex items-center gap-1.5">
+                  <SourceAvatar name={publisher} site={source?.site} size={16} />
+                  {source ? (
+                    <Link href={`/s/${source.id}`} className="font-medium text-fg hover:underline">
+                      {publisher}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-fg">{publisher}</span>
+                  )}
+                </span>
+              )}
+              {article.byline && article.byline.toLowerCase() !== publisher?.toLowerCase() && (
+                <span>{article.byline}</span>
+              )}
               {article.publishedAt && <span>{formatDate(article.publishedAt)}</span>}
               <span>
                 {article.wordCount} words · about {article.readingMinutes} min at native pace
@@ -603,6 +649,39 @@ export function Reader({
                     : "Only part of this article was readable, most likely a paywall."}{" "}
                   Everything else still works here: tap a line to translate it, or use read aloud.
                 </p>
+                {blocked && sourceId && publisher && (
+                  <p className="mt-2 text-[12.5px]">
+                    {remembered ? (
+                      <>
+                        {publisher} is back on the shelf.{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            noteBlocked(sourceId);
+                            setRemembered(false);
+                          }}
+                          className="font-medium text-accent underline underline-offset-2"
+                        >
+                          Hide it again
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {publisher} will be left off the shelf from now on.{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            forgetBlocked(sourceId);
+                            setRemembered(true);
+                          }}
+                          className="font-medium text-accent underline underline-offset-2"
+                        >
+                          Keep showing it
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
                 <a
                   href={url}
                   target="_blank"

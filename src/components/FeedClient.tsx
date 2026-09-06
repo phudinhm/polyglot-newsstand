@@ -8,6 +8,7 @@ import { categoryKey } from "@/lib/i18n";
 import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
+import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
@@ -161,11 +162,18 @@ export function FeedClient() {
     return Array.from(keys).sort().reverse();
   }, [data]);
 
+  // Sources this device has actually been turned away from, read once per
+  // mount: localStorage is not reactive and a render is not the place to ask.
+  const [blocked, setBlocked] = useState<Set<string>>(() => new Set());
+  useEffect(() => setBlocked(blockedIds()), []);
+
   const filtered = useMemo(() => {
     let list: FeedItem[] = data?.items ?? [];
     // Papers that lock most articles stay off the shelf until asked for: a
     // headline you cannot open is worse than one you never saw.
-    if (settings.hidePaywalled && !source) list = list.filter((i) => i.paywall !== "hard");
+    if (settings.hidePaywalled && !source) {
+      list = list.filter((i) => i.paywall !== "hard" && !blocked.has(i.sourceId));
+    }
     if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
@@ -191,7 +199,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled]);
+  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, blocked]);
 
   const categories = useMemo(() => {
     const present = new Set((data?.items ?? []).map((i) => i.category));
@@ -221,9 +229,19 @@ export function FeedClient() {
 
   // How many stories the paywall filter is holding back, so the toggle can say.
   const hiddenByPaywall = useMemo(
-    () => (data?.items ?? []).filter((i) => i.paywall === "hard").length,
-    [data],
+    () => (data?.items ?? []).filter((i) => i.paywall === "hard" || blocked.has(i.sourceId)).length,
+    [data, blocked],
   );
+
+  // Named rather than counted: a reader who wonders where a paper went
+  // deserves to see the paper's name and a way to bring it back.
+  const blockedNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const item of data?.items ?? []) {
+      if (blocked.has(item.sourceId)) names.set(item.sourceId, item.sourceName);
+    }
+    return [...names].map(([id, name]) => ({ id, name }));
+  }, [data, blocked]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
@@ -335,6 +353,30 @@ export function FeedClient() {
                     ? `${hiddenByPaywall} ${hiddenByPaywall === 1 ? "story is" : "stories are"} hidden from papers that lock most articles. Papers that only meter some, like ZEIT or SPIEGEL, stay and carry a badge.`
                     : "Showing everything, including papers where most articles open on their own site."}
                 </p>
+
+                {blockedNames.length > 0 && (
+                  <div className="mt-2 rounded-lg bg-surface-2 px-2.5 py-2">
+                    <p className="text-[11px] leading-relaxed text-muted">
+                      These turned us away when you tried to read them, so they are hidden too. Tap
+                      one to give it another go.
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {blockedNames.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => {
+                            forgetBlocked(entry.id);
+                            setBlocked(blockedIds());
+                          }}
+                          className="chip !py-1 !text-[11.5px]"
+                        >
+                          {entry.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {extraFilters > 0 && (
                   <button
