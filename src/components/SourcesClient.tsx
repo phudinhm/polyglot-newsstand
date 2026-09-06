@@ -7,6 +7,8 @@ import { CATEGORY_LABELS, LEVEL_LABELS, SOURCES } from "@/lib/sources";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { suggestSources } from "@/lib/suggest";
 import { getCustomSources, removeCustomSource, type CustomSource } from "@/lib/customSources";
+import { getRecent } from "@/lib/recent";
+import { SourceAvatar } from "./SourceAvatar";
 import type { SourceHealth } from "@/app/api/source-health/route";
 import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
 import { CheckIcon, CloseIcon, PlusIcon, SpinnerIcon } from "./Icons";
@@ -20,8 +22,24 @@ export function SourcesClient() {
   const [checking, setChecking] = useState(false);
   const selected = useMemo(() => new Set(settings.sources), [settings.sources]);
 
+  const [mostRead, setMostRead] = useState<{ id?: string; name: string; count: number }[]>([]);
+
   useEffect(() => {
     setCustom(getCustomSources());
+    // What the reader actually opens, which is rarely what they think it is.
+    const tally = new Map<string, { id?: string; name: string; count: number }>();
+    for (const article of getRecent()) {
+      const key = article.sourceId ?? article.sourceName;
+      if (!key) continue;
+      const found = tally.get(key) ?? {
+        id: article.sourceId,
+        name: article.sourceName || key,
+        count: 0,
+      };
+      found.count += 1;
+      tally.set(key, found);
+    }
+    setMostRead([...tally.values()].sort((a, b) => b.count - a.count).slice(0, 5));
   }, []);
 
   const suggestions = useMemo(() => suggestSources(settings.sources, 4), [settings.sources]);
@@ -116,6 +134,51 @@ export function SourcesClient() {
             </>
           )}
         </div>
+      )}
+
+      {mostRead.length > 1 && (
+        <section className="mb-6">
+          <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">
+            What you read most
+          </h2>
+          <div className="card divide-y divide-border">
+            {mostRead.map((entry) => {
+              const max = mostRead[0].count || 1;
+              const row = (
+                <>
+                  <SourceAvatar
+                    name={entry.name}
+                    site={entry.id ? SOURCES.find((s) => s.id === entry.id)?.site : undefined}
+                    size={18}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{entry.name}</span>
+                  <span className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-surface-2">
+                    <span
+                      className="block h-full rounded-full bg-accent"
+                      style={{ width: `${Math.round((entry.count / max) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="w-14 shrink-0 text-right text-[12px] tabular-nums text-muted">
+                    {entry.count} read
+                  </span>
+                </>
+              );
+              return entry.id ? (
+                <Link
+                  key={entry.name}
+                  href={`/s/${entry.id}`}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 transition-colors hover:bg-surface-2"
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div key={entry.name} className="flex items-center gap-2.5 px-3.5 py-2.5">
+                  {row}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {suggestions.length > 0 && (

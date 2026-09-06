@@ -12,7 +12,9 @@ import type { Article, SourceLang } from "@/lib/types";
 import { setReadingNow } from "@/lib/reading";
 import { noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
-import { cancelSpeech, speak, speechSupported } from "@/lib/tts";
+import { cancelSpeech, isPaused, pauseSpeech, resumeSpeech, speak, speechSupported } from "@/lib/tts";
+import { useScrollActivity } from "@/hooks/useScrollActivity";
+import { PronunciationPractice } from "./PronunciationPractice";
 import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
@@ -23,6 +25,9 @@ import {
   ExternalIcon,
   LanguagesIcon,
   SlidersIcon,
+  MicIcon,
+  PauseIcon,
+  PlayIcon,
   SpeakerIcon,
   SpinnerIcon,
   StopIcon,
@@ -64,6 +69,9 @@ export function Reader({
   const [speakingKey, setSpeakingKey] = useState<string | null>(null);
   const [readingAloud, setReadingAloud] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [practiceLine, setPracticeLine] = useState<string | null>(null);
+  const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
   const tr = useTranslator(lang, settings.target);
@@ -286,11 +294,23 @@ export function Reader({
   function toggleReadAloud() {
     if (readingAloud) {
       stopSpeaking();
+      setPaused(false);
       return;
     }
     const start = Math.max(0, lines.findIndex((l) => l.key === activeKey));
     setReadingAloud(true);
+    setPaused(false);
     speakLine(start, true);
+  }
+
+  function togglePause() {
+    if (isPaused()) {
+      resumeSpeech();
+      setPaused(false);
+    } else {
+      pauseSpeech();
+      setPaused(true);
+    }
   }
 
   // ------------------------------------------------------------------ keyboard
@@ -358,7 +378,29 @@ export function Reader({
         aria-hidden
       />
 
-      <header className="glass sticky top-0 z-30 border-b border-border">
+      {article && (
+        <div
+          className={`glass-strong pointer-events-none fixed right-3 top-[calc(var(--header-height)+0.6rem)] z-40 flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 shadow-[var(--shadow)] transition-opacity duration-300 ${
+            chromeActive && progress > 2 ? "opacity-100" : "opacity-0"
+          }`}
+          aria-label={`${Math.round(progress)} percent read`}
+        >
+          <span
+            aria-hidden
+            className="grid h-4 w-4 place-items-center rounded-full"
+            style={{
+              background: `conic-gradient(var(--accent) ${progress * 3.6}deg, color-mix(in srgb, var(--accent) 20%, transparent) 0deg)`,
+            }}
+          />
+          <span className="text-[11.5px] font-medium tabular-nums">{Math.round(progress)}%</span>
+        </div>
+      )}
+
+      <header
+        className={`glass sticky top-0 z-30 border-b border-border transition-opacity duration-300 ${
+          chromeActive ? "opacity-100" : "opacity-30 hover:opacity-100 focus-within:opacity-100"
+        }`}
+      >
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
           <Link href="/" className="btn px-2 py-1.5" aria-label="Back to the newsstand">
             <ArrowLeftIcon />
@@ -367,13 +409,16 @@ export function Reader({
             {source?.name ?? article?.siteName ?? "Reading"}
           </span>
 
-          {article && (
-            <span
-              className="shrink-0 text-[12px] tabular-nums text-muted"
-              aria-label={`${Math.round(progress)} percent read`}
+          {article && speechSupported() && readingAloud && (
+            <button
+              type="button"
+              onClick={togglePause}
+              className="btn px-2 py-1.5"
+              aria-label={paused ? "Resume reading" : "Pause reading"}
+              title={paused ? "Resume" : "Pause"}
             >
-              {Math.round(progress)}%
-            </span>
+              {paused ? <PlayIcon /> : <PauseIcon />}
+            </button>
           )}
 
           {article && speechSupported() && (
@@ -408,7 +453,7 @@ export function Reader({
           <button
             type="button"
             onClick={() => update({ bilingual: !settings.bilingual })}
-            className={`btn px-2 py-1.5 ${settings.bilingual ? "btn-primary" : ""}`}
+            className={`btn hidden px-2 py-1.5 sm:inline-flex ${settings.bilingual ? "btn-primary" : ""}`}
             aria-pressed={settings.bilingual}
             aria-label="Show every translation"
             title="Show every translation"
@@ -665,6 +710,21 @@ export function Reader({
                             </button>
                           )}
 
+                          {activeKey === key && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                stopSpeaking();
+                                setPracticeLine(sentence);
+                              }}
+                              className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              aria-label="Practise saying this line"
+                            >
+                              <MicIcon width={13} height={13} /> say it back
+                            </button>
+                          )}
+
                           {open && (
                             <div className="translation" lang={settings.target}>
                               {translation ? (
@@ -716,7 +776,15 @@ export function Reader({
         />
       )}
 
-      {article && <ReaderToolbar />}
+      {article && <ReaderToolbar dimmed={!chromeActive} lang={lang} />}
+
+      {practiceLine && (
+        <PronunciationPractice
+          sentence={practiceLine}
+          lang={lang}
+          onClose={() => setPracticeLine(null)}
+        />
+      )}
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

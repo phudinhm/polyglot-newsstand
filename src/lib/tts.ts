@@ -71,6 +71,18 @@ export function speak(text: string, options: SpeakOptions): void {
   window.speechSynthesis.speak(utterance);
 }
 
+export function pauseSpeech(): void {
+  if (speechSupported()) window.speechSynthesis.pause();
+}
+
+export function resumeSpeech(): void {
+  if (speechSupported()) window.speechSynthesis.resume();
+}
+
+export function isPaused(): boolean {
+  return speechSupported() && window.speechSynthesis.paused;
+}
+
 export function cancelSpeech(): void {
   if (!speechSupported()) return;
   window.speechSynthesis.cancel();
