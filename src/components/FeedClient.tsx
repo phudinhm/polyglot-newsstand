@@ -1,21 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
-import { CATEGORY_LABELS, SOURCE_BY_ID } from "@/lib/sources";
+import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
-import { RefreshIcon, SearchIcon, SpinnerIcon } from "./Icons";
+import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
 type LangFilter = "all" | "de" | "en";
 type SortOrder = "newest" | "oldest";
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 24;
 
-const MONTH_LABEL = (key: string) => {
+const monthLabel = (key: string) => {
   const [year, month] = key.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
     month: "long",
@@ -48,6 +48,8 @@ export function FeedClient() {
   const [sort, setSort] = useState<SortOrder>("newest");
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sync = () => setCustom(getCustomSources());
@@ -55,6 +57,21 @@ export function FeedClient() {
     window.addEventListener("pn:store", sync);
     return () => window.removeEventListener("pn:store", sync);
   }, []);
+
+  // Close the filter popover on an outside click, the way a menu should behave.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!filterRef.current?.contains(e.target as Node)) setFiltersOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFiltersOpen(false);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [filtersOpen]);
 
   const sourceKey = settings.sources.join(",");
   const customKey = custom.map((c) => c.feed).join(",");
@@ -69,7 +86,6 @@ export function FeedClient() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             sources: settings.sources,
-            // Custom sources sit on the same shelf, so the same toggle governs them.
             custom: custom.filter((c) => settings.sources.includes(c.id)),
           }),
           signal,
@@ -83,7 +99,6 @@ export function FeedClient() {
         setLoading(false);
       }
     },
-    // custom is captured by value; the key string is what actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sourceKey, customKey],
   );
@@ -95,9 +110,7 @@ export function FeedClient() {
     return () => controller.abort();
   }, [ready, load]);
 
-  useEffect(() => {
-    setVisible(PAGE_SIZE);
-  }, [lang, category, month, sort, query]);
+  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query]);
 
   const months = useMemo(() => {
     const keys = new Set<string>();
@@ -131,12 +144,11 @@ export function FeedClient() {
       );
     }
     // Newest first is the default and the point; the toggle is for archives.
-    const sorted = [...list].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-    return sorted;
   }, [data, lang, category, month, query, sort]);
 
   const categories = useMemo(() => {
@@ -150,7 +162,6 @@ export function FeedClient() {
   const rest = showFeatured ? filtered.slice(1) : filtered;
   const page = rest.slice(0, visible);
 
-  // Group the list under day headings, which makes a long shelf scannable.
   const groups = useMemo(() => {
     const out: { label: string; items: FeedItem[] }[] = [];
     for (const item of page) {
@@ -162,53 +173,116 @@ export function FeedClient() {
     return out;
   }, [page]);
 
-  const totalSources = settings.sources.length + custom.length;
+  const extraFilters = (month !== "all" ? 1 : 0) + (sort !== "newest" ? 1 : 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:pt-7">
-      <div className="mb-5 flex items-end justify-between gap-3">
+    <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <Greeting count={data?.items.length ?? 0} />
         <button
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="btn shrink-0"
+          className="btn mt-1 shrink-0 !px-2.5"
           aria-label="Refresh the feed"
         >
           {loading ? <SpinnerIcon /> : <RefreshIcon />}
-          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
-      {/* Filters. Everything is client side, so switching is instant. */}
-      <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-5 space-y-2.5 border-b border-border px-4 pb-3 pt-2 glass">
+      {/* One light bar instead of two dense rows of chips. */}
+      <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent sm:flex-none">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search headlines"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted sm:w-52"
+              className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label="Search headlines"
             />
           </div>
-          <div className="flex gap-1.5">
+
+          <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
             {(["all", "de", "en"] as LangFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setLang(value)}
-                data-selected={lang === value}
-                className="chip"
+                className={`rounded-md px-2 py-1 text-[12.5px] font-medium transition-colors ${
+                  lang === value ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
+                }`}
+                aria-pressed={lang === value}
               >
-                {value === "all" ? "All" : value === "de" ? "DE" : "EN"}
+                {value === "all" ? "All" : value.toUpperCase()}
               </button>
             ))}
           </div>
+
+          <div className="relative" ref={filterRef}>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`btn !px-2.5 ${extraFilters ? "btn-primary" : ""}`}
+              aria-label="More filters"
+              aria-expanded={filtersOpen}
+            >
+              <SlidersIcon width={16} height={16} />
+            </button>
+            {filtersOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  Month
+                </label>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="input mt-1 w-full"
+                >
+                  <option value="all">Any month</option>
+                  {months.map((m) => (
+                    <option key={m} value={m}>
+                      {monthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  Order
+                </label>
+                <div className="mt-1 flex gap-1.5">
+                  {(["newest", "oldest"] as SortOrder[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSort(value)}
+                      data-selected={sort === value}
+                      className="chip flex-1 !justify-center"
+                    >
+                      {value === "newest" ? "Newest" : "Oldest"}
+                    </button>
+                  ))}
+                </div>
+
+                {extraFilters > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMonth("all");
+                      setSort("newest");
+                    }}
+                    className="btn mt-3 w-full justify-center !py-1.5 text-xs"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="no-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1">
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
           <button
             type="button"
             onClick={() => setCategory("all")}
@@ -228,33 +302,6 @@ export function FeedClient() {
               {CATEGORY_LABELS[c]}
             </button>
           ))}
-
-          <span className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden />
-
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            aria-label="Filter by month"
-            className="chip !py-[0.3rem] appearance-none pr-2"
-            data-selected={month !== "all"}
-          >
-            <option value="all">Any month</option>
-            {months.map((m) => (
-              <option key={m} value={m}>
-                {MONTH_LABEL(m)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-            data-selected={sort === "oldest"}
-            className="chip"
-            title="Newest first is the default"
-          >
-            {sort === "newest" ? "Newest first" : "Oldest first"}
-          </button>
         </div>
       </div>
 
@@ -268,9 +315,9 @@ export function FeedClient() {
       )}
 
       {loading && !data && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="card overflow-hidden">
-            <div className="skeleton h-44 w-full !rounded-none sm:h-60" />
+            <div className="skeleton h-44 w-full !rounded-none sm:h-52" />
             <div className="space-y-2 p-5">
               <div className="skeleton h-3 w-28" />
               <div className="skeleton h-6 w-3/4" />
@@ -281,9 +328,8 @@ export function FeedClient() {
               <div className="flex-1 space-y-2">
                 <div className="skeleton h-3 w-24" />
                 <div className="skeleton h-4 w-3/4" />
-                <div className="skeleton h-3 w-1/2" />
               </div>
-              <div className="skeleton h-24 w-32 shrink-0" />
+              <div className="skeleton h-[5.5rem] w-[7.5rem] shrink-0" />
             </div>
           ))}
         </div>
@@ -293,7 +339,7 @@ export function FeedClient() {
         <div className="card p-8 text-center">
           <p className="font-medium">Nothing matches those filters.</p>
           <p className="mt-1 text-sm text-muted">
-            Try another category or month, or add more publications on the{" "}
+            Try another category, or add more publications on the{" "}
             <Link href="/sources" className="underline underline-offset-2">
               Sources
             </Link>{" "}
@@ -311,7 +357,7 @@ export function FeedClient() {
       <div className="space-y-6">
         {groups.map((group) => (
           <section key={group.label}>
-            <h2 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
               {group.label}
             </h2>
             <div className="space-y-2.5">
@@ -329,31 +375,18 @@ export function FeedClient() {
           onClick={() => setVisible((v) => v + PAGE_SIZE)}
           className="btn mx-auto mt-6 flex"
         >
-          Show {Math.min(PAGE_SIZE, rest.length - visible)} more
+          Show more
         </button>
       )}
 
-      <p className="mt-8 text-center text-xs text-muted">
-        {totalSources} source{totalSources === 1 ? "" : "s"} on your shelf
-        {data?.fetchedAt && ` · updated ${new Date(data.fetchedAt).toLocaleTimeString()}`}
-      </p>
-
-      {/* Being upfront about what did not load beats a mysteriously short list. */}
+      {/* One quiet line instead of a status block and a details disclosure. */}
       {data?.failed?.length ? (
-        <details className="mt-3 text-center text-xs text-muted">
-          <summary className="cursor-pointer">
-            {data.failed.length} source{data.failed.length > 1 ? "s" : ""} did not respond
-          </summary>
-          <ul className="mt-2 space-y-1">
-            {data.failed.map((f) => (
-              <li key={f.sourceId}>
-                <span className="font-medium">{SOURCE_BY_ID.get(f.sourceId)?.name ?? f.name}</span>
-                {": "}
-                {f.reason}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <p className="mt-8 text-center text-[12.5px] text-muted">
+          {data.failed.length} source{data.failed.length > 1 ? "s" : ""} did not answer.{" "}
+          <Link href="/sources" className="underline underline-offset-2">
+            Check my sources
+          </Link>
+        </p>
       ) : null}
     </div>
   );

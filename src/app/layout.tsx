@@ -13,7 +13,15 @@ export const metadata: Metadata = {
     "Read German and English news line by line, with English and Vietnamese translation on tap, in a reading environment built for long sessions.",
   applicationName: "Polyglot Newsstand",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    // iOS ignores SVG for the home-screen icon, so the PNG has to be there.
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: { capable: true, title: "Newsstand", statusBarStyle: "default" },
 };
 

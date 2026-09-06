@@ -167,13 +167,13 @@ body {
 /* Frosted glass, the way iOS does it: blur plus a saturation lift so colour
    showing through the bar stays alive instead of going grey. */
 .glass {
-  background-color: color-mix(in srgb, var(--bg) 80%, transparent);
+  background-color: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .glass-strong {
-  background-color: color-mix(in srgb, var(--bg) 94%, transparent);
+  background-color: color-mix(in srgb, var(--bg) 97%, transparent);
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
 }

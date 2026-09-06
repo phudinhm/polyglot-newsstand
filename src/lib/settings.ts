@@ -32,9 +32,9 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "sepia",
   font: "serif",
-  fontSize: 19,
-  lineHeight: 1.75,
-  measure: 66,
+  fontSize: 20,
+  lineHeight: 1.8,
+  measure: 68,
   tracking: 0,
   target: "en",
   layout: "lines",
