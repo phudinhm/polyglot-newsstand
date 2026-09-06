@@ -929,6 +929,7 @@ export function Reader({
         <SentenceStructure
           sentence={structureLine}
           lang={lang}
+          target={settings.target}
           onClose={() => setStructureLine(null)}
         />
       )}

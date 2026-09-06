@@ -12,18 +12,19 @@ import { join } from "node:path";
 const out = mkdtempSync(join(tmpdir(), "grammar-"));
 execFileSync(
   "npx",
-  ["tsc", "src/lib/cases.ts", "src/lib/grammar.ts", "src/lib/types.ts",
+  ["tsc", "src/lib/cases.ts", "src/lib/grammar.ts", "src/lib/explain.ts", "src/lib/types.ts",
    "--outDir", out, "--module", "esnext", "--target", "es2022",
    "--moduleResolution", "bundler", "--skipLibCheck"],
   { stdio: "inherit" },
 );
-for (const file of ["grammar.js", "cases.js"]) {
+for (const file of ["grammar.js", "cases.js", "explain.js"]) {
   const path = join(out, file);
   writeFileSync(path, readFileSync(path, "utf8").replace(/from "\.\/(\w+)"/g, 'from "./$1.js"'));
 }
 
 const { analyseSentence } = await import(join(out, "grammar.js"));
-const { findCase } = await import(join(out, "cases.js"));
+const { findCase, findAdjective, declensionAfter } = await import(join(out, "cases.js"));
+const { noteRole, noteDetail, caseReason } = await import(join(out, "explain.js"));
 
 let failures = 0;
 const check = (label, actual, expected) => {
@@ -32,9 +33,11 @@ const check = (label, actual, expected) => {
   console.log(`${ok ? "  ok  " : "  FAIL"} ${label}${ok ? "" : `\n        expected ${expected}\n        got      ${actual}`}`);
 };
 
+const noteFor = (sentence, word) =>
+  analyseSentence(sentence, "de").words.find((w) => w.word.toLowerCase() === word);
 const roleOf = (sentence, word) => {
-  const note = analyseSentence(sentence, "de").words.find((w) => w.word.toLowerCase() === word);
-  return note ? note.role : "(not flagged)";
+  const note = noteFor(sentence, word);
+  return note ? noteRole(note, "en") : "(not flagged)";
 };
 
 console.log("\nWord roles");
@@ -48,8 +51,44 @@ check('"auf" in warten auf is a fixed pair', roleOf("Wir warten auf die Entschei
 check('"mit" is a plain preposition', roleOf("Sie spricht mit dem Minister.", "mit"), "Preposition");
 
 console.log("\nSplit verbs are named");
-const split = analyseSentence(power, "de").words.find((w) => w.word.toLowerCase() === "an");
-check("andauern is reconstructed", /andauern/.test(split?.detail ?? ""), "true");
+const split = noteFor(power, "an");
+check("andauern is reconstructed", /andauern/.test(noteDetail(split, "en")), "true");
+
+console.log("\nExplanations follow the reader's language");
+check("Vietnamese role", noteRole(split, "vi"), "Tiền tố tách rời");
+check("Vietnamese detail names the verb", /andauern/.test(noteDetail(split, "vi")), "true");
+check("Vietnamese detail has no English left", /preposition|split off/i.test(noteDetail(split, "vi")), "false");
+const mit = noteFor("Sie traf sich mit ihren Kollegen.", "mit");
+check("Vietnamese preposition detail", /Dativ/.test(noteDetail(mit, "vi")), "true");
+const nach = findCase(power, "Angriffen");
+check("Vietnamese case reason", /luôn đi với/.test(caseReason(nach.reason, nach.kasus, "vi")), "true");
+check("English case reason", /always takes/.test(caseReason(nach.reason, nach.kasus, "en")), "true");
+
+console.log("\nAdjective endings");
+// The reported case: klein is an adjective, so the article table is the wrong
+// lesson. What matters is which ending pattern the determiner selects.
+const cemetery = "Auf dem kleinen Friedhof hängen sieben davon.";
+const adj = findAdjective(cemetery, "kleinen");
+check("case", adj?.kasus, "dative");
+check("declension after a definite article", adj?.declension, "weak");
+check("ending", adj?.ending, "-en");
+check("noun it describes", adj?.noun, "Friedhof");
+check("determiner", adj?.determiner, "dem");
+const strong = findAdjective("Er trinkt kalten Kaffee.", "kalten");
+// Nothing marks the case there, so no claim is made rather than a guess.
+check("nothing marks the case, so no claim", strong ? strong.declension : "none", "none");
+// Here the preposition does mark it, and the ending it wears settles the rest.
+const bare = findAdjective(power, "versuchten");
+check("strong pattern with no determiner", bare?.declension, "strong");
+check("dative from the preposition", bare?.kasus, "dative");
+check("plural from the ending it wears", bare?.gender, "pl");
+check("ending", bare?.ending, "-en");
+const mixed = findAdjective("Das ist ein kleines Haus.", "kleines");
+check("after ein the pattern is mixed", mixed?.declension, "mixed");
+check("mixed nominative neuter", mixed?.ending, "-es");
+check("weak after dieser", declensionAfter("dieser"), "weak");
+check("mixed after keinem", declensionAfter("keinem"), "mixed");
+check("strong with nothing", declensionAfter(undefined), "strong");
 
 console.log("\nCase in context");
 const kase = (s, w, g) => {

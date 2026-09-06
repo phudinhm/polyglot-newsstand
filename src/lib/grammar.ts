@@ -1,6 +1,6 @@
 import type { SourceLang } from "./types";
+import type { Case, CaseReason } from "./cases";
 import {
-  caseName,
   CONTRACTIONS,
   FIXED_CASE,
   TWO_WAY,
@@ -43,11 +43,42 @@ export interface Clause {
   verbPosition?: "second" | "final";
 }
 
-/** A word worth pointing at, with what it is doing. */
+/**
+ * A word worth pointing at, and what it is doing. Like a case finding, this
+ * carries the facts rather than a sentence: the sentence gets written once per
+ * language in explain.ts.
+ */
+export type NoteKey =
+  | "separablePrefix"
+  | "contraction"
+  | "fixedPair"
+  | "twoWayResolved"
+  | "twoWayUnmarked"
+  | "twoWayGeneric"
+  | "preposition"
+  | "possessive"
+  | "reflexive"
+  | "modal"
+  | "auxiliary";
+
 export interface WordNote {
   word: string;
-  role: string;
-  detail: string;
+  key: NoteKey;
+  kasus?: Case;
+  /** For a split verb: the half at the front, and the whole verb. */
+  verb?: string;
+  infinitive?: string;
+  /** For a contraction, or a preposition with an article behind it. */
+  preposition?: string;
+  article?: string;
+  determiner?: string;
+  noun?: string;
+  /** For a fixed verb-plus-preposition or noun-plus-preposition pair. */
+  lemma?: string;
+  /** The stem of a possessive: mein, dein, sein, ihr, unser, euer. */
+  person?: string;
+  /** How the case was settled, when a two-way preposition was resolved. */
+  reason?: CaseReason;
 }
 
 export interface SentenceStructure {
@@ -60,10 +91,7 @@ export interface SentenceStructure {
   trivial: boolean;
 }
 
-const POSSESSIVES: Record<string, string> = {
-  mein: "my", dein: "your", sein: "his or its", ihr: "her, its or their",
-  unser: "our", euer: "your (plural)",
-};
+const POSSESSIVES = ["mein", "dein", "sein", "ihr", "unser", "euer"];
 
 const REFLEXIVES = new Set(["sich", "mich", "dich", "uns", "euch"]);
 
@@ -395,12 +423,9 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
       const infinitive = verb ? infinitiveOf(verb) : null;
       add({
         word: clean,
-        role: "Separable prefix",
-        detail: verb
-          ? infinitive
-            ? `not a preposition here: it is the front half of ${word}${infinitive}, split off and parked at the end. Read it together with ${verb}.`
-            : `not a preposition here: it belongs to ${verb} at the front of the clause, which German splits in two.`
-          : "not a preposition here: it is half of a separable verb, parked at the end of its clause.",
+        key: "separablePrefix",
+        verb: verb ?? undefined,
+        infinitive: verb && infinitive ? `${word}${infinitive}` : undefined,
       });
       return;
     }
@@ -409,8 +434,10 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
       const c = CONTRACTIONS[word];
       add({
         word: clean,
-        role: "Contraction",
-        detail: `${c.preposition} + ${c.article} in one word, so the noun after it is ${caseName(c.kasus)}.`,
+        key: "contraction",
+        preposition: c.preposition,
+        article: c.article,
+        kasus: c.kasus,
       });
       return;
     }
@@ -440,8 +467,9 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
       if (governed) {
         add({
           word: clean,
-          role: "Part of a fixed pair",
-          detail: `${governed.lemma} is a fixed pair, and it takes the ${caseName(governed.kasus)}. ${clean} carries no meaning of its own here, so do not translate it separately.`,
+          key: "fixedPair",
+          lemma: governed.lemma,
+          kasus: governed.kasus,
         });
         return;
       }
@@ -450,47 +478,42 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
       const finding = noun ? findCase(sentence, noun) : null;
 
       if (TWO_WAY.has(word)) {
-        add({
-          word: clean,
-          role: "Two-way preposition",
-          detail:
-            finding && finding.certain && finding.trigger
-              ? finding.reason
-              : noun
-                ? `accusative for movement toward, dative for staying put. Nothing in front of ${noun} marks which, so the meaning of the verb decides.`
-                : "accusative when something moves there, dative when it is already there.",
-        });
+        add(
+          finding && finding.certain && finding.trigger
+            ? {
+                word: clean,
+                key: "twoWayResolved",
+                kasus: finding.kasus,
+                reason: finding.reason,
+                determiner: finding.determiner,
+              }
+            : noun
+              ? { word: clean, key: "twoWayUnmarked", noun }
+              : { word: clean, key: "twoWayGeneric" },
+        );
         return;
       }
 
       add({
         word: clean,
-        role: "Preposition",
-        detail: `always takes the ${caseName(FIXED_CASE[word])}${
-          finding?.determiner && finding.certain ? `: ${clean} ${finding.determiner} ${noun}` : ""
-        }.`,
+        key: "preposition",
+        kasus: FIXED_CASE[word],
+        determiner: finding?.certain ? finding.determiner : undefined,
+        noun: finding?.certain ? noun : undefined,
       });
       return;
     }
 
-    const possessive = Object.keys(POSSESSIVES).find(
+    const possessive = POSSESSIVES.find(
       (base) => word === base || (word.startsWith(base) && word.length - base.length <= 2),
     );
     if (possessive) {
-      add({
-        word: clean,
-        role: "Possessive",
-        detail: `${POSSESSIVES[possessive]} - its ending agrees with the noun that follows, not with the owner.`,
-      });
+      add({ word: clean, key: "possessive", person: possessive });
       return;
     }
 
     if (REFLEXIVES.has(word)) {
-      add({
-        word: clean,
-        role: "Reflexive pronoun",
-        detail: "the verb turns its action back on the subject.",
-      });
+      add({ word: clean, key: "reflexive" });
       return;
     }
 
@@ -499,13 +522,7 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
         /^(kann|können|konnte|könnte|muss|müssen|musste|müsste|soll|sollen|sollte|will|wollen|wollte|darf|dürfen|durfte|dürfte|mag|mögen|möchte)/.test(
           word,
         );
-      add({
-        word: clean,
-        role: modal ? "Modal verb" : "Auxiliary verb",
-        detail: modal
-          ? "sends the main verb, as an infinitive, to the end of the clause."
-          : "carries the tense; the main verb waits at the end as a participle or infinitive.",
-      });
+      add({ word: clean, key: modal ? "modal" : "auxiliary" });
     }
   });
 

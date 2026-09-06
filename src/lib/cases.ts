@@ -148,6 +148,25 @@ export const stripPunctuation = (word: string) =>
 export const normalise = (word: string) =>
   stripPunctuation(word).replace(/[^\p{L}\p{M}]/gu, "").toLowerCase();
 
+/**
+ * Why a word is in the case it is in. A key and its parts rather than a
+ * sentence, because the sentence has to be sayable in more than one language.
+ */
+export type ReasonKey =
+  | "contraction"
+  | "fixedPreposition"
+  | "twoWayResolved"
+  | "twoWayUnmarked"
+  | "determinerOnly"
+  | "determinerLikely";
+
+export interface CaseReason {
+  key: ReasonKey;
+  preposition?: string;
+  article?: string;
+  determiner?: string;
+}
+
 export interface CaseFinding {
   kasus: Case;
   gender?: Gender;
@@ -156,8 +175,7 @@ export interface CaseFinding {
   /** The word that forces the case. */
   trigger?: string;
   triggerKind?: "preposition" | "two-way" | "contraction" | "determiner";
-  /** Why this case, in words a learner can act on. */
-  reason: string;
+  reason: CaseReason;
   /** False when more than one reading survives and this is the likeliest. */
   certain: boolean;
   alternatives?: Case[];
@@ -227,7 +245,12 @@ export function findCase(
       determiner: contraction.article,
       trigger: preposition,
       triggerKind: "contraction",
-      reason: `${preposition} is ${contraction.preposition} + ${contraction.article} welded together, and ${contraction.article} is the ${caseName(contraction.kasus)}.`,
+      reason: {
+        key: "contraction",
+        preposition: contraction.preposition,
+        article: contraction.article,
+        determiner: preposition,
+      },
       certain: true,
     };
   }
@@ -243,7 +266,7 @@ export function findCase(
       determiner,
       trigger: preposition,
       triggerKind: "preposition",
-      reason: `${preposition} always takes the ${caseName(kasus)}, whatever the sentence is doing.`,
+      reason: { key: "fixedPreposition", preposition },
       certain: true,
     };
   }
@@ -262,9 +285,7 @@ export function findCase(
         determiner,
         trigger: preposition,
         triggerKind: "two-way",
-        reason: determiner
-          ? `${preposition} can take either case. ${determiner} is the ${caseName(kasus)} here, so this is ${kasus === "accusative" ? "a direction the action moves toward" : "a place where something already is"}.`
-          : `${preposition} takes the ${caseName(kasus)} here.`,
+        reason: { key: "twoWayResolved", preposition, determiner },
         certain: true,
       };
     }
@@ -274,7 +295,7 @@ export function findCase(
         determiner,
         trigger: preposition,
         triggerKind: "two-way",
-        reason: `${preposition} takes either case, and ${determiner} is the same in both, so word order and meaning decide: accusative for movement toward, dative for staying put.`,
+        reason: { key: "twoWayUnmarked", preposition, determiner },
         certain: false,
         alternatives: ["dative"],
       };
@@ -292,7 +313,7 @@ export function findCase(
         gender: knownGender ?? (genders.length === 1 ? genders[0].gender : undefined),
         determiner,
         triggerKind: "determiner",
-        reason: `${determiner} can only be the ${caseName(cases[0])}, so that settles it with no preposition in sight.`,
+        reason: { key: "determinerOnly", determiner },
         certain: true,
       };
     }
@@ -305,11 +326,158 @@ export function findCase(
       gender: knownGender,
       determiner,
       triggerKind: "determiner",
-      reason: `${determiner} is the same form in more than one case, so this is the likeliest reading rather than the only one.`,
+      reason: { key: "determinerLikely", determiner },
       certain: false,
       alternatives: cases.filter((c) => c !== first),
     };
   }
 
   return null;
+}
+
+/* ------------------------------------------------------------------ adjectives */
+
+/**
+ * Which set of adjective endings applies. German asks the adjective to carry
+ * the case only when the determiner in front of it has not already done the
+ * job, which is why the same adjective has three tables rather than one.
+ */
+export type Declension = "weak" | "mixed" | "strong";
+
+export const ADJECTIVE_ENDINGS: Record<Declension, Record<Case, Record<Gender, string>>> = {
+  // After der/die/das and its relatives: the article says everything, so the
+  // adjective settles for -e or -en.
+  weak: {
+    nominative: { m: "-e", f: "-e", n: "-e", pl: "-en" },
+    accusative: { m: "-en", f: "-e", n: "-e", pl: "-en" },
+    dative: { m: "-en", f: "-en", n: "-en", pl: "-en" },
+    genitive: { m: "-en", f: "-en", n: "-en", pl: "-en" },
+  },
+  // After ein/kein/mein: those have no ending in three slots, so the adjective
+  // steps in for exactly those three.
+  mixed: {
+    nominative: { m: "-er", f: "-e", n: "-es", pl: "-en" },
+    accusative: { m: "-en", f: "-e", n: "-es", pl: "-en" },
+    dative: { m: "-en", f: "-en", n: "-en", pl: "-en" },
+    genitive: { m: "-en", f: "-en", n: "-en", pl: "-en" },
+  },
+  // With no determiner at all the adjective carries the case on its own, which
+  // is why these endings look like the definite article.
+  strong: {
+    nominative: { m: "-er", f: "-e", n: "-es", pl: "-e" },
+    accusative: { m: "-en", f: "-e", n: "-es", pl: "-e" },
+    dative: { m: "-em", f: "-er", n: "-em", pl: "-en" },
+    genitive: { m: "-en", f: "-er", n: "-en", pl: "-er" },
+  },
+};
+
+const EIN_WORD = new RegExp(`^(?:${EIN_STEMS.join("|")})(?:e|en|em|er|es)?$`);
+
+/** The five endings an attributive adjective can wear, longest first. */
+const ENDING_PATTERN = /(en|em|er|es|e)$/;
+
+const GENDERS: Gender[] = ["m", "f", "n", "pl"];
+
+export function declensionAfter(determiner?: string): Declension {
+  if (!determiner) return "strong";
+  const word = normalise(determiner);
+  if (EIN_WORD.test(word)) return "mixed";
+  return readDeterminer(word) ? "weak" : "strong";
+}
+
+export interface AdjectiveFinding {
+  declension: Declension;
+  kasus: Case;
+  gender?: Gender;
+  /** The ending the adjective is wearing, when it can be pinned down. */
+  ending?: string;
+  determiner?: string;
+  /** The noun it is describing. */
+  noun?: string;
+  /** Why that case, so both halves of the answer can be given. */
+  reason?: CaseReason;
+}
+
+/**
+ * Why an adjective ends the way it does.
+ *
+ * This is the question German learners actually get stuck on, and it has an
+ * exact answer in two steps: the determiner and the preposition fix the case,
+ * and the determiner also decides which of the three ending tables applies.
+ * Where the gender stays open but every candidate gives the same ending, the
+ * ending is still certain and is reported without naming a gender.
+ */
+export function findAdjective(sentence: string, adjective: string): AdjectiveFinding | null {
+  const tokens = sentence.split(/\s+/).filter(Boolean);
+  const wanted = normalise(adjective);
+  if (!wanted) return null;
+
+  let index = tokens.findIndex((t) => normalise(t) === wanted);
+  if (index < 0) {
+    const stem = wanted.replace(/(e|en|em|er|es)$/, "");
+    index = tokens.findIndex((t) => stem.length > 2 && normalise(t).startsWith(stem));
+  }
+  if (index < 0) return null;
+
+  // An adjective sits in front of the noun it describes.
+  let noun: string | undefined;
+  for (let i = index + 1; i < tokens.length && i <= index + 3; i++) {
+    const raw = stripPunctuation(tokens[i]);
+    if (/^\p{Lu}/u.test(raw)) {
+      noun = raw;
+      break;
+    }
+  }
+
+  // The determiner in front settles both the case and which table applies.
+  let determiner: string | undefined;
+  for (let i = index - 1; i >= 0 && i >= index - 3; i--) {
+    const raw = stripPunctuation(tokens[i]);
+    const word = normalise(raw);
+    if (CONTRACTIONS[word]) {
+      determiner = CONTRACTIONS[word].article;
+      break;
+    }
+    if (readDeterminer(word)) {
+      determiner = raw;
+      break;
+    }
+    if (FIXED_CASE[word] || TWO_WAY.has(word)) break;
+  }
+
+  const finding = noun ? findCase(sentence, noun) : null;
+  if (!finding) return null;
+
+  const declension = declensionAfter(determiner);
+  const table = ADJECTIVE_ENDINGS[declension][finding.kasus];
+
+  // Narrow the gender as far as the determiner allows.
+  let candidates: Gender[] = finding.gender
+    ? [finding.gender]
+    : determiner
+      ? [...new Set((readDeterminer(normalise(determiner)) ?? [])
+          .filter((r) => r.kasus === finding.kasus)
+          .map((r) => r.gender))]
+      : [];
+  if (!candidates.length) candidates = [...GENDERS];
+
+  // The adjective is wearing its own answer. Where the ending it actually has
+  // is one the table allows here, it settles what the determiner left open:
+  // "ein kleines Haus" can only be neuter, and "versuchten Angriffen" after a
+  // dative preposition can only be plural.
+  const worn = ENDING_PATTERN.exec(normalise(adjective))?.[1];
+  const allowed = candidates.filter((g) => worn && table[g] === `-${worn}`);
+  if (allowed.length) candidates = allowed;
+
+  const endings = new Set(candidates.map((g) => table[g]));
+
+  return {
+    declension,
+    kasus: finding.kasus,
+    gender: candidates.length === 1 ? candidates[0] : undefined,
+    ending: endings.size === 1 ? [...endings][0] : undefined,
+    determiner,
+    noun,
+    reason: finding.reason,
+  };
 }

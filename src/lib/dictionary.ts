@@ -144,8 +144,13 @@ function collocations(wikitext: string): string[] {
 
 /** Exported so the wikitext parsing can be tested against fixtures. */
 export function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "source"> {
-  const genus = firstMatch(wikitext, /\|Genus=([mfn])/) ?? firstMatch(wikitext, /\{\{([mfn])\}\}/);
   const pos = partsOfSpeech(wikitext);
+  // Only a noun has a gender, and the loose {{m}} fallback will happily find
+  // one on an adjective page. An article on "klein" is worse than none.
+  const noun = pos.some((p) => /Substantiv|Eigenname|Noun|Name/i.test(p));
+  const genus = noun
+    ? (firstMatch(wikitext, /\|Genus=([mfn])/) ?? firstMatch(wikitext, /\{\{([mfn])\}\}/))
+    : undefined;
   const defs = meanings(wikitext);
 
   return {

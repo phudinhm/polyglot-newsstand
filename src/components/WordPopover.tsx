@@ -8,6 +8,7 @@ import type { DictionaryEntry } from "@/lib/dictionary";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CheckIcon, CloseIcon, ExternalIcon, PlusIcon, SpeakerIcon, SpinnerIcon } from "./Icons";
 import { CaseCard } from "./CaseCard";
+import { LOOKUP_TEXT } from "@/lib/explain";
 
 export interface WordQuery {
   word: string;
@@ -102,6 +103,16 @@ export function WordPopover({
   }, [query.x, query.y]);
 
   const headword = entry?.lemma ?? entry?.word ?? query.word;
+
+  // What kind of word this is decides which lesson is worth giving. An
+  // adjective has no gender of its own, so the article table would be an
+  // answer to a question nobody asked.
+  const ui = LOOKUP_TEXT[target];
+
+  const partsOfSpeech = (entry?.senses ?? []).map((sense) => sense.partOfSpeech.toLowerCase());
+  const isNoun = partsOfSpeech.some((p) => /substantiv|eigenname|noun|name/.test(p));
+  const isAdjective =
+    !isNoun && partsOfSpeech.some((p) => /adjektiv|adjective|partizip|participle/.test(p));
   const meaning =
     entry?.senses.flatMap((s) => s.definitions)[0] ?? entry?.translation ?? "";
 
@@ -133,7 +144,7 @@ export function WordPopover({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              {entry?.article && (
+              {entry?.article && !isAdjective && (
                 <span
                   className={`rounded-md px-1.5 py-0.5 text-[12px] font-semibold ${
                     ARTICLE_TONE[entry.article] ?? "bg-surface-2 text-muted"
@@ -155,16 +166,16 @@ export function WordPopover({
             {entry?.lemma && entry.lemma !== query.word && (
               <p className="mt-0.5 text-[11.5px] text-muted">
                 {query.word}
-                {entry.inflectionNote ? ` · ${entry.inflectionNote}` : " · inflected form"}
+                {entry.inflectionNote ? ` · ${entry.inflectionNote}` : ` · ${ui.inflected}`}
               </p>
             )}
 
             {entry?.plural && (
               <p className="mt-0.5 text-[11.5px] text-muted">
-                plural: <span className="font-medium text-fg">{entry.plural}</span>
+                {ui.plural}: <span className="font-medium text-fg">{entry.plural}</span>
                 {entry.singular && entry.singular !== entry.plural && (
                   <>
-                    <span aria-hidden> · </span>singular:{" "}
+                    <span aria-hidden> · </span>{ui.singular}:{" "}
                     <span className="font-medium text-fg">{entry.singular}</span>
                   </>
                 )}
@@ -198,14 +209,12 @@ export function WordPopover({
         <div className="mt-3 min-h-[1.5rem] text-[14px]">
           {loading && (
             <span className="flex items-center gap-2 text-muted">
-              <SpinnerIcon width={15} height={15} /> Looking up…
+              <SpinnerIcon width={15} height={15} /> {ui.looking}
             </span>
           )}
 
           {!loading && failed && (
-            <span className="text-muted">
-              Nothing found for that word. Try tapping the whole line instead.
-            </span>
+            <span className="text-muted">{ui.nothing}</span>
           )}
 
           {!loading && entry && (
@@ -240,13 +249,20 @@ export function WordPopover({
               ))}
 
               {lang === "de" && (
-                <CaseCard sentence={query.sentence} word={headword} article={entry.article} />
+                <CaseCard
+                  sentence={query.sentence}
+                  word={headword}
+                  surface={query.word}
+                  article={entry.article}
+                  isAdjective={isAdjective}
+                  target={target}
+                />
               )}
 
               {entry.examples && entry.examples.length > 0 && (
                 <div className="mt-3">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                    In use
+                    {ui.inUse}
                   </span>
                   <ul className="mt-1.5 space-y-2">
                     {entry.examples.slice(0, expanded ? 3 : 2).map((example, i) => (
@@ -268,7 +284,7 @@ export function WordPopover({
               {entry.collocations && entry.collocations.length > 0 && (
                 <div className="mt-3">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                    Often used with
+                    {ui.usedWith}
                   </span>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {entry.collocations.slice(0, expanded ? 8 : 4).map((phrase) => (
@@ -293,7 +309,7 @@ export function WordPopover({
                     onClick={() => setExpanded(true)}
                     className="mt-2 text-[12.5px] font-medium text-accent underline underline-offset-2"
                   >
-                    Show more
+                    {ui.showMore}
                   </button>
                 )}
             </>
@@ -313,11 +329,11 @@ export function WordPopover({
           >
             {saved ? (
               <>
-                <CheckIcon width={16} height={16} /> Saved
+                <CheckIcon width={16} height={16} /> {ui.saved}
               </>
             ) : (
               <>
-                <PlusIcon width={16} height={16} /> Save word
+                <PlusIcon width={16} height={16} /> {ui.save}
               </>
             )}
           </button>
@@ -328,7 +344,7 @@ export function WordPopover({
               rel="noreferrer noopener"
               className="btn !px-2.5"
               aria-label="Open the full dictionary entry"
-              title="Full entry on Wiktionary"
+              title={ui.fullEntry}
             >
               <ExternalIcon width={15} height={15} />
             </a>
