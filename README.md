@@ -20,9 +20,18 @@ beyond `next build`.
 - The header, tab bar and floating controls are frosted glass, and the page carries a faint paper
   grain so it reads as a sheet rather than a screen. Both can be switched off.
 - A greeting in the corner that changes with the hour and rotates through German, English and
-  Vietnamese.
+  Vietnamese, with a sky to match: sunrise, sun, sunset, moon or stars.
+- **The interface itself in English, German or Vietnamese**, picked up from your browser on the
+  first visit and changeable at any time. It is independent of what you read and what you translate
+  into.
+- Papers that lock most of their articles are kept off the shelf by default and can be brought back
+  with one tap. Papers that only meter some carry a badge and stay.
+- The shelf is remembered, so coming back from an article paints instantly instead of flashing a
+  skeleton and refetching.
 - A continue-reading bar follows you around the app while an article is open, with a progress ring,
   so wandering off to the vocabulary list costs nothing.
+- Pick the paper first and the story second: every source has its own page listing what it has
+  published, reachable by tapping the publication name on any card.
 - Articles are stripped of navigation, cookie walls and related-story rails, then rebuilt as clean
   paragraphs of sentences.
 - Four backgrounds: Paper, Sepia, Slate and Ink, plus a System option that follows your device.
@@ -49,17 +58,23 @@ beyond `next build`.
 
 **Sources**
 
-Around forty curated feeds, weighted towards learners at both ends:
+73 curated feeds, weighted towards learners at both ends:
 
 | Level | German | English |
 | --- | --- | --- |
 | Easy | Nachrichtenleicht (Leichte Sprache) | VOA Learning English |
 | Medium | DW, tagesschau, ZDF heute, taz, Tagesspiegel, NDR, WDR, euronews, Golem, kicker | BBC, Guardian, NPR, Al Jazeera, DW English, The Verge, euronews |
-| Advanced | ZEIT, SPIEGEL, FAZ, SZ, Deutschlandfunk, Handelsblatt, WirtschaftsWoche, manager magazin, heise | NYT, FT, CNBC, MarketWatch, HBR, MIT Sloan, McKinsey, IMF, Ars Technica, Nature, SPIEGEL International |
+| Advanced | ZEIT, SPIEGEL, FAZ, SZ, WELT, NZZ, derStandard, Deutschlandfunk, Handelsblatt, WirtschaftsWoche, manager magazin, heise | NYT, FT, CNBC, MarketWatch, HBR, MIT Sloan, McKinsey, IMF, POLITICO EU, MIT Tech Review, The Atlantic, Ars Technica, Nature, SPIEGEL International |
 
 Business and research are deliberately well covered on both sides: Handelsblatt, WirtschaftsWoche,
 manager magazin and tagesschau Wirtschaft in German; Business Insider, HBR, MIT Sloan Management
 Review, the World Economic Forum, McKinsey, the IMF and World Bank blogs in English.
+
+**Suggestions and health.** The Sources page proposes what to add next and says why, leaning on the
+shelf you have already built while correcting two imbalances: a learner with nothing easy to read,
+and a shelf that has drifted into one language. **Check my sources** fetches every feed on your
+shelf and reports which ones answered, so "where did The Guardian go" becomes a specific answer
+rather than a mystery.
 
 **Adding your own.** The Sources page takes any RSS, Atom or RDF feed. It will also follow a
 publisher that has no working feed at all, or a standing topic search, by routing through the
@@ -146,6 +161,11 @@ src/
 ```
 
 Two details are worth knowing about:
+
+**Publisher chrome.** Readability keeps the visually hidden labels news sites ship for screen
+readers, and because they carry no spacing they arrive glued together, like
+`BenachrichtigungPfeil nach linksMerklisteAbspielenPause`. `src/lib/extract.ts` drops them by shape
+rather than by wordlist: real prose puts a space after a lowercase letter, never a capital.
 
 **Sentence segmentation.** `Intl.Segmenter` does the initial split, but its German rules break after
 abbreviations and ordinals, turning `Die Regierung hat z. B. am 1. Januar neue Regeln erlassen.`

@@ -135,6 +135,7 @@ export function parseFeed(xml: string, source: Source, limit = 40): FeedItem[] {
       lang: source.lang,
       category: source.category,
       level: source.level,
+      paywall: source.paywall,
     });
   }
   return items;

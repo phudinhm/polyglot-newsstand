@@ -133,7 +133,7 @@ export function AddSourceForm({
           />
         </div>
         <div className="flex items-center gap-2">
-          {(["en", "de"] as SourceLang[]).map((l) => (
+          {(["en", "de", "vi"] as SourceLang[]).map((l) => (
             <button
               key={l}
               type="button"
@@ -141,7 +141,7 @@ export function AddSourceForm({
               data-selected={lang === l}
               className="chip"
             >
-              {l === "en" ? "English" : "Deutsch"}
+              {l === "en" ? "English" : l === "de" ? "Deutsch" : "Tiếng Việt"}
             </button>
           ))}
           <button type="submit" className="btn btn-primary ml-auto" disabled={full || !value.trim()}>

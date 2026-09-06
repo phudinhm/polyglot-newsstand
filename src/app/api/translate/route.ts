@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   const texts = Array.isArray(body.texts)
     ? body.texts.filter((t): t is string => typeof t === "string")
     : [];
-  const source: SourceLang = body.source === "en" ? "en" : "de";
+  const source: SourceLang =
+    body.source === "en" ? "en" : body.source === "vi" ? "vi" : "de";
   const target: TargetLang = body.target === "vi" ? "vi" : "en";
 
   if (!texts.length) {

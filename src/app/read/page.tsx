@@ -16,7 +16,8 @@ export default async function ReadPage({
   };
 
   const url = pick("u");
-  const lang: SourceLang = pick("lang") === "en" ? "en" : "de";
+  const requested = pick("lang");
+  const lang: SourceLang = requested === "en" ? "en" : requested === "vi" ? "vi" : "de";
   const sourceId = pick("src");
 
   if (!url) {

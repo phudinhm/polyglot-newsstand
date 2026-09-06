@@ -1,10 +1,23 @@
 "use client";
 
-import type { TargetLang } from "./types";
+import type { SourceLang, TargetLang } from "./types";
+import { detectUiLang, type UiLang } from "./i18n";
 import { DEFAULT_SOURCE_IDS } from "./sources";
 
 export type ThemeName = "paper" | "sepia" | "slate" | "ink";
-export type FontName = "serif" | "sans";
+export type FontName = "charter" | "georgia" | "palatino" | "inter" | "verdana";
+
+/**
+ * Five faces, all already on the device, so nothing is downloaded and nothing
+ * shifts while a page loads. Each is here for a different kind of long read.
+ */
+export const FONTS: { id: FontName; label: string; hint: string }[] = [
+  { id: "charter", label: "Charter", hint: "Newspaper serif, the default" },
+  { id: "georgia", label: "Georgia", hint: "Made for screens, generous x-height" },
+  { id: "palatino", label: "Palatino", hint: "Bookish and calm for very long reads" },
+  { id: "inter", label: "Inter", hint: "Clean sans, best at small sizes" },
+  { id: "verdana", label: "Verdana", hint: "Wide and open, easiest on tired eyes" },
+];
 
 export interface Settings {
   /** "system" follows the OS and flips between paper and ink. */
@@ -18,6 +31,14 @@ export interface Settings {
   /** Extra letter spacing in em, which helps a lot of readers. */
   tracking: number;
   target: TargetLang;
+  /** The language of the interface itself, independent of what you read. */
+  uiLang: UiLang;
+  /** Whole-page zoom, separate from the reading text size. */
+  zoom: number;
+  /** Speaking rate for read-aloud, where 1 is the device's normal pace. */
+  speechRate: number;
+  /** Chosen voice per language, by voiceURI. Empty means "let the device pick". */
+  voices: Partial<Record<SourceLang | TargetLang, string>>;
   /** "lines" gives every sentence its own row; "flow" keeps normal paragraphs. */
   layout: "lines" | "flow";
   /** Show every translation at once instead of tapping line by line. */
@@ -26,21 +47,31 @@ export interface Settings {
   wordLookup: boolean;
   /** The faint paper grain over the whole page. */
   texture: boolean;
+  /** Colour words by whether you already know them. */
+  heatmap: boolean;
+  /** Keep papers that lock most articles off the shelf until asked for. */
+  hidePaywalled: boolean;
   sources: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "sepia",
-  font: "serif",
-  fontSize: 19,
-  lineHeight: 1.75,
-  measure: 66,
+  font: "charter",
+  fontSize: 20,
+  lineHeight: 1.8,
+  measure: 68,
   tracking: 0,
   target: "en",
+  uiLang: "en",
+  zoom: 1,
+  speechRate: 0.9,
+  voices: {},
   layout: "lines",
   bilingual: false,
   wordLookup: true,
   texture: true,
+  heatmap: true,
+  hidePaywalled: true,
   sources: DEFAULT_SOURCE_IDS,
 };
 
@@ -58,7 +89,8 @@ export function loadSettings(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    // First visit: start in the reader's own language rather than English.
+    if (!raw) return { ...DEFAULT_SETTINGS, uiLang: detectUiLang() };
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return sanitize({ ...DEFAULT_SETTINGS, ...parsed });
   } catch {
@@ -77,6 +109,9 @@ export function sanitize(s: Settings): Settings {
     fontSize: clamp(s.fontSize, 15, 28, DEFAULT_SETTINGS.fontSize),
     lineHeight: clamp(s.lineHeight, 1.3, 2.4, DEFAULT_SETTINGS.lineHeight),
     measure: clamp(s.measure, 42, 92, DEFAULT_SETTINGS.measure),
+    zoom: clamp(s.zoom, 0.8, 1.5, DEFAULT_SETTINGS.zoom),
+    speechRate: clamp(s.speechRate, 0.5, 1.5, DEFAULT_SETTINGS.speechRate),
+    voices: s.voices && typeof s.voices === "object" ? s.voices : {},
     tracking: clamp(s.tracking, 0, 0.06, DEFAULT_SETTINGS.tracking),
     sources: Array.isArray(s.sources) && s.sources.length ? s.sources : DEFAULT_SOURCE_IDS,
   };
@@ -99,5 +134,6 @@ export function applySettings(s: Settings): void {
   root.style.setProperty("--reading-leading", String(s.lineHeight));
   root.style.setProperty("--reading-measure", `${s.measure}ch`);
   root.style.setProperty("--reading-tracking", `${s.tracking}em`);
+  root.style.setProperty("--ui-zoom", String(s.zoom ?? 1));
   root.style.colorScheme = resolved === "paper" || resolved === "sepia" ? "light" : "dark";
 }

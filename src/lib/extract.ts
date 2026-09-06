@@ -6,7 +6,7 @@ import { stripHtml } from "./rss";
 
 const BLOCK_SELECTOR = "p, h2, h3, h4, blockquote, li";
 
-/** Boilerplate that survives Readability on German news sites. */
+/** Boilerplate that survives Readability on German and English news sites. */
 const NOISE = [
   /^Diese Seite verwendet Cookies/i,
   /^Mehr zum Thema/i,
@@ -17,13 +17,70 @@ const NOISE = [
   /^Advertisement$/i,
   /^Sign up (to|for)/i,
   /^Follow us on/i,
-  /^Teilen$|^Share$|^Drucken$/i,
+  /^Teilen$|^Share$|^Drucken$|^Merken$/i,
   /^Stand: /i,
+  /^Zur (Startseite|Übersicht)/i,
+  /^Alle Themen/i,
+  /^Dieser Artikel/i,
+  /^Über dieses Thema berichtet/i,
+  /^Diesen Beitrag (teilen|speichern)/i,
+  /^Sendung:/i,
+  /^Lesen Sie (auch|mehr)/i,
+  /^Read (more|next)/i,
+  /^Related( stories| articles)?:?$/i,
+  /^Copyright|^© /i,
+  /^Alle Rechte vorbehalten/i,
 ];
+
+/**
+ * Player and navigation labels that publishers ship as visually hidden text
+ * for screen readers. Readability keeps them, and because they carry no
+ * spacing they arrive glued together, like
+ *
+ *   BenachrichtigungPfeil nach linksMerklisteAbspielenPause
+ *
+ * Nothing here is ever part of an article body.
+ */
+const UI_LABELS = [
+  "Benachrichtigung", "Pfeil nach links", "Pfeil nach rechts", "Merkliste",
+  "Aufklappen", "Zuklappen", "Abspielen", "Pause", "Wiederholen", "Stummschalten",
+  "Lautstärke", "Vollbild", "Untertitel", "Vorheriges", "Nächstes", "Schließen",
+  "Menü öffnen", "Suche öffnen", "Zum Inhalt springen", "Video starten",
+  "Left arrow", "Right arrow", "Watch list", "Expand", "Collapse", "Play",
+  "Repeat", "Mute", "Unmute", "Fullscreen", "Subtitles", "Previous", "Next",
+  "Close", "Skip to content", "Share on", "Open menu",
+];
+
+const UI_LABEL_RE = new RegExp(
+  `(${UI_LABELS.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+  "gi",
+);
+
+/**
+ * A run of glued interface labels, detected by shape rather than by wordlist:
+ * real prose puts a space after a lowercase letter, never a capital.
+ */
+function isGluedLabelRun(text: string): boolean {
+  const camelJoins = (text.match(/[\p{Ll}\p{M}][\p{Lu}]/gu) ?? []).length;
+  if (camelJoins < 3) return false;
+  const spaced = text.split(/\s+/).length;
+  // More glued joins than spaces means the text is mostly concatenated labels.
+  return camelJoins >= spaced - 1;
+}
 
 function isNoise(text: string): boolean {
   if (text.length < 3) return true;
-  return NOISE.some((re) => re.test(text));
+  if (NOISE.some((re) => re.test(text))) return true;
+  if (isGluedLabelRun(text)) return true;
+
+  // A block that is mostly known interface labels is chrome, not content.
+  const labelChars = (text.match(UI_LABEL_RE) ?? []).join("").length;
+  if (labelChars > 0 && labelChars / text.length > 0.4) return true;
+
+  // Prose has sentence punctuation. A long block without any is a nav list.
+  if (text.length > 60 && !/[.!?…:;,]/.test(text)) return true;
+
+  return false;
 }
 
 function tagToKind(tag: string): ArticleBlock["kind"] {
@@ -46,6 +103,7 @@ function detectLang(html: string, fallback: SourceLang): SourceLang {
   const lang = match?.[1]?.slice(0, 2).toLowerCase();
   if (lang === "de") return "de";
   if (lang === "en") return "en";
+  if (lang === "vi") return "vi";
   return fallback;
 }
 

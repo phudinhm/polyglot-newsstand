@@ -1,21 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
-import { CATEGORY_LABELS, SOURCE_BY_ID } from "@/lib/sources";
+import { useT } from "@/hooks/useT";
+import { categoryKey } from "@/lib/i18n";
+import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
+import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
+import { blockedIds, forgetBlocked } from "@/lib/blocked";
+import { SOURCE_BY_ID } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
-import { RefreshIcon, SearchIcon, SpinnerIcon } from "./Icons";
+import { RecentlyRead } from "./RecentlyRead";
+import { SourceRail } from "./SourceRail";
+import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
-type LangFilter = "all" | "de" | "en";
+type LangFilter = "all" | "de" | "en" | "vi";
 type SortOrder = "newest" | "oldest";
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 24;
 
-const MONTH_LABEL = (key: string) => {
+const monthLabel = (key: string) => {
   const [year, month] = key.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
     month: "long",
@@ -24,19 +31,20 @@ const MONTH_LABEL = (key: string) => {
 };
 
 /** "Today", "Yesterday", then the date. Gives a long list a spine. */
-function dayLabel(iso?: string): string {
+function dayLabel(iso: string | undefined, t: (k: "feed.today" | "feed.yesterday") => string): string {
   if (!iso) return "Undated";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "Undated";
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
+  if (days === 0) return t("feed.today");
+  if (days === 1) return t("feed.yesterday");
   return date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 }
 
 export function FeedClient() {
-  const [settings, , ready] = useSettings();
+  const [settings, update, ready] = useSettings();
+  const t = useT();
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [data, setData] = useState<FeedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,8 +54,12 @@ export function FeedClient() {
   const [category, setCategory] = useState("all");
   const [month, setMonth] = useState("all");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
+  const [source, setSource] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sync = () => setCustom(getCustomSources());
@@ -56,12 +68,28 @@ export function FeedClient() {
     return () => window.removeEventListener("pn:store", sync);
   }, []);
 
+  // Close the filter popover on an outside click, the way a menu should behave.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!filterRef.current?.contains(e.target as Node)) setFiltersOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFiltersOpen(false);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [filtersOpen]);
+
   const sourceKey = settings.sources.join(",");
   const customKey = custom.map((c) => c.feed).join(",");
+  const cacheKey = `${sourceKey}|${customKey}`;
 
   const load = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true);
+    async (signal?: AbortSignal, background = false) => {
+      if (!background) setLoading(true);
       setError(null);
       try {
         const res = await fetch("/api/feed", {
@@ -69,21 +97,22 @@ export function FeedClient() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             sources: settings.sources,
-            // Custom sources sit on the same shelf, so the same toggle governs them.
             custom: custom.filter((c) => settings.sources.includes(c.id)),
           }),
           signal,
         });
         if (!res.ok) throw new Error(`The newsstand is unreachable (${res.status}).`);
-        setData((await res.json()) as FeedResponse);
+        const fresh = (await res.json()) as FeedResponse;
+        setData(fresh);
+        setCachedFeed(cacheKey, fresh);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Could not load the feed.");
+        // A background refresh that fails should leave what is on screen alone.
+        if (!background) setError(err instanceof Error ? err.message : "Could not load the feed.");
       } finally {
         setLoading(false);
       }
     },
-    // custom is captured by value; the key string is what actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sourceKey, customKey],
   );
@@ -91,13 +120,36 @@ export function FeedClient() {
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [ready, load]);
 
+    // Paint from what we already have, then quietly catch up if it is old.
+    const cached = getCachedFeed(cacheKey);
+    if (cached) {
+      setData(cached.response);
+      setLoading(false);
+      if (cached.stale) void load(controller.signal, true);
+    } else {
+      void load(controller.signal);
+    }
+
+    return () => controller.abort();
+  }, [ready, load, cacheKey]);
+
+  // Filtering a few hundred stories per keystroke is felt on a phone.
   useEffect(() => {
-    setVisible(PAGE_SIZE);
-  }, [lang, category, month, sort, query]);
+    const timer = setTimeout(() => setQuery(queryInput), 180);
+    return () => clearTimeout(timer);
+  }, [queryInput]);
+
+  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+
+  // How much each paper has on the shelf today, for the rail.
+  const counts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of data?.items ?? []) {
+      map.set(item.sourceId, (map.get(item.sourceId) ?? 0) + 1);
+    }
+    return map;
+  }, [data]);
 
   const months = useMemo(() => {
     const keys = new Set<string>();
@@ -110,8 +162,19 @@ export function FeedClient() {
     return Array.from(keys).sort().reverse();
   }, [data]);
 
+  // Sources this device has actually been turned away from, read once per
+  // mount: localStorage is not reactive and a render is not the place to ask.
+  const [blocked, setBlocked] = useState<Set<string>>(() => new Set());
+  useEffect(() => setBlocked(blockedIds()), []);
+
   const filtered = useMemo(() => {
     let list: FeedItem[] = data?.items ?? [];
+    // Papers that lock most articles stay off the shelf until asked for: a
+    // headline you cannot open is worse than one you never saw.
+    if (settings.hidePaywalled && !source) {
+      list = list.filter((i) => i.paywall !== "hard" && !blocked.has(i.sourceId));
+    }
+    if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
     if (month !== "all") {
@@ -131,91 +194,216 @@ export function FeedClient() {
       );
     }
     // Newest first is the default and the point; the toggle is for archives.
-    const sorted = [...list].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-    return sorted;
-  }, [data, lang, category, month, query, sort]);
+  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, blocked]);
 
   const categories = useMemo(() => {
     const present = new Set((data?.items ?? []).map((i) => i.category));
     return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
   }, [data]);
 
-  const untouched = lang === "all" && category === "all" && month === "all" && !query.trim();
+  const untouched =
+    lang === "all" && category === "all" && month === "all" && !query.trim() && !source;
   const showFeatured = untouched && sort === "newest" && filtered.length > 3;
   const featured = showFeatured ? filtered[0] : null;
   const rest = showFeatured ? filtered.slice(1) : filtered;
   const page = rest.slice(0, visible);
 
-  // Group the list under day headings, which makes a long shelf scannable.
   const groups = useMemo(() => {
     const out: { label: string; items: FeedItem[] }[] = [];
     for (const item of page) {
-      const label = dayLabel(item.publishedAt);
+      const label = dayLabel(item.publishedAt, t);
       const last = out[out.length - 1];
       if (last && last.label === label) last.items.push(item);
       else out.push({ label, items: [item] });
     }
     return out;
-  }, [page]);
+  }, [page, t]);
 
-  const totalSources = settings.sources.length + custom.length;
+  const extraFilters =
+    (month !== "all" ? 1 : 0) + (sort !== "newest" ? 1 : 0) + (settings.hidePaywalled ? 0 : 1);
+
+  // How many stories the paywall filter is holding back, so the toggle can say.
+  const hiddenByPaywall = useMemo(
+    () => (data?.items ?? []).filter((i) => i.paywall === "hard" || blocked.has(i.sourceId)).length,
+    [data, blocked],
+  );
+
+  // Named rather than counted: a reader who wonders where a paper went
+  // deserves to see the paper's name and a way to bring it back.
+  const blockedNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const item of data?.items ?? []) {
+      if (blocked.has(item.sourceId)) names.set(item.sourceId, item.sourceName);
+    }
+    return [...names].map(([id, name]) => ({ id, name }));
+  }, [data, blocked]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:pt-7">
-      <div className="mb-5 flex items-end justify-between gap-3">
+    <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
+      <div className="mb-3.5 flex items-start justify-between gap-3">
         <Greeting count={data?.items.length ?? 0} />
         <button
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="btn shrink-0"
-          aria-label="Refresh the feed"
+          className="btn mt-1 shrink-0 !px-2.5"
+          aria-label={t("feed.refresh")}
         >
           {loading ? <SpinnerIcon /> : <RefreshIcon />}
-          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
-      {/* Filters. Everything is client side, so switching is instant. */}
-      <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-5 space-y-2.5 border-b border-border px-4 pb-3 pt-2 glass">
+      <RecentlyRead />
+
+      <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
+
+      {/* One light bar instead of two dense rows of chips. */}
+      <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent sm:flex-none">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
             <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search headlines"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted sm:w-52"
-              aria-label="Search headlines"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder={t("feed.search")}
+              className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
+              aria-label={t("feed.search")}
             />
           </div>
-          <div className="flex gap-1.5">
-            {(["all", "de", "en"] as LangFilter[]).map((value) => (
+
+          <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
+            {(["all", "de", "en", "vi"] as LangFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setLang(value)}
-                data-selected={lang === value}
-                className="chip"
+                className={`rounded-md px-2 py-1 text-[12.5px] font-medium transition-colors ${
+                  lang === value ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
+                }`}
+                aria-pressed={lang === value}
               >
-                {value === "all" ? "All" : value === "de" ? "DE" : "EN"}
+                {value === "all" ? t("feed.all") : value.toUpperCase()}
               </button>
             ))}
           </div>
+
+          <div className="relative" ref={filterRef}>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`btn !px-2.5 ${extraFilters ? "btn-primary" : ""}`}
+              aria-label={t("feed.moreFilters")}
+              aria-expanded={filtersOpen}
+            >
+              <SlidersIcon width={16} height={16} />
+            </button>
+            {filtersOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {t("feed.month")}
+                </label>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="input mt-1 w-full"
+                >
+                  <option value="all">{t("feed.anyMonth")}</option>
+                  {months.map((m) => (
+                    <option key={m} value={m}>
+                      {monthLabel(m)}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {t("feed.order")}
+                </label>
+                <div className="mt-1 flex gap-1.5">
+                  {(["newest", "oldest"] as SortOrder[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSort(value)}
+                      data-selected={sort === value}
+                      className="chip flex-1 !justify-center"
+                    >
+                      {value === "newest" ? t("feed.newest") : t("feed.oldest")}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {t("feed.paywalls")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => update({ hidePaywalled: !settings.hidePaywalled })}
+                  data-selected={!settings.hidePaywalled}
+                  className="chip mt-1 w-full !justify-center !py-1.5"
+                >
+                  {settings.hidePaywalled ? t("feed.includeLocked") : t("feed.hidingLocked")}
+                </button>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                  {settings.hidePaywalled
+                    ? `${hiddenByPaywall} ${hiddenByPaywall === 1 ? "story is" : "stories are"} hidden from papers that lock most articles. Papers that only meter some, like ZEIT or SPIEGEL, stay and carry a badge.`
+                    : "Showing everything, including papers where most articles open on their own site."}
+                </p>
+
+                {blockedNames.length > 0 && (
+                  <div className="mt-2 rounded-lg bg-surface-2 px-2.5 py-2">
+                    <p className="text-[11px] leading-relaxed text-muted">
+                      These turned us away when you tried to read them, so they are hidden too. Tap
+                      one to give it another go.
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {blockedNames.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => {
+                            forgetBlocked(entry.id);
+                            setBlocked(blockedIds());
+                          }}
+                          className="chip !py-1 !text-[11.5px]"
+                        >
+                          {entry.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {extraFilters > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMonth("all");
+                      setSort("newest");
+                      update({ hidePaywalled: true });
+                    }}
+                    className="btn mt-3 w-full justify-center !py-1.5 text-xs"
+                  >
+                    {t("feed.resetFilters")}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="no-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1">
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
           <button
             type="button"
             onClick={() => setCategory("all")}
             data-selected={category === "all"}
             className="chip"
           >
-            Everything
+            {t("feed.everything")}
           </button>
           {categories.map((c) => (
             <button
@@ -225,36 +413,9 @@ export function FeedClient() {
               data-selected={category === c}
               className="chip"
             >
-              {CATEGORY_LABELS[c]}
+              {t(categoryKey(c))}
             </button>
           ))}
-
-          <span className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden />
-
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            aria-label="Filter by month"
-            className="chip !py-[0.3rem] appearance-none pr-2"
-            data-selected={month !== "all"}
-          >
-            <option value="all">Any month</option>
-            {months.map((m) => (
-              <option key={m} value={m}>
-                {MONTH_LABEL(m)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => setSort(sort === "newest" ? "oldest" : "newest")}
-            data-selected={sort === "oldest"}
-            className="chip"
-            title="Newest first is the default"
-          >
-            {sort === "newest" ? "Newest first" : "Oldest first"}
-          </button>
         </div>
       </div>
 
@@ -268,9 +429,9 @@ export function FeedClient() {
       )}
 
       {loading && !data && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="card overflow-hidden">
-            <div className="skeleton h-44 w-full !rounded-none sm:h-60" />
+            <div className="skeleton h-44 w-full !rounded-none sm:h-52" />
             <div className="space-y-2 p-5">
               <div className="skeleton h-3 w-28" />
               <div className="skeleton h-6 w-3/4" />
@@ -281,9 +442,8 @@ export function FeedClient() {
               <div className="flex-1 space-y-2">
                 <div className="skeleton h-3 w-24" />
                 <div className="skeleton h-4 w-3/4" />
-                <div className="skeleton h-3 w-1/2" />
               </div>
-              <div className="skeleton h-24 w-32 shrink-0" />
+              <div className="skeleton h-[5.5rem] w-[7.5rem] shrink-0" />
             </div>
           ))}
         </div>
@@ -291,9 +451,9 @@ export function FeedClient() {
 
       {!loading && !filtered.length && !error && (
         <div className="card p-8 text-center">
-          <p className="font-medium">Nothing matches those filters.</p>
+          <p className="font-medium">{t("feed.nothingMatches")}</p>
           <p className="mt-1 text-sm text-muted">
-            Try another category or month, or add more publications on the{" "}
+            Try another category, or add more publications on the{" "}
             <Link href="/sources" className="underline underline-offset-2">
               Sources
             </Link>{" "}
@@ -311,7 +471,7 @@ export function FeedClient() {
       <div className="space-y-6">
         {groups.map((group) => (
           <section key={group.label}>
-            <h2 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
               {group.label}
             </h2>
             <div className="space-y-2.5">
@@ -329,31 +489,18 @@ export function FeedClient() {
           onClick={() => setVisible((v) => v + PAGE_SIZE)}
           className="btn mx-auto mt-6 flex"
         >
-          Show {Math.min(PAGE_SIZE, rest.length - visible)} more
+          {t("feed.showMore")}
         </button>
       )}
 
-      <p className="mt-8 text-center text-xs text-muted">
-        {totalSources} source{totalSources === 1 ? "" : "s"} on your shelf
-        {data?.fetchedAt && ` · updated ${new Date(data.fetchedAt).toLocaleTimeString()}`}
-      </p>
-
-      {/* Being upfront about what did not load beats a mysteriously short list. */}
+      {/* One quiet line instead of a status block and a details disclosure. */}
       {data?.failed?.length ? (
-        <details className="mt-3 text-center text-xs text-muted">
-          <summary className="cursor-pointer">
-            {data.failed.length} source{data.failed.length > 1 ? "s" : ""} did not respond
-          </summary>
-          <ul className="mt-2 space-y-1">
-            {data.failed.map((f) => (
-              <li key={f.sourceId}>
-                <span className="font-medium">{SOURCE_BY_ID.get(f.sourceId)?.name ?? f.name}</span>
-                {": "}
-                {f.reason}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <p className="mt-8 text-center text-[12.5px] text-muted">
+          {data.failed.length} source{data.failed.length > 1 ? "s" : ""} did not answer.{" "}
+          <Link href="/sources" className="underline underline-offset-2">
+            Check my sources
+          </Link>
+        </p>
       ) : null}
     </div>
   );

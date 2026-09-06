@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useT } from "@/hooks/useT";
+import type { StringKey } from "@/lib/i18n";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ContinueReading } from "./ContinueReading";
 import { BookmarkIcon, CardsIcon, NewspaperIcon, SlidersIcon } from "./Icons";
 
-const NAV = [
-  { href: "/", label: "Newsstand", Icon: NewspaperIcon },
-  { href: "/saved", label: "Saved", Icon: BookmarkIcon },
-  { href: "/vocab", label: "Vocabulary", Icon: CardsIcon },
-  { href: "/sources", label: "Sources", Icon: SlidersIcon },
+const NAV: { href: string; key: StringKey; Icon: typeof NewspaperIcon }[] = [
+  { href: "/", key: "nav.newsstand", Icon: NewspaperIcon },
+  { href: "/saved", key: "nav.saved", Icon: BookmarkIcon },
+  { href: "/vocab", key: "nav.vocabulary", Icon: CardsIcon },
+  { href: "/sources", key: "nav.sources", Icon: SlidersIcon },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // The reader hides the chrome so nothing competes with the article.
   const isReader = pathname?.startsWith("/read");
@@ -28,18 +31,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isReader && (
         <header className="glass sticky top-0 z-30 border-b border-border">
           <div className="mx-auto flex h-[var(--header-height)] max-w-5xl items-center gap-3 px-4">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span
-                aria-hidden
-                className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-fg"
-              >
-                PN
+            <Link href="/" className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" width={30} height={30} className="shrink-0 rounded-lg" />
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[14px] font-semibold tracking-tight sm:text-[15px]">
+                  Polyglot Newsstand
+                </span>
+                <span className="block truncate text-[10.5px] text-muted sm:text-[11px]">
+                  {t("app.slogan")}
+                </span>
               </span>
-              <span className="hidden sm:inline">Polyglot Newsstand</span>
             </Link>
 
             <nav className="ml-auto hidden items-center gap-1 sm:flex">
-              {NAV.map(({ href, label, Icon }) => (
+              {NAV.map(({ href, key, Icon }) => (
                 <Link
                   key={href}
                   href={href}
@@ -51,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <Icon />
-                  {label}
+                  {t(key)}
                 </Link>
               ))}
             </nav>
@@ -60,10 +66,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setSettingsOpen(true)}
               className="btn ml-auto px-2.5 py-1.5 sm:ml-0"
-              aria-label="Reading settings"
+              aria-label={t("settings.title")}
             >
               <SlidersIcon />
-              <span className="hidden md:inline">Reading</span>
+              <span className="hidden md:inline">{t("nav.reading")}</span>
             </button>
           </div>
         </header>
@@ -78,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ContinueReading />
           <nav className="glass fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] sm:hidden">
             <div className="flex">
-              {NAV.map(({ href, label, Icon }) => (
+              {NAV.map(({ href, key, Icon }) => (
                 <Link
                   key={href}
                   href={href}
@@ -88,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <Icon width={20} height={20} />
-                  {label}
+                  {t(key)}
                 </Link>
               ))}
             </div>

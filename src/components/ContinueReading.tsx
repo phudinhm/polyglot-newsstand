@@ -31,8 +31,9 @@ export function ContinueReading() {
     };
   }, [pathname]);
 
-  // Never shadow the article it points at.
-  if (!current || dismissed || pathname?.startsWith("/read")) return null;
+  // Never shadow the article it points at, and never duplicate the front
+  // page's own "still reading" rail.
+  if (!current || dismissed || pathname === "/" || pathname?.startsWith("/read")) return null;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[4.25rem] z-30 px-3 sm:inset-x-auto sm:right-5 sm:bottom-6 sm:px-0">

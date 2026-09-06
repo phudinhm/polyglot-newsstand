@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { clearVocab, getVocab, removeVocab, vocabToCsv } from "@/lib/store";
+import { useT } from "@/hooks/useT";
+import { clearVocab, getVocab, removeVocab, setVocabStatus, vocabToCsv } from "@/lib/store";
 import type { VocabEntry } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
-import { DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
+import { CheckIcon, DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
 
 export function VocabClient() {
   const [entries, setEntries] = useState<VocabEntry[]>([]);
+  const t = useT();
   const [query, setQuery] = useState("");
-  const [lang, setLang] = useState<"all" | "de" | "en">("all");
+  const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export function VocabClient() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Vocabulary</h1>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t("vocab.title")}</h1>
           <p className="mt-1 text-sm text-muted">
             {entries.length} word{entries.length === 1 ? "" : "s"} saved, each with the sentence you
             met it in. Export to CSV and it imports straight into Anki or Quizlet.
@@ -86,12 +88,12 @@ export function VocabClient() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your words"
+            placeholder={t("vocab.search")}
             className="w-44 bg-transparent text-sm outline-none placeholder:text-muted sm:w-60"
             aria-label="Search your vocabulary"
           />
         </div>
-        {(["all", "de", "en"] as const).map((value) => (
+        {(["all", "de", "en", "vi"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -99,7 +101,7 @@ export function VocabClient() {
             data-selected={lang === value}
             className="chip"
           >
-            {value === "all" ? "All" : value === "de" ? "Deutsch" : "English"}
+            {value === "all" ? "All" : value === "de" ? "Deutsch" : value === "en" ? "English" : "Tiếng Việt"}
           </button>
         ))}
         {entries.length > 0 && (
@@ -113,7 +115,7 @@ export function VocabClient() {
             }}
             className="chip ml-auto"
           >
-            <TrashIcon width={14} height={14} /> Clear all
+            <TrashIcon width={14} height={14} /> {t("vocab.clearAll")}
           </button>
         )}
       </div>
@@ -144,6 +146,11 @@ export function VocabClient() {
                   <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase text-muted">
                     {entry.lang}
                   </span>
+                  {entry.status === "known" && (
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--translation)_18%,transparent)] px-1.5 py-0.5 text-[10px] text-translation">
+                      {t("vocab.known")}
+                    </span>
+                  )}
                 </div>
                 {entry.context && (
                   <p className="mt-1.5 text-[13px] leading-relaxed text-muted" lang={entry.lang}>
@@ -167,17 +174,31 @@ export function VocabClient() {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  removeVocab(entry.id);
-                  setEntries(getVocab());
-                }}
-                className="btn shrink-0 px-2 py-1.5"
-                aria-label={`Remove ${entry.term}`}
-              >
-                <TrashIcon width={15} height={15} />
-              </button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVocabStatus(entry.id, entry.status === "known" ? "learning" : "known");
+                    setEntries(getVocab());
+                  }}
+                  className={`btn px-2 py-1.5 text-xs ${entry.status === "known" ? "btn-primary" : ""}`}
+                  aria-pressed={entry.status === "known"}
+                  title={entry.status === "known" ? "Known" : "Mark as known"}
+                >
+                  <CheckIcon width={15} height={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeVocab(entry.id);
+                    setEntries(getVocab());
+                  }}
+                  className="btn px-2 py-1.5"
+                  aria-label={`Remove ${entry.term}`}
+                >
+                  <TrashIcon width={15} height={15} />
+                </button>
+              </div>
             </div>
           </li>
         ))}
