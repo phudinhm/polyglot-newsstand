@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { noteSourceVisit } from "@/lib/recent";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
@@ -23,6 +24,9 @@ export function SourcePageClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(20);
+
+  // Opening a paper counts as visiting it, whether or not anything is read.
+  useEffect(() => noteSourceVisit(id), [id]);
 
   useEffect(() => {
     if (SOURCE_BY_ID.has(id)) return;

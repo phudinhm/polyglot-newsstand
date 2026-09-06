@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BUCKET_ICON, bucketFor, greetingFor, type Greeting as GreetingValue } from "@/lib/greetings";
+import {
+  adviceFor,
+  BUCKET_ICON,
+  bucketFor,
+  greetingFor,
+  hintText,
+  type Bucket,
+  type Greeting as GreetingValue,
+} from "@/lib/greetings";
+import { useLang, useT } from "@/hooks/useT";
 import { MoonIcon, StarsIcon, SunIcon, SunriseIcon, SunsetIcon } from "./Icons";
 
 const ICONS = {
@@ -20,7 +29,10 @@ const ICONS = {
  * on hydration would be worse than none.
  */
 export function Greeting({ count }: { count: number }) {
+  const t = useT();
+  const lang = useLang();
   const [value, setValue] = useState<GreetingValue | null>(null);
+  const [bucket, setBucket] = useState<Bucket>("midday");
   const [icon, setIcon] = useState<keyof typeof ICONS>("sun");
   const [today, setToday] = useState("");
 
@@ -28,6 +40,7 @@ export function Greeting({ count }: { count: number }) {
     const apply = () => {
       const now = new Date();
       setValue(greetingFor(now));
+      setBucket(bucketFor(now.getHours()));
       setIcon(BUCKET_ICON[bucketFor(now.getHours())]);
       setToday(
         now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }),
@@ -60,17 +73,28 @@ export function Greeting({ count }: { count: number }) {
               <span className="text-accent">.</span>
             </h1>
           </div>
+
+          {(value.region || value.hint) && (
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[12px] text-muted">
+              {value.region && (
+                <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium">
+                  {value.region}
+                </span>
+              )}
+              {value.hint && <span>{hintText(value.hint, lang)}</span>}
+            </p>
+          )}
           <p className="mt-1.5 text-[13px] text-muted sm:text-sm">
             {today}
             {count > 0 && (
               <>
                 <span aria-hidden> · </span>
-                {count} stories
+                {count} {t("feed.stories")}
               </>
             )}
             <span className="hidden sm:inline">
               <span aria-hidden> · </span>
-              {value.sub}
+              {adviceFor(bucket, lang)}
             </span>
           </p>
         </>

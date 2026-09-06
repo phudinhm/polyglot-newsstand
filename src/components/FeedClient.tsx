@@ -14,6 +14,7 @@ import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
 import { RecentlyRead } from "./RecentlyRead";
+import { RecentSources } from "./RecentSources";
 import { SourceRail } from "./SourceRail";
 import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
@@ -259,6 +260,8 @@ export function FeedClient() {
       </div>
 
       <RecentlyRead />
+
+      <RecentSources />
 
       <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { analyseSentence, CLAUSE_GERMAN, type Clause } from "@/lib/grammar";
-import { noteDetail, noteRole } from "@/lib/explain";
+import { noteDetail, noteRole, sentenceNoteText } from "@/lib/explain";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CloseIcon } from "./Icons";
 
@@ -158,7 +158,7 @@ export function SentenceStructure({
                     <span aria-hidden className="text-accent">
                       ·
                     </span>
-                    <span>{note}</span>
+                    <span>{sentenceNoteText(note, target)}</span>
                   </li>
                 ))}
               </ul>

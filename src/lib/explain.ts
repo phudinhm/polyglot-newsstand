@@ -1,6 +1,6 @@
 import type { Case, CaseFinding, CaseReason, Declension, Gender } from "./cases";
 import { CASE_GERMAN } from "./cases";
-import type { NoteKey, WordNote } from "./grammar";
+import type { NoteKey, SentenceNote, WordNote } from "./grammar";
 import type { TargetLang } from "./types";
 
 /**
@@ -115,6 +115,15 @@ const ROLE_TEXT: Record<TargetLang, Record<NoteKey, string>> = {
     reflexive: "Reflexive pronoun",
     modal: "Modal verb",
     auxiliary: "Auxiliary verb",
+    infinitiveMarker: "Infinitive marker",
+    purposeMarker: "Infinitive clause",
+    intensifier: "Intensifier",
+    copula: "Main verb",
+    fullVerbHaben: "Main verb",
+    fullVerbWerden: "Main verb",
+    auxiliaryPerfect: "Perfect auxiliary",
+    auxiliaryPassive: "Passive auxiliary",
+    auxiliaryFuture: "Future auxiliary",
   },
   vi: {
     separablePrefix: "Tiền tố tách rời",
@@ -128,6 +137,15 @@ const ROLE_TEXT: Record<TargetLang, Record<NoteKey, string>> = {
     reflexive: "Đại từ phản thân",
     modal: "Động từ khuyết thiếu",
     auxiliary: "Trợ động từ",
+    infinitiveMarker: "Dấu hiệu nguyên thể",
+    purposeMarker: "Mệnh đề nguyên thể",
+    intensifier: "Từ nhấn mạnh",
+    copula: "Động từ chính",
+    fullVerbHaben: "Động từ chính",
+    fullVerbWerden: "Động từ chính",
+    auxiliaryPerfect: "Trợ động từ thì hoàn thành",
+    auxiliaryPassive: "Trợ động từ bị động",
+    auxiliaryFuture: "Trợ động từ tương lai",
   },
 };
 
@@ -164,6 +182,24 @@ export function noteDetail(note: WordNote, lang: TargetLang): string {
         return "Đẩy động từ chính, ở dạng nguyên thể, xuống cuối mệnh đề.";
       case "auxiliary":
         return "Mang thì của câu; động từ chính đợi ở cuối dưới dạng phân từ hoặc nguyên thể.";
+      case "infinitiveMarker":
+        return `Ở đây không phải giới từ. zu + nguyên thể tạo thành dạng nguyên thể có zu, nên hãy đọc chung với ${note.verb ?? "động từ đứng sau"}.`;
+      case "purposeMarker":
+        return `${note.lemma ?? "Từ này"} mở đầu một mệnh đề nguyên thể, không dẫn một danh từ. Mệnh đề đó mượn chủ ngữ của mệnh đề chính.`;
+      case "intensifier":
+        return "Ở đây zu nghĩa là quá, đi với tính từ hoặc trạng từ, không phải giới từ.";
+      case "copula":
+        return "Ở đây sein là động từ chính, nối chủ ngữ với phần đứng sau. Không có phân từ nào ở cuối để nó mang.";
+      case "fullVerbHaben":
+        return "Ở đây haben là động từ chính, nghĩa là có. Không có phân từ nào ở cuối để nó mang.";
+      case "fullVerbWerden":
+        return "Ở đây werden là động từ chính, nghĩa là trở nên. Không phải bị động cũng không phải tương lai.";
+      case "auxiliaryPerfect":
+        return `Tạo thì hoàn thành; phân từ ${note.verb ?? ""} nằm ở cuối mệnh đề.`.replace("  ", " ");
+      case "auxiliaryPassive":
+        return `Làm câu thành bị động; phân từ ${note.verb ?? ""} nằm ở cuối, và người thực hiện có thể không được nhắc tới.`.replace("  ", " ");
+      case "auxiliaryFuture":
+        return `Chỉ tương lai hoặc một phỏng đoán; nguyên thể ${note.verb ?? ""} nằm ở cuối.`.replace("  ", " ");
     }
   }
 
@@ -194,6 +230,24 @@ export function noteDetail(note: WordNote, lang: TargetLang): string {
       return "Sends the main verb, as an infinitive, to the end of the clause.";
     case "auxiliary":
       return "Carries the tense; the main verb waits at the end as a participle or infinitive.";
+    case "infinitiveMarker":
+      return `Not a preposition here. zu plus an infinitive is what makes an infinitive, so read it together with ${note.verb ?? "the verb behind it"}.`;
+    case "purposeMarker":
+      return `${note.lemma ?? "This word"} opens an infinitive clause rather than taking a noun. That clause borrows its subject from the clause it hangs off.`;
+    case "intensifier":
+      return "Here zu means too, in front of an adjective or an adverb. It is not the preposition.";
+    case "copula":
+      return "Here sein is the main verb, linking the subject to what follows. There is no participle at the end for it to carry.";
+    case "fullVerbHaben":
+      return "Here haben is the main verb, meaning to have. There is no participle at the end for it to carry.";
+    case "fullVerbWerden":
+      return "Here werden is the main verb, meaning to become. Neither passive nor future.";
+    case "auxiliaryPerfect":
+      return `Forms the perfect tense; the participle ${note.verb ?? ""} sits at the end of the clause.`.replace("  ", " ");
+    case "auxiliaryPassive":
+      return `Makes this passive; the participle ${note.verb ?? ""} sits at the end, and the actor may go unnamed.`.replace("  ", " ");
+    case "auxiliaryFuture":
+      return `Marks the future or a supposition; the infinitive ${note.verb ?? ""} sits at the end.`.replace("  ", " ");
   }
 }
 
@@ -230,3 +284,43 @@ export const LOOKUP_TEXT: Record<TargetLang, Record<string, string>> = {
     fullEntry: "Xem đầy đủ trên Wiktionary",
   },
 };
+
+/* ------------------------------------------------- the sentence as a whole */
+
+export function sentenceNoteText(note: SentenceNote, lang: TargetLang): string {
+  if (lang === "vi") {
+    switch (note.key) {
+      case "passive":
+        return "Bị động: werden cộng phân từ hai, nên người thực hiện có thể không được nhắc tới.";
+      case "reported":
+        return "Lời dẫn gián tiếp: Konjunktiv I đánh dấu đây là lời của người khác, không phải của tòa báo.";
+      case "relative":
+        return "Mệnh đề quan hệ mô tả danh từ ngay trước nó, và động từ của nó nằm cuối.";
+      case "subordinate":
+        return "Trong mệnh đề phụ, động từ chia chuyển xuống cuối.";
+      case "purpose":
+        return "um … zu diễn đạt mục đích: để mà.";
+      case "infinitiveWithConnector":
+        return `${note.connector} mở một mệnh đề nguyên thể, mệnh đề này không có chủ ngữ riêng.`;
+      case "infinitiveBare":
+        return "Mệnh đề nguyên thể không có chủ ngữ riêng: nó mượn chủ ngữ của mệnh đề mà nó phụ thuộc.";
+    }
+  }
+
+  switch (note.key) {
+    case "passive":
+      return "Passive: werden plus a past participle, so the actor may be unnamed.";
+    case "reported":
+      return "Reported speech: Konjunktiv I marks this as someone's claim, not the paper's.";
+    case "relative":
+      return "A relative clause describes the noun just before it, and its verb comes last.";
+    case "subordinate":
+      return "In a subordinate clause the finite verb moves to the end.";
+    case "purpose":
+      return "um … zu introduces a purpose: in order to.";
+    case "infinitiveWithConnector":
+      return `${note.connector} opens an infinitive clause, which has no subject of its own.`;
+    case "infinitiveBare":
+      return "The infinitive clause has no subject of its own: it takes the one from the clause it hangs off.";
+  }
+}

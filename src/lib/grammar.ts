@@ -59,7 +59,16 @@ export type NoteKey =
   | "possessive"
   | "reflexive"
   | "modal"
-  | "auxiliary";
+  | "auxiliary"
+  | "infinitiveMarker"
+  | "purposeMarker"
+  | "intensifier"
+  | "copula"
+  | "fullVerbHaben"
+  | "fullVerbWerden"
+  | "auxiliaryPerfect"
+  | "auxiliaryPassive"
+  | "auxiliaryFuture";
 
 export interface WordNote {
   word: string;
@@ -81,10 +90,25 @@ export interface WordNote {
   reason?: CaseReason;
 }
 
+/** Something worth naming about the sentence as a whole. */
+export type SentenceNoteKey =
+  | "passive"
+  | "reported"
+  | "relative"
+  | "subordinate"
+  | "purpose"
+  | "infinitiveWithConnector"
+  | "infinitiveBare";
+
+export interface SentenceNote {
+  key: SentenceNoteKey;
+  connector?: string;
+}
+
 export interface SentenceStructure {
   clauses: Clause[];
   /** Things worth naming: passive, reported speech, a split verb. */
-  notes: string[];
+  notes: SentenceNote[];
   /** Prepositions, possessives and the like, even in a one-clause sentence. */
   words: WordNote[];
   /** True when there is genuinely nothing to say about this sentence. */
@@ -129,6 +153,22 @@ const FINITE_AUX = new Set([
   "mag", "magst", "mögt", "mögen", "mochte", "mochten", "möchte", "möchten",
 ]);
 
+/** The three verbs that are sometimes an auxiliary and sometimes the verb. */
+const SEIN = new Set(["ist", "sind", "bin", "bist", "seid", "war", "warst", "waren", "wart", "sei", "seien", "wäre", "wären"]);
+const HABEN = new Set(["hat", "habe", "hast", "habt", "haben", "hatte", "hatten", "hätte", "hätten", "hättest"]);
+const WERDEN = new Set(["wird", "werde", "wirst", "werdet", "werden", "wurde", "wurden", "würde", "würden"]);
+
+const MODAL = /^(kann|kannst|könnt|können|konnte|konnten|könnte|könnten|muss|musst|müsst|müssen|musste|mussten|müsste|müssten|soll|sollst|sollt|sollen|sollte|sollten|will|willst|wollt|wollen|wollte|wollten|darf|darfst|dürft|dürfen|durfte|durften|dürfte|dürften|mag|magst|mögt|mögen|mochte|mochten|möchte|möchten)$/;
+
+/** What an infinitive looks like, which is what "zu" is looking for. */
+const INFINITIVE = /^[a-zäöüß]+(en|eln|ern)$/;
+
+/** Pronouns a preposition can govern, since they are not capitalised. */
+const OBJECT_PRONOUNS = new Set([
+  "mir", "dir", "ihm", "ihr", "ihnen", "uns", "euch", "mich", "dich", "sich",
+  "ihn", "es", "sie", "wem", "wen", "einander",
+]);
+
 const PASSIVE_AUX = new Set(["wird", "werden", "wurde", "wurden", "worden"]);
 /** Konjunktiv I, which is how German journalism marks reported speech. */
 const REPORTED = new Set(["sei", "seien", "habe", "hätten", "werde", "würden", "könne", "solle", "wolle", "müsse"]);
@@ -145,6 +185,14 @@ const FUNCTION_WORDS = new Set([
   "vor", "seit", "ohne", "um", "durch", "gegen", "am", "zum", "zur", "beim",
 ]);
 
+/** Does this clause end on "zu" plus an infinitive, as an Infinitivsatz does? */
+function endsWithZuInfinitive(parts: string[]): boolean {
+  if (parts.length < 2) return false;
+  return (
+    bare(parts[parts.length - 2]) === "zu" && INFINITIVE.test(bare(parts[parts.length - 1]))
+  );
+}
+
 function classify(
   segment: string,
   index: number,
@@ -153,8 +201,17 @@ function classify(
   if (!parts.length) return { kind: "main" };
   const first = bare(parts[0]);
 
-  if (/^um$/.test(first) && /\bzu\b/.test(segment)) {
-    return { kind: "infinitive", connector: "um … zu" };
+  // An infinitive clause has no finite verb of its own: it ends on zu plus an
+  // infinitive and borrows its subject from the clause it hangs off. Calling
+  // it a main clause, as "freiwillige Gläubiger zu finden" was being called,
+  // sends the reader looking for a verb in second position that is not there.
+  if (endsWithZuInfinitive(parts) && !parts.some((w) => FINITE_AUX.has(bare(w)))) {
+    const opener =
+      first === "um" ? "um … zu"
+      : first === "ohne" ? "ohne … zu"
+      : first === "statt" || first === "anstatt" ? `${parts[0]} … zu`
+      : undefined;
+    return { kind: "infinitive", connector: opener };
   }
   if (SUBORDINATORS.has(first)) return { kind: "subordinate", connector: parts[0] };
   // A relative clause never opens a sentence: at the start, der/die/das is the
@@ -172,6 +229,9 @@ function classify(
 function finiteVerbOf(segment: string, kind: ClauseKind): Pick<Clause, "finiteVerb" | "verbPosition"> {
   const parts = words(segment).map((w) => ({ raw: w, bare: bare(w) }));
   if (!parts.length) return {};
+
+  // An infinitive clause has no finite verb. Naming one would be inventing it.
+  if (kind === "infinitive") return {};
 
   // In a subordinate or relative clause the finite verb goes last.
   if (kind === "subordinate" || kind === "relative") {
@@ -367,6 +427,47 @@ function startsWithStem(word: string, stem: string): boolean {
   return word.startsWith(stem) || (word.startsWith("ge") && word.slice(2).startsWith(stem));
 }
 
+/**
+ * Is this word actually governing a noun phrase here?
+ *
+ * Several German words are a preposition in one sentence and a conjunction in
+ * the next - während, bis, seit, um - and the difference is whether a noun
+ * phrase follows or a clause does. German capitalises its nouns, which makes
+ * that answerable rather than a guess.
+ */
+function governsNounPhrase(tokens: string[], from: number): boolean {
+  for (let i = from + 1; i < tokens.length && i <= from + 4; i++) {
+    const raw = stripPunctuation(tokens[i]);
+    const word = normalise(raw);
+    if (!word) continue;
+    if (/^\p{Lu}/u.test(raw)) return true;
+    if (readDeterminer(word) || OBJECT_PRONOUNS.has(word)) return true;
+    // A verb means this is a clause, so the word in front was a conjunction.
+    if (FINITE_AUX.has(word) || word === "zu") return false;
+    if (/[,;:.!?]$/.test(tokens[i])) return false;
+  }
+  return false;
+}
+
+/**
+ * The verb form parked at the end of a clause, which is what tells a compound
+ * tense from a plain one. "ist gigantisch" ends on an adjective and is sein
+ * doing its own work; "hat sich getroffen" ends on a participle and is not.
+ */
+function finalVerbForm(parts: { raw: string; bare: string }[]): string | undefined {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    if (!part.bare) continue;
+    // A separable prefix can be parked behind the participle.
+    if (i === parts.length - 1 && SEPARABLE_PREFIXES.has(part.bare)) continue;
+    // A capitalised word ending the clause is a noun, not a verb form.
+    if (!/^\p{Ll}/u.test(part.raw)) return undefined;
+    if (FINITE_AUX.has(part.bare)) return undefined;
+    return part.bare.length > 3 && /(t|en)$/.test(part.bare) ? part.bare : undefined;
+  }
+  return undefined;
+}
+
 /** The noun a preposition is pointing at: the next capitalised word. */
 function headNounAfter(tokens: string[], from: number): string | undefined {
   for (let i = from + 1; i < tokens.length && i <= from + 4; i++) {
@@ -442,7 +543,31 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
       return;
     }
 
-    const isPreposition = FIXED_CASE[word] || TWO_WAY.has(word);
+    // "zu" is a preposition far less often than it looks. In front of an
+    // infinitive it is the particle that makes the infinitive, and in front of
+    // an adjective it means "too". Calling it a dative preposition in
+    // "freiwillige Gläubiger zu finden" points at the wrong word entirely.
+    if (word === "zu") {
+      const next = normalise(stripPunctuation(tokens[index + 1] ?? ""));
+      if (INFINITIVE.test(next)) {
+        add({ word: clean, key: "infinitiveMarker", verb: stripPunctuation(tokens[index + 1]) });
+        return;
+      }
+      if (next && /^\p{Ll}/u.test(next) && !readDeterminer(next) && !OBJECT_PRONOUNS.has(next)) {
+        add({ word: clean, key: "intensifier" });
+        return;
+      }
+    }
+
+    // um, ohne and statt open an infinitive clause as often as they govern a
+    // noun, and the clause they sit in already knows which.
+    if (["um", "ohne", "statt", "anstatt"].includes(word) && clauseAt[index]?.kind === "infinitive") {
+      add({ word: clean, key: "purposeMarker", lemma: clauseAt[index]?.connector });
+      return;
+    }
+
+    const isPreposition =
+      (FIXED_CASE[word] || TWO_WAY.has(word)) && governsNounPhrase(tokens, index);
     if (isPreposition) {
       // A preposition welded to a verb or a noun is one vocabulary item, and
       // translating it on its own is what makes a sentence stop making sense.
@@ -518,11 +643,42 @@ function annotateWords(sentence: string, clauses: Clause[]): WordNote[] {
     }
 
     if (FINITE_AUX.has(word)) {
-      const modal =
-        /^(kann|können|konnte|könnte|muss|müssen|musste|müsste|soll|sollen|sollte|will|wollen|wollte|darf|dürfen|durfte|dürfte|mag|mögen|möchte)/.test(
-          word,
-        );
-      add({ word: clean, key: modal ? "modal" : "auxiliary" });
+      if (MODAL.test(word)) {
+        add({ word: clean, key: "modal" });
+        return;
+      }
+
+      // sein, haben and werden are only auxiliaries when something at the end
+      // of the clause needs carrying. "ist so gigantisch" and "es schwieriger
+      // wird" have nothing back there: those are the main verb doing its own
+      // work, and calling them auxiliaries sends the reader hunting for a
+      // participle that was never written.
+      const clause = clauseAt[index];
+      const parts = words(clause?.text ?? sentence).map((w) => ({ raw: w, bare: normalise(w) }));
+      const parked = finalVerbForm(parts);
+
+      if (!parked) {
+        add({
+          word: clean,
+          key: SEIN.has(word) ? "copula" : WERDEN.has(word) ? "fullVerbWerden" : "fullVerbHaben",
+        });
+        return;
+      }
+      if (WERDEN.has(word)) {
+        // A participle makes it passive; an infinitive makes it future.
+        const participle = /t$/.test(parked) || (parked.startsWith("ge") && /en$/.test(parked));
+        add({
+          word: clean,
+          key: participle ? "auxiliaryPassive" : "auxiliaryFuture",
+          verb: parked,
+        });
+        return;
+      }
+      add({
+        word: clean,
+        key: SEIN.has(word) || HABEN.has(word) ? "auxiliaryPerfect" : "auxiliary",
+        verb: parked,
+      });
     }
   });
 
@@ -542,23 +698,32 @@ export function analyseSentence(sentence: string, lang: SourceLang): SentenceStr
     return { text: segment, kind, connector, ...finiteVerbOf(segment, kind) };
   });
 
-  const notes: string[] = [];
+  const notes: SentenceNote[] = [];
   const all = words(trimmed).map(bare);
 
   if (all.some((w) => PASSIVE_AUX.has(w)) && all.some((w) => /^ge\p{L}+(t|en)$/u.test(w))) {
-    notes.push("Passive: werden plus a past participle, so the actor may be unnamed.");
+    notes.push({ key: "passive" });
   }
   if (all.some((w) => REPORTED.has(w))) {
-    notes.push("Reported speech: Konjunktiv I marks this as someone's claim, not the paper's.");
+    notes.push({ key: "reported" });
   }
   if (clauses.some((c) => c.kind === "relative")) {
-    notes.push("A relative clause describes the noun just before it, and its verb comes last.");
+    notes.push({ key: "relative" });
   }
   if (clauses.some((c) => c.kind === "subordinate")) {
-    notes.push("In a subordinate clause the finite verb moves to the end.");
+    notes.push({ key: "subordinate" });
   }
-  if (clauses.some((c) => c.kind === "infinitive")) {
-    notes.push("um … zu introduces a purpose: in order to.");
+  const infinitive = clauses.find((c) => c.kind === "infinitive");
+  if (infinitive) {
+    // Only say "um … zu" when the sentence actually wrote it. A bare infinitive
+    // clause is a different construction and gets its own line.
+    notes.push(
+      infinitive.connector === "um … zu"
+        ? { key: "purpose" }
+        : infinitive.connector
+          ? { key: "infinitiveWithConnector", connector: infinitive.connector }
+          : { key: "infinitiveBare" },
+    );
   }
 
   const wordNotes = annotateWords(trimmed, clauses);
