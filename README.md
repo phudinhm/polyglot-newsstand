@@ -20,7 +20,14 @@ beyond `next build`.
 - The header, tab bar and floating controls are frosted glass, and the page carries a faint paper
   grain so it reads as a sheet rather than a screen. Both can be switched off.
 - A greeting in the corner that changes with the hour and rotates through German, English and
-  Vietnamese.
+  Vietnamese, with a sky to match: sunrise, sun, sunset, moon or stars.
+- **The interface itself in English, German or Vietnamese**, picked up from your browser on the
+  first visit and changeable at any time. It is independent of what you read and what you translate
+  into.
+- Papers that lock most of their articles are kept off the shelf by default and can be brought back
+  with one tap. Papers that only meter some carry a badge and stay.
+- The shelf is remembered, so coming back from an article paints instantly instead of flashing a
+  skeleton and refetching.
 - A continue-reading bar follows you around the app while an article is open, with a progress ring,
   so wandering off to the vocabulary list costs nothing.
 - Pick the paper first and the story second: every source has its own page listing what it has

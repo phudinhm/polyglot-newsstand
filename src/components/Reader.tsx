@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
+import { useT } from "@/hooks/useT";
 import { useTranslator } from "@/hooks/useTranslator";
 import { splitWords } from "@/lib/segment";
 import { isSaved, toggleSaved } from "@/lib/store";
@@ -12,6 +13,7 @@ import type { Article, SourceLang } from "@/lib/types";
 import { setReadingNow } from "@/lib/reading";
 import { noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
+import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
 import { cancelSpeech, isPaused, pauseSpeech, resumeSpeech, speak, speechSupported } from "@/lib/tts";
 import { useScrollActivity } from "@/hooks/useScrollActivity";
 import { PronunciationPractice } from "./PronunciationPractice";
@@ -59,6 +61,7 @@ export function Reader({
   sourceId?: string;
 }) {
   const [settings, update] = useSettings();
+  const t = useT();
   const [article, setArticle] = useState<Article | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,6 +93,15 @@ export function Reader({
   // ------------------------------------------------------------ load article
   useEffect(() => {
     let cancelled = false;
+
+    // Re-opening a piece you just read should not show a skeleton again.
+    const cached = getCachedArticle<Article>(url);
+    if (cached) {
+      setArticle(cached);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setLoadError(null);
     (async () => {
@@ -99,7 +111,10 @@ export function Reader({
         );
         const json = (await res.json()) as Article & { error?: string };
         if (!res.ok) throw new Error(json.error ?? `Could not load the article (${res.status}).`);
-        if (!cancelled) setArticle(json);
+        if (!cancelled) {
+          setArticle(json);
+          setCachedArticle(url, json);
+        }
       } catch (err) {
         if (cancelled) return;
         // The publisher blocked us, but the newsstand already had the summary.
@@ -415,7 +430,7 @@ export function Reader({
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
-          <Link href="/" className="btn px-2 py-1.5" aria-label="Back to the newsstand">
+          <Link href="/" className="btn px-2 py-1.5" aria-label={t("reader.back")}>
             <ArrowLeftIcon />
           </Link>
           <span className="min-w-0 flex-1 truncate text-sm text-muted">
@@ -427,8 +442,8 @@ export function Reader({
               type="button"
               onClick={togglePause}
               className="btn px-2 py-1.5"
-              aria-label={paused ? "Resume reading" : "Pause reading"}
-              title={paused ? "Resume" : "Pause"}
+              aria-label={paused ? t("reader.resume") : t("reader.pause")}
+              title={paused ? t("reader.resume") : t("reader.pause")}
             >
               {paused ? <PlayIcon /> : <PauseIcon />}
             </button>
@@ -440,8 +455,8 @@ export function Reader({
               onClick={toggleReadAloud}
               className={`btn px-2 py-1.5 ${readingAloud ? "btn-primary" : ""}`}
               aria-pressed={readingAloud}
-              aria-label={readingAloud ? "Stop reading aloud" : "Read aloud from here"}
-              title={readingAloud ? "Stop reading aloud" : "Read aloud from here"}
+              aria-label={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
+              title={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
             >
               {readingAloud ? <StopIcon /> : <SpeakerIcon />}
             </button>
@@ -468,8 +483,8 @@ export function Reader({
             onClick={() => update({ bilingual: !settings.bilingual })}
             className={`btn hidden px-2 py-1.5 sm:inline-flex ${settings.bilingual ? "btn-primary" : ""}`}
             aria-pressed={settings.bilingual}
-            aria-label="Show every translation"
-            title="Show every translation"
+            aria-label={t("reader.showAll")}
+            title={t("reader.showAll")}
           >
             <LanguagesIcon />
           </button>
@@ -491,7 +506,7 @@ export function Reader({
             }}
             className={`btn px-2 py-1.5 ${saved ? "btn-primary" : ""}`}
             aria-pressed={saved}
-            aria-label="Save for later"
+            aria-label={t("reader.save")}
           >
             <BookmarkIcon />
           </button>
@@ -500,7 +515,7 @@ export function Reader({
             type="button"
             onClick={() => setSettingsOpen(true)}
             className="btn px-2 py-1.5"
-            aria-label="Reading settings"
+            aria-label={t("reader.settings")}
           >
             <SlidersIcon />
           </button>
@@ -739,11 +754,11 @@ export function Reader({
                             >
                               {speakingKey === key ? (
                                 <>
-                                  <StopIcon width={13} height={13} /> stop
+                                  <StopIcon width={13} height={13} /> {t("reader.stop")}
                                 </>
                               ) : (
                                 <>
-                                  <SpeakerIcon width={13} height={13} /> hear this line
+                                  <SpeakerIcon width={13} height={13} /> {t("reader.hearLine")}
                                 </>
                               )}
                             </button>
@@ -760,7 +775,7 @@ export function Reader({
                               className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
                               aria-label="Practise saying this line"
                             >
-                              <MicIcon width={13} height={13} /> say it back
+                              <MicIcon width={13} height={13} /> {t("reader.sayItBack")}
                             </button>
                           )}
 
@@ -774,7 +789,7 @@ export function Reader({
                               className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
                               aria-label="Break this sentence down"
                             >
-                              <BranchIcon width={13} height={13} /> structure
+                              <BranchIcon width={13} height={13} /> {t("reader.structure")}
                             </button>
                           )}
 
@@ -810,7 +825,7 @@ export function Reader({
                 rel="noreferrer noopener"
                 className="btn mt-3 inline-flex"
               >
-                <ExternalIcon /> Open the original
+                <ExternalIcon /> {t("reader.original")}
               </a>
             </div>
           </article>

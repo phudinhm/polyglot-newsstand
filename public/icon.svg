@@ -1,14 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#a35f2f"/>
-      <stop offset="1" stop-color="#844922"/>
+    <linearGradient id="bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#b06a35"/>
+      <stop offset="0.55" stop-color="#96562a"/>
+      <stop offset="1" stop-color="#7b4420"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="64" height="64" rx="14.08" fill="url(#bg)"/>
-  <circle cx="22.528" cy="12.108800000000002" r="3.328" fill="#faf4e4"/>
-  <circle cx="41.472" cy="12.108800000000002" r="3.328" fill="#faf4e4"/>
-  <text x="32" y="48.1024" text-anchor="middle"
+
+  <rect width="64" height="64" rx="15.04" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="15.04" fill="url(#sheen)"/>
+  <rect x="0.768" y="0.768" width="62.464" height="62.464" rx="14.271999999999998" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.024"/>
+
+  <circle cx="25.308799999999998" cy="5.235199999999999" r="2.624" fill="#faf4e4"/>
+  <circle cx="38.6912" cy="5.235199999999999" r="2.624" fill="#faf4e4"/>
+
+  <text x="32" y="43.808" text-anchor="middle"
         font-family="Charter, 'Iowan Old Style', Georgia, 'Times New Roman', serif"
-        font-size="47.36" font-weight="700" fill="#faf4e4">N</text>
+        font-size="39.36" font-weight="700" fill="#faf4e4">N</text>
+
+  <rect x="16.256" y="51.168" width="31.488" height="2.048"
+        rx="1.024" fill="#faf4e4" fill-opacity="0.75"/>
 </svg>

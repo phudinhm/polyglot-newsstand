@@ -1,6 +1,6 @@
 "use client";
 
-import { analyseSentence, type Clause } from "@/lib/grammar";
+import { analyseSentence, CLAUSE_GERMAN, type Clause } from "@/lib/grammar";
 import type { SourceLang } from "@/lib/types";
 import { CloseIcon } from "./Icons";
 
@@ -54,9 +54,8 @@ export function SentenceStructure({
 
         {structure.trivial ? (
           <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            {lang === "de"
-              ? "This one is short enough to read straight through: one clause, verb in second position."
-              : "Clause analysis is only available for German, where word order is the thing that trips readers up."}
+            Clause analysis is only available for German, where word order is the thing that trips
+            readers up.
           </p>
         ) : (
           <>
@@ -69,6 +68,9 @@ export function SentenceStructure({
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
                     <span className="font-semibold uppercase tracking-wide">
                       {KIND_LABEL[clause.kind]}
+                    </span>
+                    <span lang="de" className="italic">
+                      {CLAUSE_GERMAN[clause.kind]}
                     </span>
                     {clause.connector && (
                       <span>
@@ -88,6 +90,27 @@ export function SentenceStructure({
                 </div>
               ))}
             </div>
+
+            {structure.words.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  Words doing grammatical work
+                </h3>
+                <ul className="mt-1.5 space-y-1.5">
+                  {structure.words.map((note, i) => (
+                    <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                      <span className="font-semibold" lang="de">
+                        {note.word}
+                      </span>
+                      <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted">
+                        {note.role}
+                      </span>
+                      <span className="text-muted">{note.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {structure.notes.length > 0 && (
               <ul className="mt-3 space-y-1.5 border-t border-border pt-3">

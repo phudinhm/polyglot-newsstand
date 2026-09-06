@@ -38,9 +38,38 @@ export function onVoicesReady(callback: (voices: SpeechSynthesisVoice[]) => void
   return () => window.speechSynthesis.removeEventListener("voiceschanged", emit);
 }
 
+/**
+ * macOS and some Android builds ship novelty voices - bells, robots, whispers.
+ * They are fun and useless for pronunciation practice, so they are excluded.
+ */
+const NOVELTY = new Set([
+  "albert", "bad news", "bahh", "bells", "boing", "bubbles", "cellos",
+  "deranged", "good news", "jester", "junior", "organ", "superstar",
+  "trinoids", "whisper", "wobble", "zarvox", "hysterical", "pipe organ",
+  "bad guy", "grandma", "grandpa", "rocko", "shelley", "sandy", "flo",
+  "eddy", "reed", "ralph", "fred", "kathy", "princess",
+]);
+
+/** Names that mark a modern, more natural engine on the platforms that have one. */
+const QUALITY_HINTS = ["neural", "natural", "premium", "enhanced", "siri", "online", "wavenet"];
+
+function isHumanVoice(voice: SpeechSynthesisVoice): boolean {
+  const name = voice.name.toLowerCase();
+  return ![...NOVELTY].some((n) => name === n || name.startsWith(`${n} `));
+}
+
+function voiceRank(voice: SpeechSynthesisVoice): number {
+  const name = voice.name.toLowerCase();
+  const quality = QUALITY_HINTS.some((hint) => name.includes(hint)) ? 0 : 1;
+  // A network voice usually sounds better; a local one always works offline.
+  return quality * 2 + (voice.localService ? 1 : 0);
+}
+
 export function voicesFor(lang: SourceLang | TargetLang): SpeechSynthesisVoice[] {
   const prefix = BCP47[lang].slice(0, 2);
-  return listVoices().filter((v) => v.lang.toLowerCase().startsWith(prefix));
+  return listVoices()
+    .filter((v) => v.lang.toLowerCase().startsWith(prefix) && isHumanVoice(v))
+    .sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
 }
 
 export interface SpeakOptions {

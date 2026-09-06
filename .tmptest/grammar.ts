@@ -1,4 +1,4 @@
-import type { SourceLang } from "./types";
+import type { SourceLang } from "./types.ts";
 
 /**
  * A structural outline of a long sentence.

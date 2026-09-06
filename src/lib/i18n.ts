@@ -1,0 +1,340 @@
+"use client";
+
+/**
+ * The interface in the reader's own language.
+ *
+ * Keys are typed, so a missing translation is a compile error rather than a
+ * blank button. Long explanatory copy is deliberately not in here: a paragraph
+ * translated badly is worse than an English one, and those paragraphs are read
+ * once. Everything a reader touches repeatedly is.
+ */
+export type UiLang = "en" | "de" | "vi";
+
+export const UI_LANGUAGES: { id: UiLang; label: string }[] = [
+  { id: "en", label: "English" },
+  { id: "de", label: "Deutsch" },
+  { id: "vi", label: "Tiếng Việt" },
+];
+
+const EN = {
+  "nav.newsstand": "Newsstand",
+  "nav.saved": "Saved",
+  "nav.vocabulary": "Vocabulary",
+  "nav.sources": "Sources",
+  "nav.reading": "Reading",
+  "app.slogan": "The news, one line at a time",
+
+  "feed.search": "Search headlines",
+  "feed.all": "All",
+  "feed.everything": "Everything",
+  "feed.moreFilters": "More filters",
+  "feed.month": "Month",
+  "feed.anyMonth": "Any month",
+  "feed.order": "Order",
+  "feed.newest": "Newest",
+  "feed.oldest": "Oldest",
+  "feed.paywalls": "Paywalls",
+  "feed.includeLocked": "Include locked papers",
+  "feed.hidingLocked": "Hiding locked papers",
+  "feed.resetFilters": "Reset filters",
+  "feed.showMore": "Show more",
+  "feed.refresh": "Refresh the feed",
+  "feed.stillReading": "Still reading",
+  "feed.allPapers": "All papers",
+  "feed.morePapers": "More",
+  "feed.nothingMatches": "Nothing matches those filters.",
+  "feed.today": "Today",
+  "feed.yesterday": "Yesterday",
+  "feed.stories": "stories",
+
+  "reader.back": "Back to the newsstand",
+  "reader.readAloud": "Read aloud from here",
+  "reader.stopReading": "Stop reading aloud",
+  "reader.pause": "Pause reading",
+  "reader.resume": "Resume reading",
+  "reader.save": "Save for later",
+  "reader.settings": "Reading settings",
+  "reader.showAll": "Show every translation",
+  "reader.hearLine": "hear this line",
+  "reader.stop": "stop",
+  "reader.sayItBack": "say it back",
+  "reader.structure": "structure",
+  "reader.original": "Open the original",
+  "reader.smaller": "Smaller text",
+  "reader.larger": "Larger text",
+  "reader.voice": "Voice and speed",
+
+  "settings.title": "Reading settings",
+  "settings.interface": "Interface language",
+  "settings.background": "Background",
+  "settings.typeface": "Reading typeface",
+  "settings.textSize": "Text size",
+  "settings.lineSpacing": "Line spacing",
+  "settings.lineWidth": "Line width",
+  "settings.letterSpacing": "Letter spacing",
+  "settings.zoom": "Page zoom",
+  "settings.translateInto": "Translate into",
+  "settings.readAloud": "Read aloud",
+  "settings.speakingRate": "Speaking rate",
+  "settings.layout": "Article layout",
+  "settings.lineByLine": "Line by line",
+  "settings.flowing": "Flowing text",
+  "settings.whileReading": "While reading",
+  "settings.close": "Close",
+
+  "sources.title": "Sources",
+  "sources.check": "Check my sources",
+  "sources.suggested": "Suggested for you",
+  "sources.yours": "Your sources",
+  "sources.mostRead": "What you read most",
+  "sources.addOwn": "Add a source of your own",
+  "sources.allLanguages": "All languages",
+  "sources.reset": "Reset shelf",
+  "sources.onShelf": "On shelf",
+
+  "vocab.title": "Vocabulary",
+  "vocab.search": "Search your words",
+  "vocab.clearAll": "Clear all",
+  "vocab.known": "known",
+
+  "cat.top": "Top stories",
+  "cat.world": "World",
+  "cat.politics": "Politics",
+  "cat.business": "Business",
+  "cat.finance": "Markets & finance",
+  "cat.tech": "Technology",
+  "cat.science": "Science",
+  "cat.health": "Health",
+  "cat.environment": "Climate",
+  "cat.culture": "Culture",
+  "cat.opinion": "Opinion",
+  "cat.sport": "Sport",
+  "cat.learner": "For learners",
+
+  "saved.title": "Saved to read",
+  "common.original": "Original",
+  "common.tryAgain": "Try again",
+} as const;
+
+export type StringKey = keyof typeof EN;
+
+const DE: Record<StringKey, string> = {
+  "nav.newsstand": "Kiosk",
+  "nav.saved": "Gemerkt",
+  "nav.vocabulary": "Wortschatz",
+  "nav.sources": "Quellen",
+  "nav.reading": "Lesen",
+  "app.slogan": "Nachrichten, Zeile für Zeile",
+
+  "feed.search": "Schlagzeilen durchsuchen",
+  "feed.all": "Alle",
+  "feed.everything": "Alles",
+  "feed.moreFilters": "Weitere Filter",
+  "feed.month": "Monat",
+  "feed.anyMonth": "Jeder Monat",
+  "feed.order": "Reihenfolge",
+  "feed.newest": "Neueste",
+  "feed.oldest": "Älteste",
+  "feed.paywalls": "Bezahlschranken",
+  "feed.includeLocked": "Bezahlmedien einbeziehen",
+  "feed.hidingLocked": "Bezahlmedien ausgeblendet",
+  "feed.resetFilters": "Filter zurücksetzen",
+  "feed.showMore": "Mehr anzeigen",
+  "feed.refresh": "Aktualisieren",
+  "feed.stillReading": "Noch am Lesen",
+  "feed.allPapers": "Alle Zeitungen",
+  "feed.morePapers": "Mehr",
+  "feed.nothingMatches": "Nichts passt zu diesen Filtern.",
+  "feed.today": "Heute",
+  "feed.yesterday": "Gestern",
+  "feed.stories": "Artikel",
+
+  "reader.back": "Zurück zum Kiosk",
+  "reader.readAloud": "Ab hier vorlesen",
+  "reader.stopReading": "Vorlesen beenden",
+  "reader.pause": "Vorlesen pausieren",
+  "reader.resume": "Weiterlesen",
+  "reader.save": "Für später merken",
+  "reader.settings": "Leseeinstellungen",
+  "reader.showAll": "Alle Übersetzungen zeigen",
+  "reader.hearLine": "Zeile anhören",
+  "reader.stop": "Stopp",
+  "reader.sayItBack": "nachsprechen",
+  "reader.structure": "Satzbau",
+  "reader.original": "Original öffnen",
+  "reader.smaller": "Kleinere Schrift",
+  "reader.larger": "Größere Schrift",
+  "reader.voice": "Stimme und Tempo",
+
+  "settings.title": "Leseeinstellungen",
+  "settings.interface": "Sprache der Oberfläche",
+  "settings.background": "Hintergrund",
+  "settings.typeface": "Leseschrift",
+  "settings.textSize": "Schriftgröße",
+  "settings.lineSpacing": "Zeilenabstand",
+  "settings.lineWidth": "Zeilenbreite",
+  "settings.letterSpacing": "Buchstabenabstand",
+  "settings.zoom": "Seitenzoom",
+  "settings.translateInto": "Übersetzen nach",
+  "settings.readAloud": "Vorlesen",
+  "settings.speakingRate": "Sprechtempo",
+  "settings.layout": "Artikelansicht",
+  "settings.lineByLine": "Zeile für Zeile",
+  "settings.flowing": "Fließtext",
+  "settings.whileReading": "Beim Lesen",
+  "settings.close": "Schließen",
+
+  "sources.title": "Quellen",
+  "sources.check": "Quellen prüfen",
+  "sources.suggested": "Für dich vorgeschlagen",
+  "sources.yours": "Deine Quellen",
+  "sources.mostRead": "Am meisten gelesen",
+  "sources.addOwn": "Eigene Quelle hinzufügen",
+  "sources.allLanguages": "Alle Sprachen",
+  "sources.reset": "Auswahl zurücksetzen",
+  "sources.onShelf": "Im Regal",
+
+  "vocab.title": "Wortschatz",
+  "vocab.search": "Wörter durchsuchen",
+  "vocab.clearAll": "Alle löschen",
+  "vocab.known": "gekonnt",
+
+  "cat.top": "Schlagzeilen",
+  "cat.world": "Welt",
+  "cat.politics": "Politik",
+  "cat.business": "Wirtschaft",
+  "cat.finance": "Märkte & Finanzen",
+  "cat.tech": "Technik",
+  "cat.science": "Wissenschaft",
+  "cat.health": "Gesundheit",
+  "cat.environment": "Klima",
+  "cat.culture": "Kultur",
+  "cat.opinion": "Meinung",
+  "cat.sport": "Sport",
+  "cat.learner": "Für Lernende",
+
+  "saved.title": "Zum Lesen gemerkt",
+  "common.original": "Original",
+  "common.tryAgain": "Erneut versuchen",
+};
+
+const VI: Record<StringKey, string> = {
+  "nav.newsstand": "Sạp báo",
+  "nav.saved": "Đã lưu",
+  "nav.vocabulary": "Từ vựng",
+  "nav.sources": "Nguồn",
+  "nav.reading": "Đọc",
+  "app.slogan": "Tin tức, từng dòng một",
+
+  "feed.search": "Tìm tiêu đề",
+  "feed.all": "Tất cả",
+  "feed.everything": "Tất cả",
+  "feed.moreFilters": "Bộ lọc khác",
+  "feed.month": "Tháng",
+  "feed.anyMonth": "Mọi tháng",
+  "feed.order": "Thứ tự",
+  "feed.newest": "Mới nhất",
+  "feed.oldest": "Cũ nhất",
+  "feed.paywalls": "Tường phí",
+  "feed.includeLocked": "Hiện cả báo thu phí",
+  "feed.hidingLocked": "Đang ẩn báo thu phí",
+  "feed.resetFilters": "Đặt lại bộ lọc",
+  "feed.showMore": "Xem thêm",
+  "feed.refresh": "Tải lại",
+  "feed.stillReading": "Đang đọc dở",
+  "feed.allPapers": "Mọi tờ báo",
+  "feed.morePapers": "Thêm",
+  "feed.nothingMatches": "Không có bài nào khớp bộ lọc.",
+  "feed.today": "Hôm nay",
+  "feed.yesterday": "Hôm qua",
+  "feed.stories": "bài",
+
+  "reader.back": "Về sạp báo",
+  "reader.readAloud": "Đọc to từ đây",
+  "reader.stopReading": "Dừng đọc",
+  "reader.pause": "Tạm dừng",
+  "reader.resume": "Đọc tiếp",
+  "reader.save": "Lưu để đọc sau",
+  "reader.settings": "Cài đặt đọc",
+  "reader.showAll": "Hiện mọi bản dịch",
+  "reader.hearLine": "nghe dòng này",
+  "reader.stop": "dừng",
+  "reader.sayItBack": "đọc lại",
+  "reader.structure": "cấu trúc",
+  "reader.original": "Mở bài gốc",
+  "reader.smaller": "Chữ nhỏ hơn",
+  "reader.larger": "Chữ lớn hơn",
+  "reader.voice": "Giọng và tốc độ",
+
+  "settings.title": "Cài đặt đọc",
+  "settings.interface": "Ngôn ngữ giao diện",
+  "settings.background": "Nền",
+  "settings.typeface": "Phông chữ đọc",
+  "settings.textSize": "Cỡ chữ",
+  "settings.lineSpacing": "Giãn dòng",
+  "settings.lineWidth": "Bề rộng dòng",
+  "settings.letterSpacing": "Giãn chữ",
+  "settings.zoom": "Phóng to trang",
+  "settings.translateInto": "Dịch sang",
+  "settings.readAloud": "Đọc thành tiếng",
+  "settings.speakingRate": "Tốc độ đọc",
+  "settings.layout": "Bố cục bài",
+  "settings.lineByLine": "Từng dòng",
+  "settings.flowing": "Văn liền mạch",
+  "settings.whileReading": "Khi đang đọc",
+  "settings.close": "Đóng",
+
+  "sources.title": "Nguồn",
+  "sources.check": "Kiểm tra nguồn",
+  "sources.suggested": "Gợi ý cho bạn",
+  "sources.yours": "Nguồn của bạn",
+  "sources.mostRead": "Đọc nhiều nhất",
+  "sources.addOwn": "Thêm nguồn của bạn",
+  "sources.allLanguages": "Mọi ngôn ngữ",
+  "sources.reset": "Đặt lại kệ báo",
+  "sources.onShelf": "Trên kệ",
+
+  "vocab.title": "Từ vựng",
+  "vocab.search": "Tìm từ đã lưu",
+  "vocab.clearAll": "Xoá tất cả",
+  "vocab.known": "đã thuộc",
+
+  "cat.top": "Tin nổi bật",
+  "cat.world": "Thế giới",
+  "cat.politics": "Chính trị",
+  "cat.business": "Kinh doanh",
+  "cat.finance": "Thị trường & tài chính",
+  "cat.tech": "Công nghệ",
+  "cat.science": "Khoa học",
+  "cat.health": "Sức khoẻ",
+  "cat.environment": "Khí hậu",
+  "cat.culture": "Văn hoá",
+  "cat.opinion": "Bình luận",
+  "cat.sport": "Thể thao",
+  "cat.learner": "Cho người học",
+
+  "saved.title": "Đã lưu để đọc",
+  "common.original": "Bản gốc",
+  "common.tryAgain": "Thử lại",
+};
+
+const TABLES: Record<UiLang, Record<StringKey, string>> = { en: EN, de: DE, vi: VI };
+
+export function translator(lang: UiLang) {
+  const table = TABLES[lang] ?? EN;
+  return (key: StringKey): string => table[key] ?? EN[key];
+}
+
+/** Category chips are the most visible labels on the shelf, so they translate. */
+export function categoryKey(category: string): StringKey {
+  return `cat.${category}` as StringKey;
+}
+
+/** A sensible starting language, taken from the browser rather than guessed. */
+export function detectUiLang(): UiLang {
+  if (typeof navigator === "undefined") return "en";
+  const tag = navigator.language?.toLowerCase() ?? "en";
+  if (tag.startsWith("de")) return "de";
+  if (tag.startsWith("vi")) return "vi";
+  return "en";
+}

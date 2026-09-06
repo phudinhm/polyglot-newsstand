@@ -6,6 +6,7 @@ import { getRecent, type RecentArticle } from "@/lib/recent";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { readerHref, timeAgo } from "@/lib/format";
 import { SourceAvatar } from "./SourceAvatar";
+import { useT } from "@/hooks/useT";
 import { HistoryIcon } from "./Icons";
 
 /**
@@ -16,6 +17,7 @@ import { HistoryIcon } from "./Icons";
  * cost the front page more space than it returns.
  */
 export function RecentlyRead({ limit = 4 }: { limit?: number }) {
+  const t = useT();
   const [items, setItems] = useState<RecentArticle[]>([]);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function RecentlyRead({ limit = 4 }: { limit?: number }) {
   return (
     <section className="mb-4">
       <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-        <HistoryIcon width={14} height={14} /> Still reading
+        <HistoryIcon width={14} height={14} /> {t("feed.stillReading")}
       </h2>
       <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
         {items.map((item) => (

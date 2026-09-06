@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/hooks/useT";
 import { getSaved, toggleSaved } from "@/lib/store";
 import type { SavedArticle } from "@/lib/types";
 import { readerHref, timeAgo } from "@/lib/format";
@@ -9,6 +10,7 @@ import { TrashIcon } from "./Icons";
 
 export function SavedClient() {
   const [items, setItems] = useState<SavedArticle[]>([]);
+  const t = useT();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function SavedClient() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <header className="mb-5">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Saved to read</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t("saved.title")}</h1>
         <p className="mt-1 text-sm text-muted">
           Stories you set aside. They stay on this device, so nothing you read is sent anywhere.
         </p>

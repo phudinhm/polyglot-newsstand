@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
+import { useT } from "@/hooks/useT";
+import { categoryKey } from "@/lib/i18n";
 import { CATEGORY_LABELS, LEVEL_LABELS, SOURCES } from "@/lib/sources";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { suggestSources } from "@/lib/suggest";
@@ -15,6 +17,7 @@ import { CheckIcon, CloseIcon, PlusIcon, SpinnerIcon } from "./Icons";
 
 export function SourcesClient() {
   const [settings, update] = useSettings();
+  const t = useT();
   const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -96,14 +99,14 @@ export function SourcesClient() {
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[1.5rem] font-bold tracking-tight sm:text-[1.75rem]">Sources</h1>
+          <h1 className="text-[1.5rem] font-bold tracking-tight sm:text-[1.75rem]">{t("sources.title")}</h1>
           <p className="mt-1 text-[13.5px] text-muted">
             {settings.sources.length} on your shelf, from {SOURCES.length} curated publications.
           </p>
         </div>
         <button type="button" onClick={() => void runHealthCheck()} disabled={checking} className="btn">
           {checking ? <SpinnerIcon /> : <CheckIcon />}
-          Check my sources
+          {t("sources.check")}
         </button>
       </header>
 
@@ -139,7 +142,7 @@ export function SourcesClient() {
       {mostRead.length > 1 && (
         <section className="mb-6">
           <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">
-            What you read most
+            {t("sources.mostRead")}
           </h2>
           <div className="card divide-y divide-border">
             {mostRead.map((entry) => {
@@ -184,7 +187,7 @@ export function SourcesClient() {
       {suggestions.length > 0 && (
         <section className="mb-6">
           <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">
-            Suggested for you
+            {t("sources.suggested")}
           </h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {suggestions.map(({ source, why }) => (
@@ -232,7 +235,7 @@ export function SourcesClient() {
           </div>
         ) : (
           <button type="button" onClick={() => setShowAdd(true)} className="btn w-full justify-center">
-            <PlusIcon width={16} height={16} /> Add a source of your own
+            <PlusIcon width={16} height={16} /> {t("sources.addOwn")}
           </button>
         )}
       </section>
@@ -240,7 +243,7 @@ export function SourcesClient() {
       {custom.length > 0 && (
         <section className="mb-7">
           <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted">
-            Your sources
+            {t("sources.yours")}
           </h2>
           <div className="space-y-2">
             {custom.map((source) => (
@@ -283,7 +286,7 @@ export function SourcesClient() {
           onClick={() => update({ sources: DEFAULT_SETTINGS.sources })}
           className="chip"
         >
-          Reset shelf
+          {t("sources.reset")}
         </button>
       </div>
 
@@ -291,7 +294,7 @@ export function SourcesClient() {
         {grouped.map(([category, list]) => (
           <section key={category}>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              {CATEGORY_LABELS[category]}
+              {t(categoryKey(category))}
             </h2>
             <div className="space-y-2">
               {list.map((source) => {

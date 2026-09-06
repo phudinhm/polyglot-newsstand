@@ -37,6 +37,18 @@ function Meta({ item, linkSource = true }: { item: FeedItem; linkSource?: boolea
           <time dateTime={item.publishedAt}>{timeAgo(item.publishedAt)}</time>
         </>
       )}
+      {item.paywall && (
+        <span
+          className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted"
+          title={
+            item.paywall === "hard"
+              ? "Most articles here are locked; you will usually need the publisher's site."
+              : "Some articles here are metered."
+          }
+        >
+          {item.paywall === "hard" ? "paywall" : "metered"}
+        </span>
+      )}
       {item.level === "easy" && (
         <span className="rounded-full bg-[color-mix(in_srgb,var(--translation)_16%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation">
           Easy German

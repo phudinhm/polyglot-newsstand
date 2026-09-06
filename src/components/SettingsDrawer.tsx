@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { FONTS, THEMES } from "@/lib/settings";
-import { onVoicesReady, speak, speechSupported } from "@/lib/tts";
+import { UI_LANGUAGES } from "@/lib/i18n";
+import { useT } from "@/hooks/useT";
+import { onVoicesReady, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CloseIcon, SpeakerIcon } from "./Icons";
 
@@ -20,6 +22,7 @@ const SAMPLE_TRANSLATION: Record<TargetLang, string> = {
 
 export function SettingsDrawer({ open, onClose }: Props) {
   const [settings, update] = useSettings();
+  const t = useT();
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
@@ -43,12 +46,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
   const voiceLangs: (SourceLang | TargetLang)[] = ["de", "en", "vi"];
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Reading settings">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t("settings.title")}>
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[27rem] sm:max-h-none sm:rounded-none sm:rounded-l-2xl sm:border-l sm:border-t-0">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-5 py-4">
-          <h2 className="text-base font-semibold">Reading settings</h2>
-          <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label="Close">
+          <h2 className="text-base font-semibold">{t("settings.title")}</h2>
+          <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t("settings.close")}>
             <CloseIcon />
           </button>
         </div>
@@ -62,7 +65,27 @@ export function SettingsDrawer({ open, onClose }: Props) {
             </div>
           </div>
 
-          <Section title="Background">
+          <Section title={t("settings.interface")}>
+            <div className="flex gap-1.5">
+              {UI_LANGUAGES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => update({ uiLang: option.id })}
+                  data-selected={settings.uiLang === option.id}
+                  className="chip flex-1 !justify-center !py-2"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              Changes the buttons and labels only. What you read, and what it is translated into,
+              stay where you set them.
+            </p>
+          </Section>
+
+          <Section title={t("settings.background")}>
             <div className="grid grid-cols-2 gap-2">
               {THEMES.map((theme) => (
                 <button
@@ -81,7 +104,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Reading typeface">
+          <Section title={t("settings.typeface")}>
             <div className="space-y-1.5">
               {FONTS.map((font) => (
                 <button
@@ -106,7 +129,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
           </Section>
 
           <Slider
-            label="Text size"
+            label={t("settings.textSize")}
             value={settings.fontSize}
             min={15}
             max={28}
@@ -115,7 +138,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             onChange={(fontSize) => update({ fontSize })}
           />
           <Slider
-            label="Line spacing"
+            label={t("settings.lineSpacing")}
             value={settings.lineHeight}
             min={1.3}
             max={2.4}
@@ -124,7 +147,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             onChange={(lineHeight) => update({ lineHeight })}
           />
           <Slider
-            label="Line width"
+            label={t("settings.lineWidth")}
             value={settings.measure}
             min={42}
             max={92}
@@ -133,7 +156,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             onChange={(measure) => update({ measure })}
           />
           <Slider
-            label="Letter spacing"
+            label={t("settings.letterSpacing")}
             value={settings.tracking}
             min={0}
             max={0.06}
@@ -142,7 +165,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             onChange={(tracking) => update({ tracking })}
           />
 
-          <Section title="Page zoom">
+          <Section title={t("settings.zoom")}>
             <div className="flex gap-1.5">
               {[0.9, 1, 1.1, 1.25].map((z) => (
                 <button
@@ -162,7 +185,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             </p>
           </Section>
 
-          <Section title="Translate into">
+          <Section title={t("settings.translateInto")}>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -183,11 +206,11 @@ export function SettingsDrawer({ open, onClose }: Props) {
             </div>
           </Section>
 
-          <Section title="Read aloud">
+          <Section title={t("settings.readAloud")}>
             {speechSupported() ? (
               <>
                 <Slider
-                  label="Speaking rate"
+                  label={t("settings.speakingRate")}
                   value={settings.speechRate}
                   min={0.5}
                   max={1.4}
@@ -197,9 +220,8 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 />
                 <div className="mt-2 space-y-2">
                   {voiceLangs.map((lang) => {
-                    const available = voices.filter((v) =>
-                      v.lang.toLowerCase().startsWith(lang === "en" ? "en" : lang),
-                    );
+                    void voices;
+                    const available = voicesFor(lang);
                     return (
                       <div key={lang} className="flex items-center gap-2">
                         <span className="w-10 shrink-0 text-[12px] uppercase text-muted">{lang}</span>
@@ -258,7 +280,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
             )}
           </Section>
 
-          <Section title="Article layout">
+          <Section title={t("settings.layout")}>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -266,7 +288,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 data-selected={settings.layout === "lines"}
                 className="chip flex-1 !justify-center !py-2"
               >
-                Line by line
+                {t("settings.lineByLine")}
               </button>
               <button
                 type="button"
@@ -274,12 +296,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 data-selected={settings.layout === "flow"}
                 className="chip flex-1 !justify-center !py-2"
               >
-                Flowing text
+                {t("settings.flowing")}
               </button>
             </div>
           </Section>
 
-          <Section title="While reading">
+          <Section title={t("settings.whileReading")}>
             <Toggle
               label="Show all translations"
               hint="Bilingual mode: every sentence carries its translation from the start."

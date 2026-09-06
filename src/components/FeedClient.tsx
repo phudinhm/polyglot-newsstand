@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
+import { useT } from "@/hooks/useT";
+import { categoryKey } from "@/lib/i18n";
 import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
+import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
+import { SOURCE_BY_ID } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
@@ -26,19 +30,20 @@ const monthLabel = (key: string) => {
 };
 
 /** "Today", "Yesterday", then the date. Gives a long list a spine. */
-function dayLabel(iso?: string): string {
+function dayLabel(iso: string | undefined, t: (k: "feed.today" | "feed.yesterday") => string): string {
   if (!iso) return "Undated";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "Undated";
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
+  if (days === 0) return t("feed.today");
+  if (days === 1) return t("feed.yesterday");
   return date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 }
 
 export function FeedClient() {
-  const [settings, , ready] = useSettings();
+  const [settings, update, ready] = useSettings();
+  const t = useT();
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [data, setData] = useState<FeedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,10 +84,11 @@ export function FeedClient() {
 
   const sourceKey = settings.sources.join(",");
   const customKey = custom.map((c) => c.feed).join(",");
+  const cacheKey = `${sourceKey}|${customKey}`;
 
   const load = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true);
+    async (signal?: AbortSignal, background = false) => {
+      if (!background) setLoading(true);
       setError(null);
       try {
         const res = await fetch("/api/feed", {
@@ -95,10 +101,13 @@ export function FeedClient() {
           signal,
         });
         if (!res.ok) throw new Error(`The newsstand is unreachable (${res.status}).`);
-        setData((await res.json()) as FeedResponse);
+        const fresh = (await res.json()) as FeedResponse;
+        setData(fresh);
+        setCachedFeed(cacheKey, fresh);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Could not load the feed.");
+        // A background refresh that fails should leave what is on screen alone.
+        if (!background) setError(err instanceof Error ? err.message : "Could not load the feed.");
       } finally {
         setLoading(false);
       }
@@ -110,9 +119,19 @@ export function FeedClient() {
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
-    void load(controller.signal);
+
+    // Paint from what we already have, then quietly catch up if it is old.
+    const cached = getCachedFeed(cacheKey);
+    if (cached) {
+      setData(cached.response);
+      setLoading(false);
+      if (cached.stale) void load(controller.signal, true);
+    } else {
+      void load(controller.signal);
+    }
+
     return () => controller.abort();
-  }, [ready, load]);
+  }, [ready, load, cacheKey]);
 
   // Filtering a few hundred stories per keystroke is felt on a phone.
   useEffect(() => {
@@ -144,6 +163,9 @@ export function FeedClient() {
 
   const filtered = useMemo(() => {
     let list: FeedItem[] = data?.items ?? [];
+    // Papers that lock most articles stay off the shelf until asked for: a
+    // headline you cannot open is worse than one you never saw.
+    if (settings.hidePaywalled && !source) list = list.filter((i) => i.paywall !== "hard");
     if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
@@ -169,7 +191,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source]);
+  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled]);
 
   const categories = useMemo(() => {
     const present = new Set((data?.items ?? []).map((i) => i.category));
@@ -186,15 +208,22 @@ export function FeedClient() {
   const groups = useMemo(() => {
     const out: { label: string; items: FeedItem[] }[] = [];
     for (const item of page) {
-      const label = dayLabel(item.publishedAt);
+      const label = dayLabel(item.publishedAt, t);
       const last = out[out.length - 1];
       if (last && last.label === label) last.items.push(item);
       else out.push({ label, items: [item] });
     }
     return out;
-  }, [page]);
+  }, [page, t]);
 
-  const extraFilters = (month !== "all" ? 1 : 0) + (sort !== "newest" ? 1 : 0);
+  const extraFilters =
+    (month !== "all" ? 1 : 0) + (sort !== "newest" ? 1 : 0) + (settings.hidePaywalled ? 0 : 1);
+
+  // How many stories the paywall filter is holding back, so the toggle can say.
+  const hiddenByPaywall = useMemo(
+    () => (data?.items ?? []).filter((i) => i.paywall === "hard").length,
+    [data],
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
@@ -205,7 +234,7 @@ export function FeedClient() {
           onClick={() => void load()}
           disabled={loading}
           className="btn mt-1 shrink-0 !px-2.5"
-          aria-label="Refresh the feed"
+          aria-label={t("feed.refresh")}
         >
           {loading ? <SpinnerIcon /> : <RefreshIcon />}
         </button>
@@ -223,9 +252,9 @@ export function FeedClient() {
             <input
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
-              placeholder="Search headlines"
+              placeholder={t("feed.search")}
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
-              aria-label="Search headlines"
+              aria-label={t("feed.search")}
             />
           </div>
 
@@ -240,7 +269,7 @@ export function FeedClient() {
                 }`}
                 aria-pressed={lang === value}
               >
-                {value === "all" ? "All" : value.toUpperCase()}
+                {value === "all" ? t("feed.all") : value.toUpperCase()}
               </button>
             ))}
           </div>
@@ -250,7 +279,7 @@ export function FeedClient() {
               type="button"
               onClick={() => setFiltersOpen((v) => !v)}
               className={`btn !px-2.5 ${extraFilters ? "btn-primary" : ""}`}
-              aria-label="More filters"
+              aria-label={t("feed.moreFilters")}
               aria-expanded={filtersOpen}
             >
               <SlidersIcon width={16} height={16} />
@@ -258,14 +287,14 @@ export function FeedClient() {
             {filtersOpen && (
               <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  Month
+                  {t("feed.month")}
                 </label>
                 <select
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
                   className="input mt-1 w-full"
                 >
-                  <option value="all">Any month</option>
+                  <option value="all">{t("feed.anyMonth")}</option>
                   {months.map((m) => (
                     <option key={m} value={m}>
                       {monthLabel(m)}
@@ -274,7 +303,7 @@ export function FeedClient() {
                 </select>
 
                 <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  Order
+                  {t("feed.order")}
                 </label>
                 <div className="mt-1 flex gap-1.5">
                   {(["newest", "oldest"] as SortOrder[]).map((value) => (
@@ -285,10 +314,27 @@ export function FeedClient() {
                       data-selected={sort === value}
                       className="chip flex-1 !justify-center"
                     >
-                      {value === "newest" ? "Newest" : "Oldest"}
+                      {value === "newest" ? t("feed.newest") : t("feed.oldest")}
                     </button>
                   ))}
                 </div>
+
+                <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {t("feed.paywalls")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => update({ hidePaywalled: !settings.hidePaywalled })}
+                  data-selected={!settings.hidePaywalled}
+                  className="chip mt-1 w-full !justify-center !py-1.5"
+                >
+                  {settings.hidePaywalled ? t("feed.includeLocked") : t("feed.hidingLocked")}
+                </button>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                  {settings.hidePaywalled
+                    ? `${hiddenByPaywall} ${hiddenByPaywall === 1 ? "story is" : "stories are"} hidden from papers that lock most articles. Papers that only meter some, like ZEIT or SPIEGEL, stay and carry a badge.`
+                    : "Showing everything, including papers where most articles open on their own site."}
+                </p>
 
                 {extraFilters > 0 && (
                   <button
@@ -296,10 +342,11 @@ export function FeedClient() {
                     onClick={() => {
                       setMonth("all");
                       setSort("newest");
+                      update({ hidePaywalled: true });
                     }}
                     className="btn mt-3 w-full justify-center !py-1.5 text-xs"
                   >
-                    Clear
+                    {t("feed.resetFilters")}
                   </button>
                 )}
               </div>
@@ -314,7 +361,7 @@ export function FeedClient() {
             data-selected={category === "all"}
             className="chip"
           >
-            Everything
+            {t("feed.everything")}
           </button>
           {categories.map((c) => (
             <button
@@ -324,7 +371,7 @@ export function FeedClient() {
               data-selected={category === c}
               className="chip"
             >
-              {CATEGORY_LABELS[c]}
+              {t(categoryKey(c))}
             </button>
           ))}
         </div>
@@ -362,7 +409,7 @@ export function FeedClient() {
 
       {!loading && !filtered.length && !error && (
         <div className="card p-8 text-center">
-          <p className="font-medium">Nothing matches those filters.</p>
+          <p className="font-medium">{t("feed.nothingMatches")}</p>
           <p className="mt-1 text-sm text-muted">
             Try another category, or add more publications on the{" "}
             <Link href="/sources" className="underline underline-offset-2">
@@ -400,7 +447,7 @@ export function FeedClient() {
           onClick={() => setVisible((v) => v + PAGE_SIZE)}
           className="btn mx-auto mt-6 flex"
         >
-          Show more
+          {t("feed.showMore")}
         </button>
       )}
 

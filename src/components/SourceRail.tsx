@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
 import type { Source } from "@/lib/types";
+import { useT } from "@/hooks/useT";
 import { SourceAvatar } from "./SourceAvatar";
 import { PlusIcon } from "./Icons";
 
@@ -25,6 +26,7 @@ export function SourceRail({
   onSelect: (id: string | null) => void;
   counts: Map<string, number>;
 }) {
+  const t = useT();
   const custom = getCustomSources();
   const sources: Source[] = shelf
     .map((id) => {
@@ -58,7 +60,7 @@ export function SourceRail({
         data-selected={selected === null}
         className="chip !py-1.5"
       >
-        All papers
+        {t("feed.allPapers")}
       </button>
 
       {sources.map((source) => (
@@ -79,7 +81,7 @@ export function SourceRail({
       ))}
 
       <Link href="/sources" className="chip !py-1.5">
-        <PlusIcon width={14} height={14} /> More
+        <PlusIcon width={14} height={14} /> {t("feed.morePapers")}
       </Link>
     </div>
   );

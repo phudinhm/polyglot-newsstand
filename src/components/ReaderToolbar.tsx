@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
+import { useT } from "@/hooks/useT";
 import type { ThemeName } from "@/lib/settings";
-import { onVoicesReady, speak, speechSupported } from "@/lib/tts";
+import { onVoicesReady, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang } from "@/lib/types";
 import { SpeakerIcon } from "./Icons";
 
@@ -28,6 +29,7 @@ export function ReaderToolbar({
   lang?: SourceLang;
 }) {
   const [settings, update] = useSettings();
+  const t = useT();
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,9 @@ export function ReaderToolbar({
 
   const current: ThemeName = settings.theme === "system" ? "paper" : settings.theme;
   const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
-  const forLang = voices.filter((v) => v.lang.toLowerCase().startsWith(lang));
+  // voices state exists only to re-render when the engine warms up.
+  void voices;
+  const forLang = voicesFor(lang);
 
   return (
     <div
@@ -61,7 +65,7 @@ export function ReaderToolbar({
           <div className="glass-strong absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border p-3 shadow-[var(--shadow)]">
             <div className="flex items-baseline justify-between">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                Speaking rate
+                {t("settings.speakingRate")}
               </label>
               <span className="text-[11px] tabular-nums text-muted">
                 {settings.speechRate.toFixed(2)}×
@@ -88,7 +92,7 @@ export function ReaderToolbar({
               value={settings.speechRate}
               onChange={(e) => update({ speechRate: Number(e.target.value) })}
               className="mt-2 w-full accent-[var(--accent)]"
-              aria-label="Speaking rate"
+              aria-label={t("settings.speakingRate")}
             />
 
             <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -138,7 +142,7 @@ export function ReaderToolbar({
             onClick={() => update({ fontSize: settings.fontSize - 1 })}
             disabled={settings.fontSize <= 15}
             className="grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
-            aria-label="Smaller text"
+            aria-label={t("reader.smaller")}
           >
             A−
           </button>
@@ -150,7 +154,7 @@ export function ReaderToolbar({
             onClick={() => update({ fontSize: settings.fontSize + 1 })}
             disabled={settings.fontSize >= 28}
             className="grid h-9 w-9 place-items-center rounded-full text-[16px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
-            aria-label="Larger text"
+            aria-label={t("reader.larger")}
           >
             A+
           </button>
@@ -162,7 +166,7 @@ export function ReaderToolbar({
                 type="button"
                 onClick={() => setVoiceOpen((v) => !v)}
                 aria-expanded={voiceOpen}
-                aria-label="Voice and speed"
+                aria-label={t("reader.voice")}
                 className={`grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-surface-2 ${
                   voiceOpen ? "bg-surface-2" : ""
                 }`}

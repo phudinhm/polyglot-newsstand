@@ -1,6 +1,7 @@
 "use client";
 
 import type { SourceLang, TargetLang } from "./types";
+import { detectUiLang, type UiLang } from "./i18n";
 import { DEFAULT_SOURCE_IDS } from "./sources";
 
 export type ThemeName = "paper" | "sepia" | "slate" | "ink";
@@ -30,6 +31,8 @@ export interface Settings {
   /** Extra letter spacing in em, which helps a lot of readers. */
   tracking: number;
   target: TargetLang;
+  /** The language of the interface itself, independent of what you read. */
+  uiLang: UiLang;
   /** Whole-page zoom, separate from the reading text size. */
   zoom: number;
   /** Speaking rate for read-aloud, where 1 is the device's normal pace. */
@@ -46,6 +49,8 @@ export interface Settings {
   texture: boolean;
   /** Colour words by whether you already know them. */
   heatmap: boolean;
+  /** Keep papers that lock most articles off the shelf until asked for. */
+  hidePaywalled: boolean;
   sources: string[];
 }
 
@@ -57,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
   measure: 68,
   tracking: 0,
   target: "en",
+  uiLang: "en",
   zoom: 1,
   speechRate: 0.9,
   voices: {},
@@ -65,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wordLookup: true,
   texture: true,
   heatmap: true,
+  hidePaywalled: true,
   sources: DEFAULT_SOURCE_IDS,
 };
 
@@ -82,7 +89,8 @@ export function loadSettings(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    // First visit: start in the reader's own language rather than English.
+    if (!raw) return { ...DEFAULT_SETTINGS, uiLang: detectUiLang() };
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return sanitize({ ...DEFAULT_SETTINGS, ...parsed });
   } catch {

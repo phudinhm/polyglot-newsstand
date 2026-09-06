@@ -104,12 +104,14 @@ Rules, in order of importance:
     // Streaming because a long article plus a generous max_tokens can outrun
     // the default HTTP timeout.
     const stream = client.messages.stream({
-      model: "claude-opus-5",
+      // Sonnet at medium effort: rewriting to a level is a constrained task,
+      // and this keeps a per-article rewrite cheap enough to use freely.
+      model: "claude-sonnet-5",
       max_tokens: 16000,
       system,
       thinking: { type: "adaptive" },
       output_config: {
-        effort: "low",
+        effort: "medium",
         format: {
           type: "json_schema",
           schema: {

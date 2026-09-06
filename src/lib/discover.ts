@@ -99,6 +99,7 @@ export async function discoverFromHomepage(source: Source, limit = 30): Promise<
       lang: source.lang,
       category: source.category,
       level: source.level,
+      paywall: source.paywall,
     });
     if (items.length >= limit) break;
   }
