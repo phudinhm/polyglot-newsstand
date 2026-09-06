@@ -44,6 +44,8 @@ export interface Settings {
   wordLookup: boolean;
   /** The faint paper grain over the whole page. */
   texture: boolean;
+  /** Colour words by whether you already know them. */
+  heatmap: boolean;
   sources: string[];
 }
 
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bilingual: false,
   wordLookup: true,
   texture: true,
+  heatmap: true,
   sources: DEFAULT_SOURCE_IDS,
 };
 

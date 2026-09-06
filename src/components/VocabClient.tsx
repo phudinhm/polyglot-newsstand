@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { clearVocab, getVocab, removeVocab, vocabToCsv } from "@/lib/store";
+import { clearVocab, getVocab, removeVocab, setVocabStatus, vocabToCsv } from "@/lib/store";
 import type { VocabEntry } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
-import { DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
+import { CheckIcon, DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
 
 export function VocabClient() {
   const [entries, setEntries] = useState<VocabEntry[]>([]);
@@ -144,6 +144,11 @@ export function VocabClient() {
                   <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase text-muted">
                     {entry.lang}
                   </span>
+                  {entry.status === "known" && (
+                    <span className="rounded-full bg-[color-mix(in_srgb,var(--translation)_18%,transparent)] px-1.5 py-0.5 text-[10px] text-translation">
+                      known
+                    </span>
+                  )}
                 </div>
                 {entry.context && (
                   <p className="mt-1.5 text-[13px] leading-relaxed text-muted" lang={entry.lang}>
@@ -167,17 +172,31 @@ export function VocabClient() {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  removeVocab(entry.id);
-                  setEntries(getVocab());
-                }}
-                className="btn shrink-0 px-2 py-1.5"
-                aria-label={`Remove ${entry.term}`}
-              >
-                <TrashIcon width={15} height={15} />
-              </button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVocabStatus(entry.id, entry.status === "known" ? "learning" : "known");
+                    setEntries(getVocab());
+                  }}
+                  className={`btn px-2 py-1.5 text-xs ${entry.status === "known" ? "btn-primary" : ""}`}
+                  aria-pressed={entry.status === "known"}
+                  title={entry.status === "known" ? "Known" : "Mark as known"}
+                >
+                  <CheckIcon width={15} height={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeVocab(entry.id);
+                    setEntries(getVocab());
+                  }}
+                  className="btn px-2 py-1.5"
+                  aria-label={`Remove ${entry.term}`}
+                >
+                  <TrashIcon width={15} height={15} />
+                </button>
+              </div>
             </div>
           </li>
         ))}

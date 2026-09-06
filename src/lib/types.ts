@@ -102,9 +102,14 @@ export interface TranslateResponse {
   provider: string;
 }
 
+/** Where a word sits on the way from new to owned. */
+export type VocabStatus = "learning" | "known";
+
 export interface VocabEntry {
   id: string;
   term: string;
+  /** Defaults to "learning"; the reader promotes it once it sticks. */
+  status?: VocabStatus;
   translation: string;
   /** The sentence the word was met in, which is what makes it stick. */
   context?: string;

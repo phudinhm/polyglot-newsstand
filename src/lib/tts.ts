@@ -49,6 +49,12 @@ export interface SpeakOptions {
   voiceUri?: string;
   onEnd?: () => void;
   onError?: () => void;
+  /**
+   * Fires as each word is reached, with its offset in the text. This is what
+   * makes read-along highlighting possible: the ear and the eye stay together
+   * instead of the reader hunting for where the voice has got to.
+   */
+  onWord?: (charIndex: number, charLength: number) => void;
 }
 
 export function speak(text: string, options: SpeakOptions): void {
@@ -67,6 +73,13 @@ export function speak(text: string, options: SpeakOptions): void {
 
   if (options.onEnd) utterance.addEventListener("end", options.onEnd);
   if (options.onError) utterance.addEventListener("error", options.onError);
+  if (options.onWord) {
+    utterance.addEventListener("boundary", (event) => {
+      // Safari reports only word boundaries; Chrome also reports sentences.
+      if (event.name && event.name !== "word") return;
+      options.onWord?.(event.charIndex, event.charLength || 0);
+    });
+  }
 
   window.speechSynthesis.speak(utterance);
 }

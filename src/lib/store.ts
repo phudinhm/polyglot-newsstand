@@ -1,6 +1,6 @@
 "use client";
 
-import type { SavedArticle, SourceLang, TargetLang, VocabEntry } from "./types";
+import type { SavedArticle, SourceLang, TargetLang, VocabEntry, VocabStatus } from "./types";
 
 const VOCAB_KEY = "pn:vocab:v1";
 const SAVED_KEY = "pn:saved:v1";
@@ -41,12 +41,34 @@ export function addVocab(entry: Omit<VocabEntry, "id" | "createdAt">): VocabEntr
   if (existing) return existing;
 
   const created: VocabEntry = {
+    status: "learning",
     ...entry,
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
   };
   write(VOCAB_KEY, [created, ...list].slice(0, 5_000));
   return created;
+}
+
+export function setVocabStatus(id: string, status: VocabStatus): void {
+  write(
+    VOCAB_KEY,
+    getVocab().map((v) => (v.id === id ? { ...v, status } : v)),
+  );
+}
+
+/**
+ * The words you have met, keyed for a fast lookup while rendering an article.
+ * Built once per render rather than per word: a long piece has thousands of
+ * words and the vocabulary can run to thousands of entries.
+ */
+export function vocabIndex(lang: SourceLang): Map<string, VocabStatus> {
+  const index = new Map<string, VocabStatus>();
+  for (const entry of getVocab()) {
+    if (entry.lang !== lang) continue;
+    index.set(entry.term.trim().toLowerCase(), entry.status ?? "learning");
+  }
+  return index;
 }
 
 export function removeVocab(id: string): void {
@@ -103,4 +125,4 @@ export function toggleSaved(article: SavedArticle): boolean {
   return true;
 }
 
-export type { SavedArticle, TargetLang, VocabEntry };
+export type { SavedArticle, TargetLang, VocabEntry, VocabStatus };

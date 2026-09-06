@@ -189,3 +189,20 @@ export const MicIcon = (p: P) => (
     <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
   </svg>
 );
+
+export const BranchIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M6 4v6a3 3 0 0 0 3 3h9" />
+    <path d="M6 13v3a3 3 0 0 0 3 3h6" />
+    <circle cx="6" cy="4" r="1.6" />
+    <circle cx="18" cy="13" r="1.6" />
+    <circle cx="15" cy="19" r="1.6" />
+  </svg>
+);
+
+export const SparkIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" />
+    <path d="M18 17l.7 1.8L20.5 19.5l-1.8.7L18 22l-.7-1.8L15.5 19.5l1.8-.7z" />
+  </svg>
+);

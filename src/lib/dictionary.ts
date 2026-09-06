@@ -27,6 +27,8 @@ export interface DictionaryEntry {
   singular?: string;
   plural?: string;
   senses: DictionarySense[];
+  /** Phrases the word habitually appears in, which is how it is really used. */
+  collocations?: string[];
   source: "wiktionary" | "translation";
   /** Wiktionary page for the word, so the reader can go deeper. */
   url?: string;
@@ -101,6 +103,20 @@ function meanings(wikitext: string): string[] {
     .slice(0, 5);
 }
 
+/** {{Charakteristische Wortkombinationen}} is Wiktionary's collocation list. */
+function collocations(wikitext: string): string[] {
+  const section = /\{\{Charakteristische Wortkombinationen\}\}([\s\S]*?)(?:\n\{\{|\n===|$)/.exec(
+    wikitext,
+  );
+  if (!section) return [];
+  return section[1]
+    .split("\n")
+    .flatMap((line) => cleanWikiMarkup(line.replace(/^:?\[[\d,\s]+\]\s*/, "")).split(/[;,]\s+/))
+    .map((phrase) => phrase.trim())
+    .filter((phrase) => phrase.length > 2 && phrase.length < 60)
+    .slice(0, 8);
+}
+
 function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "source"> {
   const genus = firstMatch(wikitext, /\|Genus=([mfn])/) ?? firstMatch(wikitext, /\{\{([mfn])\}\}/);
   const pos = partsOfSpeech(wikitext);
@@ -112,6 +128,7 @@ function parseGerman(word: string, wikitext: string): Omit<DictionaryEntry, "sou
     article: genus ? GENDER_ARTICLE[genus] : undefined,
     singular: firstMatch(wikitext, /\|Nominativ Singular\s*=\s*([^\n|}]+)/),
     plural: firstMatch(wikitext, /\|Nominativ Plural\s*=\s*([^\n|}]+)/),
+    collocations: collocations(wikitext),
     senses: pos.length
       ? pos.map((p, i) => ({ partOfSpeech: p, definitions: i === 0 ? defs : [] }))
       : defs.length
@@ -189,7 +206,7 @@ export async function lookup(word: string, lang: SourceLang): Promise<Dictionary
 
   const parsed = wikitext
     ? parseGerman(matched, wikitext)
-    : { word: matched, senses: [] as DictionarySense[] };
+    : { word: matched, senses: [] as DictionarySense[], collocations: [] as string[] };
 
   // Prefer English glosses for the meaning; keep the native ones as backup.
   const senses = glosses.length ? glosses : parsed.senses;

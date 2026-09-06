@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { useTranslator } from "@/hooks/useTranslator";
 import { splitWords } from "@/lib/segment";
-import { getVocab, isSaved, toggleSaved } from "@/lib/store";
+import { isSaved, toggleSaved } from "@/lib/store";
 import { formatDate } from "@/lib/format";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import type { Article, SourceLang } from "@/lib/types";
@@ -15,6 +15,10 @@ import { recallItem } from "@/lib/handoff";
 import { cancelSpeech, isPaused, pauseSpeech, resumeSpeech, speak, speechSupported } from "@/lib/tts";
 import { useScrollActivity } from "@/hooks/useScrollActivity";
 import { PronunciationPractice } from "./PronunciationPractice";
+import { SentenceStructure } from "./SentenceStructure";
+import { LevelControl } from "./LevelControl";
+import { vocabIndex } from "@/lib/store";
+import { isCommon } from "@/lib/frequency";
 import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
@@ -25,6 +29,7 @@ import {
   ExternalIcon,
   LanguagesIcon,
   SlidersIcon,
+  BranchIcon,
   MicIcon,
   PauseIcon,
   PlayIcon,
@@ -63,7 +68,7 @@ export function Reader({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [knownWords, setKnownWords] = useState<Set<string>>(new Set());
+  const [vocab, setVocab] = useState<Map<string, "learning" | "known">>(new Map());
   const [showHint, setShowHint] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [speakingKey, setSpeakingKey] = useState<string | null>(null);
@@ -71,6 +76,9 @@ export function Reader({
   const [blocked, setBlocked] = useState(false);
   const [paused, setPaused] = useState(false);
   const [practiceLine, setPracticeLine] = useState<string | null>(null);
+  const [structureLine, setStructureLine] = useState<string | null>(null);
+  const [spokenChar, setSpokenChar] = useState<number>(-1);
+  const [levelled, setLevelled] = useState<Article | null>(null);
   const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
@@ -146,7 +154,7 @@ export function Reader({
 
   useEffect(() => {
     setSaved(isSaved(url));
-    setKnownWords(new Set(getVocab().map((v) => v.term.toLowerCase())));
+    setVocab(vocabIndex(fallbackLang));
     try {
       setShowHint(!window.localStorage.getItem(HINT_KEY));
     } catch {
@@ -194,21 +202,22 @@ export function Reader({
 
   // --------------------------------------------------------------- flat lines
   const lines: Line[] = useMemo(() => {
-    if (!article) return [];
+    const source = levelled ?? article;
+    if (!source) return [];
     const out: Line[] = [];
-    for (const block of article.blocks) {
+    for (const block of source.blocks) {
       block.sentences.forEach((text, i) => {
         out.push({ key: `${block.id}:${i}`, text, blockId: block.id, kind: block.kind, first: i === 0 });
       });
     }
     return out;
-  }, [article]);
+  }, [article, levelled]);
 
   const sentencesByBlock = useMemo(() => {
     const map = new Map<string, string[]>();
-    article?.blocks.forEach((b) => map.set(b.id, b.sentences));
+    (levelled ?? article)?.blocks.forEach((b) => map.set(b.id, b.sentences));
     return map;
-  }, [article]);
+  }, [article, levelled]);
 
   // ------------------------------------------------------------- translations
   const revealLine = useCallback(
@@ -256,6 +265,7 @@ export function Reader({
     cancelSpeech();
     setSpeakingKey(null);
     setReadingAloud(false);
+    setSpokenChar(-1);
   }, []);
 
   // Leaving the article mid-sentence should not leave a voice talking.
@@ -270,6 +280,7 @@ export function Reader({
       }
       setSpeakingKey(line.key);
       setActiveKey(line.key);
+      setSpokenChar(-1);
       document.getElementById(`line-${line.key}`)?.scrollIntoView({
         block: "center",
         behavior: "smooth",
@@ -278,7 +289,9 @@ export function Reader({
         lang,
         rate: settings.speechRate,
         voiceUri: settings.voices[lang],
+        onWord: (charIndex) => setSpokenChar(charIndex),
         onEnd: () => {
+          setSpokenChar(-1);
           if (!continuous) {
             setSpeakingKey(null);
             return;
@@ -355,8 +368,8 @@ export function Reader({
 
   const closeWord = useCallback(() => {
     setWord(null);
-    setKnownWords(new Set(getVocab().map((v) => v.term.toLowerCase())));
-  }, []);
+    setVocab(vocabIndex(lang));
+  }, [lang]);
 
   function dismissHint() {
     setShowHint(false);
@@ -592,8 +605,19 @@ export function Reader({
               </p>
             )}
 
+            <LevelControl
+              article={article}
+              lang={lang}
+              levelled={levelled}
+              onLevelled={(next) => {
+                stopSpeaking();
+                setRevealed(new Set());
+                setLevelled(next);
+              }}
+            />
+
             <div className="reading mt-7" lang={lang}>
-              {article.blocks.map((block) => (
+              {(levelled ?? article).blocks.map((block) => (
                 <div
                   key={block.id}
                   data-block-id={block.id}
@@ -644,12 +668,28 @@ export function Reader({
                             }}
                           >
                             {settings.wordLookup ? (
-                              splitWords(sentence).map((token, ti) =>
-                                token.isWord ? (
+                              (() => {
+                                let offset = 0;
+                                return splitWords(sentence).map((token, ti) => {
+                                  const start = offset;
+                                  offset += token.text.length;
+                                  if (!token.isWord) return <span key={ti}>{token.text}</span>;
+                                  const status = vocab.get(token.text.toLowerCase());
+                                  const spoken =
+                                    speakingKey === key &&
+                                    spokenChar >= start &&
+                                    spokenChar < start + token.text.length;
+                                  return (
                                   <span
                                     key={ti}
                                     className="word"
-                                    data-known={knownWords.has(token.text.toLowerCase())}
+                                    data-vocab={
+                                      status ??
+                                      (settings.heatmap && !isCommon(token.text, lang)
+                                        ? "new"
+                                        : undefined)
+                                    }
+                                    data-spoken={spoken || undefined}
                                     onDoubleClick={(e) => {
                                       e.stopPropagation();
                                       suppressClick.current = true;
@@ -671,10 +711,9 @@ export function Reader({
                                   >
                                     {token.text}
                                   </span>
-                                ) : (
-                                  <span key={ti}>{token.text}</span>
-                                ),
-                              )
+                                  );
+                                });
+                              })()
                             ) : (
                               <>{sentence}</>
                             )}{" "}
@@ -722,6 +761,20 @@ export function Reader({
                               aria-label="Practise saying this line"
                             >
                               <MicIcon width={13} height={13} /> say it back
+                            </button>
+                          )}
+
+                          {activeKey === key && lang === "de" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setStructureLine(sentence);
+                              }}
+                              className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              aria-label="Break this sentence down"
+                            >
+                              <BranchIcon width={13} height={13} /> structure
                             </button>
                           )}
 
@@ -777,6 +830,14 @@ export function Reader({
       )}
 
       {article && <ReaderToolbar dimmed={!chromeActive} lang={lang} />}
+
+      {structureLine && (
+        <SentenceStructure
+          sentence={structureLine}
+          lang={lang}
+          onClose={() => setStructureLine(null)}
+        />
+      )}
 
       {practiceLine && (
         <PronunciationPractice

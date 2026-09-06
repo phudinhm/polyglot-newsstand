@@ -11,6 +11,7 @@
     "check:sources": "node scripts/check-sources.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "@mozilla/readability": "^0.5.0",
     "fast-xml-parser": "^4.5.3",
     "linkedom": "^0.18.9",

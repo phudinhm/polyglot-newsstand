@@ -238,13 +238,32 @@ export function WordPopover({
                 </div>
               ))}
 
-              {!expanded && (entry.senses?.length ?? 0) > 2 && (
+              {entry.collocations && entry.collocations.length > 0 && (
+                <div className="mt-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    Often used with
+                  </span>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {entry.collocations.slice(0, expanded ? 8 : 4).map((phrase) => (
+                      <span
+                        key={phrase}
+                        lang={lang}
+                        className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[12px]"
+                      >
+                        {phrase}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!expanded && ((entry.senses?.length ?? 0) > 2 || (entry.collocations?.length ?? 0) > 4) && (
                 <button
                   type="button"
                   onClick={() => setExpanded(true)}
                   className="mt-2 text-[12.5px] font-medium text-accent underline underline-offset-2"
                 >
-                  Show all {entry.senses.length} parts of speech
+                  Show more
                 </button>
               )}
             </>

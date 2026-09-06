@@ -67,6 +67,19 @@ export function ReaderToolbar({
                 {settings.speechRate.toFixed(2)}×
               </span>
             </div>
+            <div className="mt-1 flex gap-1.5">
+              {[0.75, 1, 1.25].map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => update({ speechRate: rate })}
+                  data-selected={Math.abs(settings.speechRate - rate) < 0.03}
+                  className="chip flex-1 !justify-center !py-1"
+                >
+                  {rate}×
+                </button>
+              ))}
+            </div>
             <input
               type="range"
               min={0.5}
@@ -74,7 +87,7 @@ export function ReaderToolbar({
               step={0.05}
               value={settings.speechRate}
               onChange={(e) => update({ speechRate: Number(e.target.value) })}
-              className="mt-1 w-full accent-[var(--accent)]"
+              className="mt-2 w-full accent-[var(--accent)]"
               aria-label="Speaking rate"
             />
 

@@ -67,12 +67,14 @@ export function SourceRail({
           type="button"
           onClick={() => onSelect(selected === source.id ? null : source.id)}
           data-selected={selected === source.id}
-          className="chip !gap-2 !py-1.5"
+          className="chip !gap-2 !py-1.5 !pr-1.5"
           title={`${source.name} · ${counts.get(source.id) ?? 0} stories`}
         >
           <SourceAvatar name={source.name} site={source.site} size={18} />
-          {source.short ?? source.name}
-          <span className="opacity-60">{counts.get(source.id) ?? 0}</span>
+          <span className="max-w-[9rem] truncate">{source.short ?? source.name}</span>
+          <span className="rounded-full bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1.5 py-0.5 text-[11px] tabular-nums leading-none">
+            {counts.get(source.id) ?? 0}
+          </span>
         </button>
       ))}
 

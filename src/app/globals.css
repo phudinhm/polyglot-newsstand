@@ -300,8 +300,27 @@ body {
   background-color: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.word[data-known="true"] {
-  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 45%, transparent);
+/*
+ * The vocabulary heatmap. Green for words you have marked known, amber for the
+ * ones still being learned, and a faint dotted line under words that are new
+ * to you and not among the few hundred that carry every German sentence.
+ */
+.word[data-vocab="known"] {
+  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--translation) 60%, transparent);
+}
+
+.word[data-vocab="learning"] {
+  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.word[data-vocab="new"] {
+  border-bottom: 1px dotted color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+/* The word currently being spoken, so the eye can follow the voice. */
+.word[data-spoken] {
+  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 4px;
 }
 
 .reading h2,
