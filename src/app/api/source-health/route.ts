@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { assertSafeUrl, fetchText } from "@/lib/fetcher";
-import { parseFeed } from "@/lib/rss";
+import { assertSafeUrl } from "@/lib/fetcher";
+import { loadFeedWithRecovery, RECOVERY_NOTE } from "@/lib/discover";
 import { SOURCE_BY_ID, SOURCES } from "@/lib/sources";
 import type { Source } from "@/lib/types";
 
@@ -15,30 +15,32 @@ export interface SourceHealth {
   items: number;
   ms: number;
   reason?: string;
+  /** Set when the source only answered after a recovery step. */
+  note?: string;
 }
 
 const CONCURRENCY = 8;
 
 async function check(source: Source): Promise<SourceHealth> {
   const started = Date.now();
+  const name = source.short ?? source.name;
   try {
-    const xml = await fetchText(source.feed, {
-      timeoutMs: 12_000,
-      accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
-    });
-    const items = parseFeed(xml, source);
+    // The same chain the newsstand itself runs. Checking only the first step
+    // reported sources as dead that the app opens every day through the
+    // second, which made the whole report untrustworthy.
+    const { items, via } = await loadFeedWithRecovery(source);
     return {
       id: source.id,
-      name: source.short ?? source.name,
-      ok: items.length > 0,
+      name,
+      ok: true,
       items: items.length,
       ms: Date.now() - started,
-      reason: items.length ? undefined : "The feed answered but contained no articles.",
+      note: RECOVERY_NOTE[via],
     };
   } catch (err) {
     return {
       id: source.id,
-      name: source.short ?? source.name,
+      name,
       ok: false,
       items: 0,
       ms: Date.now() - started,

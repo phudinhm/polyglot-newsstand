@@ -227,13 +227,14 @@ export const SOURCES: Source[] = [
     name: "Harvard Business Review",
     short: "HBR",
     lang: "en",
-    category: "business",
+    category: "careers",
     level: "hard",
-    feed: "https://feeds.hbr.org/harvardbusiness",
+    feed: "https://news.google.com/rss/search?q=site:hbr.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://hbr.org",
-    note: "Management thinking at length. Dense, but the vocabulary is worth the effort.",
-    paywall: "hard",
+    note: "Management writing. Their own feed would not answer, so this follows them through Google News.",
+    paywall: "soft",
   },
+
   {
     id: "sloan-review",
     name: "MIT Sloan Management Review",
@@ -318,10 +319,11 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "learner",
     level: "easy",
-    feed: "https://learningenglish.voanews.com/api/zkvymeuiim",
+    feed: "https://news.google.com/rss/search?q=site:learningenglish.voanews.com&hl=en-US&gl=US&ceid=US:en",
     site: "https://learningenglish.voanews.com",
-    note: "Deliberately simplified English at a slower pace. Pairs well with Nachrichtenleicht.",
+    note: "Written for learners, at a deliberately slower pace. Their own feed stopped returning articles, so this follows them through Google News.",
   },
+
   {
     id: "bbc-top",
     name: "BBC News",
@@ -690,9 +692,11 @@ export const SOURCES: Source[] = [
     lang: "de",
     category: "top",
     level: "medium",
-    feed: "https://rss.focus.de/fol/XML/rss_folnews.xml",
+    feed: "https://news.google.com/rss/search?q=site:focus.de&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.focus.de",
+    note: "Their own feed returned 404, so this follows them through Google News.",
   },
+
   {
     id: "derstandard",
     name: "DER STANDARD (Österreich)",
@@ -785,7 +789,7 @@ export const SOURCES: Source[] = [
     name: "VnExpress Kinh doanh",
     short: "VnExpress KD",
     lang: "vi",
-    category: "business",
+    category: "finance",
     level: "medium",
     feed: "https://vnexpress.net/rss/kinh-doanh.rss",
     site: "https://vnexpress.net/kinh-doanh",
@@ -821,12 +825,15 @@ export const SOURCES: Source[] = [
   {
     id: "vneconomy",
     name: "VnEconomy",
+    short: "VnEconomy",
     lang: "vi",
     category: "finance",
     level: "hard",
-    feed: "https://vneconomy.vn/rss/home.rss",
+    feed: "https://news.google.com/rss/search?q=site:vneconomy.vn&hl=vi&gl=VN&ceid=VN:vi",
     site: "https://vneconomy.vn",
+    note: "Their own feed answered but carried no articles, so this follows them through Google News.",
   },
+
   {
     id: "vietnamnews",
     name: "Việt Nam News",
@@ -921,26 +928,20 @@ export const SOURCES: Source[] = [
     feed: "https://www.finanzen.net/rss/news",
     site: "https://www.finanzen.net",
   },
-  {
-    id: "boersen-zeitung",
-    name: "Börsen-Zeitung",
-    short: "Börsen-Zeitung",
-    lang: "de",
-    category: "markets",
-    level: "hard",
-    feed: "https://www.boersen-zeitung.de/rss/feed.xml",
-    site: "https://www.boersen-zeitung.de",
-    paywall: "hard",
-  },
+
   {
     id: "capital-de",
     name: "Capital",
+    short: "Capital",
     lang: "de",
     category: "finance",
     level: "hard",
-    feed: "https://www.capital.de/feed/standard/all/",
+    feed: "https://news.google.com/rss/search?q=site:capital.de&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.capital.de",
+    note: "Their own feed returned 404, so this follows them through Google News.",
+    paywall: "soft",
   },
+
   {
     id: "business-insider-de",
     name: "Business Insider Deutschland",
@@ -1381,7 +1382,42 @@ export const SOURCES: Source[] = [
     feed: "https://www.spiegel.de/gesundheit/index.rss",
     site: "https://www.spiegel.de/gesundheit",
     paywall: "soft",
-  },];
+  },
+  {
+    id: "maerkte-gn",
+    name: "Märkte und Zinsen",
+    short: "Märkte",
+    lang: "de",
+    category: "markets",
+    level: "hard",
+    feed: "https://news.google.com/rss/search?q=B%C3%B6rse+OR+Aktien+OR+Zinsen+OR+Inflation+when:3d&hl=de&gl=DE&ceid=DE:de",
+    site: "https://news.google.com",
+    note: "German market coverage gathered from across the press, for the days the specialist feeds are quiet.",
+  },
+  {
+    id: "tagesschau-boerse",
+    name: "tagesschau Wirtschaft und Börse",
+    short: "tagesschau Börse",
+    lang: "de",
+    category: "markets",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:tagesschau.de+B%C3%B6rse+OR+Wirtschaft&hl=de&gl=DE&ceid=DE:de",
+    site: "https://www.tagesschau.de/wirtschaft",
+    note: "Public-service reporting on markets, in plainer German than the trade press.",
+  },
+  {
+    id: "taichinh-gn",
+    name: "Tài chính Việt Nam",
+    short: "Tài chính VN",
+    lang: "vi",
+    category: "finance",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=t%C3%A0i+ch%C3%ADnh+OR+ch%E1%BB%A9ng+kho%C3%A1n+OR+l%C3%A3i+su%E1%BA%A5t+when:3d&hl=vi&gl=VN&ceid=VN:vi",
+    site: "https://news.google.com",
+    note: "Vietnamese finance coverage gathered from across the press.",
+  },
+
+];
 
 export const SOURCE_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
 

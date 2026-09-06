@@ -106,3 +106,65 @@ export async function discoverFromHomepage(source: Source, limit = 30): Promise<
 
   return items;
 }
+
+/** How a feed was eventually read, so the source check can be specific. */
+export type Recovery = "direct" | "plain" | "advertised" | "homepage";
+
+export interface FeedLoad {
+  items: FeedItem[];
+  via: Recovery;
+}
+
+export const RECOVERY_NOTE: Record<Recovery, string | undefined> = {
+  direct: undefined,
+  plain: "answered on a second, plainer request",
+  advertised: "answered at the feed its home page advertises",
+  homepage: "read from the home page, since the feed itself is gone",
+};
+
+/**
+ * Read a source, working through the recovery steps in order.
+ *
+ * This lives here rather than in the feed route because the source check has
+ * to run the same chain. Checking only the first step told readers that WEF
+ * and Guardian Science had not answered, when the app opens both of them
+ * every day through step two.
+ */
+export async function loadFeedWithRecovery(source: Source): Promise<FeedLoad> {
+  const attempts: { via: Recovery; run: () => Promise<FeedItem[]> }[] = [
+    {
+      via: "direct",
+      run: async () => {
+        const xml = await fetchText(source.feed, {
+          timeoutMs: 9_000,
+          accept:
+            "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        });
+        return parseFeed(xml, source);
+      },
+    },
+    { via: "plain", run: () => refetchPlainly(source) },
+    {
+      via: "advertised",
+      run: async () => {
+        const discovered = await discoverFeedUrl(source.site);
+        if (!discovered) throw new Error("No feed advertised on the home page.");
+        const xml = await fetchText(discovered, { timeoutMs: 9_000, accept: "*/*" });
+        return parseFeed(xml, { ...source, feed: discovered });
+      },
+    },
+    { via: "homepage", run: () => discoverFromHomepage(source) },
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      const items = await attempt.run();
+      if (items.length) return { items, via: attempt.via };
+      lastError = new Error("The feed answered but contained no articles.");
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Unavailable");
+}

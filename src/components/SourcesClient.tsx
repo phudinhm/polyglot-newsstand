@@ -135,6 +135,8 @@ export function SourcesClient() {
   }
 
   const broken = (health ?? []).filter((h) => !h.ok);
+  // Alive, but only after a retry or a rediscovery: worth knowing about.
+  const recovered = (health ?? []).filter((h) => h.ok && h.note);
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5">
@@ -177,6 +179,20 @@ export function SourcesClient() {
                 Google News. Use Add a source below.
               </p>
             </>
+          )}
+
+          {recovered.length > 0 && (
+            <div className="mt-3 border-t border-border pt-2.5">
+              <p className="text-[12.5px] text-muted">{t("sources.recovered")}</p>
+              <ul className="mt-1 space-y-1">
+                {recovered.map((h) => (
+                  <li key={h.id} className="text-[12.5px] leading-relaxed">
+                    <span className="font-medium">{h.name}</span>
+                    <span className="text-muted"> — {h.note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}

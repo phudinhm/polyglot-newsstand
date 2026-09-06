@@ -261,6 +261,44 @@ body {
   background-color: var(--highlight);
 }
 
+/*
+ * The actions that appear under the line being read. They sit between a
+ * sentence and its translation, so they have to be comfortably tappable
+ * without becoming the loudest thing on the page.
+ */
+.line-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.3rem 0.6rem;
+  margin-bottom: 0.15rem;
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.line-action:first-of-type {
+  margin-inline-start: -0.6rem;
+}
+
+.line-action:hover {
+  background-color: var(--surface-2);
+  color: var(--fg);
+}
+
+/*
+ * Room for the floating toolbar. Revealing a translation used to slide it
+ * straight under the font controls, so the one thing the reader had just
+ * asked for was the one thing they could not see.
+ */
+.sentence-row {
+  scroll-margin-bottom: 9rem;
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
 /* The line being read aloud, so the ear and the eye stay together. */
 .sentence-row[data-speaking="true"],
 .sentence[data-speaking="true"] {
@@ -313,8 +351,19 @@ body {
   box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
+/*
+ * A page of German is mostly words you do not know yet, so marking every one
+ * of them turns the article into something that looks spellchecked. The mark
+ * belongs on the line you are actually working through: quiet everywhere
+ * else, plain when the line is in front of you.
+ */
 .word[data-vocab="new"] {
-  border-bottom: 1px dotted color-mix(in srgb, var(--muted) 55%, transparent);
+  border-bottom: 1px dotted color-mix(in srgb, var(--muted) 22%, transparent);
+}
+
+.sentence-row[data-active="true"] .word[data-vocab="new"],
+.sentence-row[data-speaking="true"] .word[data-vocab="new"] {
+  border-bottom-color: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 
 /* The word currently being spoken, so the eye can follow the voice. */
