@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { FONTS, THEMES } from "@/lib/settings";
 import { UI_LANGUAGES } from "@/lib/i18n";
 import { useT } from "@/hooks/useT";
-import { onVoicesReady, speak, speechSupported, voicesFor } from "@/lib/tts";
+import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CloseIcon, SpeakerIcon } from "./Icons";
 
@@ -218,6 +218,9 @@ export function SettingsDrawer({ open, onClose }: Props) {
                   display={`${settings.speechRate.toFixed(2)}×`}
                   onChange={(speechRate) => update({ speechRate })}
                 />
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  {t("settings.voicesFrom")}
+                </p>
                 <div className="mt-2 space-y-2">
                   {voiceLangs.map((lang) => {
                     void voices;
@@ -234,11 +237,13 @@ export function SettingsDrawer({ open, onClose }: Props) {
                           disabled={!available.length}
                         >
                           <option value="">
-                            {available.length ? "Device default" : "No voice installed"}
+                            {available.length
+                              ? `${t("settings.deviceDefault")} (${available.length})`
+                              : t("settings.noVoice")}
                           </option>
                           {available.map((v) => (
                             <option key={v.voiceURI} value={v.voiceURI}>
-                              {v.name}
+                              {v.name} · {regionOf(v)}
                             </option>
                           ))}
                         </select>

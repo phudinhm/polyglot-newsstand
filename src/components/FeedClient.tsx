@@ -399,7 +399,9 @@ export function FeedClient() {
           </div>
         </div>
 
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+        {/* Twenty-three sections do not fit on one line anywhere, so a phone
+            scrolls them sideways and a wider screen wraps them onto two. */}
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 sm:flex-wrap sm:overflow-x-visible">
           <button
             type="button"
             onClick={() => setCategory("all")}
@@ -467,7 +469,7 @@ export function FeedClient() {
 
       {featured && (
         <div className="mb-5">
-          <FeaturedCard item={featured} />
+          <FeaturedCard item={featured} blocked={blocked.has(featured.sourceId)} />
         </div>
       )}
 
@@ -479,7 +481,7 @@ export function FeedClient() {
             </h2>
             <div className="space-y-2.5">
               {group.items.map((item) => (
-                <ArticleCard key={item.id} item={item} />
+                <ArticleCard key={item.id} item={item} blocked={blocked.has(item.sourceId)} />
               ))}
             </div>
           </section>

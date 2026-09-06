@@ -5,20 +5,21 @@ import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
 import { categoryKey } from "@/lib/i18n";
-import { CATEGORY_LABELS, LEVEL_LABELS, SOURCES } from "@/lib/sources";
+import { CATEGORY_LABELS, LANG_LABELS, LEVEL_LABELS, SOURCES } from "@/lib/sources";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
-import { suggestSources } from "@/lib/suggest";
+import { suggestSources, type Reason } from "@/lib/suggest";
 import { getCustomSources, removeCustomSource, type CustomSource } from "@/lib/customSources";
 import { getRecent } from "@/lib/recent";
 import { SourceAvatar } from "./SourceAvatar";
 import type { SourceHealth } from "@/app/api/source-health/route";
 import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
-import { CheckIcon, CloseIcon, PlusIcon, SpinnerIcon } from "./Icons";
+import { CheckIcon, CloseIcon, PlusIcon, SearchIcon, SpinnerIcon } from "./Icons";
 
 export function SourcesClient() {
   const [settings, update] = useSettings();
   const t = useT();
   const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
+  const [query, setQuery] = useState("");
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [health, setHealth] = useState<SourceHealth[] | null>(null);
@@ -51,19 +52,59 @@ export function SourcesClient() {
     [health],
   );
 
-  const visible = SOURCES.filter((s) => lang === "all" || s.lang === lang);
   const grouped = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const visible = SOURCES.filter((source) => {
+      if (lang !== "all" && source.lang !== lang) return false;
+      if (!needle) return true;
+      // Search what a reader would actually type: the paper's name, the
+      // shorthand they know it by, and the domain they might remember.
+      return [source.name, source.short, source.site, source.note]
+        .filter(Boolean)
+        .some((field) => field!.toLowerCase().includes(needle));
+    });
+
     const map = new Map<string, typeof SOURCES>();
     for (const source of visible) {
       const list = map.get(source.category) ?? [];
       list.push(source);
       map.set(source.category, list);
     }
+    // Alphabetical within a section, so a name can be found by eye rather
+    // than by reading the whole list. localeCompare gets Ö next to O.
+    for (const list of map.values()) {
+      list.sort((a, b) => a.name.localeCompare(b.name, "de"));
+    }
     return Array.from(map.entries()).sort(
       ([a], [b]) =>
         Object.keys(CATEGORY_LABELS).indexOf(a) - Object.keys(CATEGORY_LABELS).indexOf(b),
     );
-  }, [visible]);
+  }, [lang, query]);
+
+  const matches = useMemo(
+    () => grouped.reduce((total, [, list]) => total + list.length, 0),
+    [grouped],
+  );
+
+  /**
+   * A suggestion has to say why in the reader's language. "Because you already
+   * read business" is a reason; the same sentence in English on a Vietnamese
+   * page is just more English to get through.
+   */
+  function reasonText(why: Reason): string {
+    switch (why.key) {
+      case "forLearners":
+        return t("suggest.forLearners");
+      case "lightOnLanguage":
+        return `${t("suggest.lightOn")} ${LANG_LABELS[why.lang] ?? why.lang}`;
+      case "alreadyRead":
+        return `${t("suggest.alreadyRead")} ${t(categoryKey(why.category)).toLowerCase()}`;
+      case "note":
+        return why.note;
+      case "worthALook":
+        return t("suggest.worthALook");
+    }
+  }
 
   function toggle(id: string) {
     const next = new Set(settings.sources);
@@ -101,7 +142,8 @@ export function SourcesClient() {
         <div>
           <h1 className="text-[1.5rem] font-bold tracking-tight sm:text-[1.75rem]">{t("sources.title")}</h1>
           <p className="mt-1 text-[13.5px] text-muted">
-            {settings.sources.length} on your shelf, from {SOURCES.length} curated publications.
+            {settings.sources.length} {t("sources.shelfCount")} {SOURCES.length}{" "}
+            {t("sources.curated")}
           </p>
         </div>
         <button type="button" onClick={() => void runHealthCheck()} disabled={checking} className="btn">
@@ -115,12 +157,12 @@ export function SourcesClient() {
         <div className="card mb-5 p-4">
           {broken.length === 0 ? (
             <p className="text-sm">
-              All {health.length} sources on your shelf answered. Nothing to fix.
+              {health.length} {t("sources.allAnswered")}
             </p>
           ) : (
             <>
               <p className="text-sm font-medium">
-                {broken.length} of {health.length} did not answer
+                {broken.length}/{health.length} {t("sources.noAnswer")}
               </p>
               <ul className="mt-2 space-y-1.5">
                 {broken.map((h) => (
@@ -162,7 +204,7 @@ export function SourcesClient() {
                     />
                   </span>
                   <span className="w-14 shrink-0 text-right text-[12px] tabular-nums text-muted">
-                    {entry.count} read
+                    {entry.count} {t("sources.timesRead")}
                   </span>
                 </>
               );
@@ -192,11 +234,12 @@ export function SourcesClient() {
           <div className="grid gap-2 sm:grid-cols-2">
             {suggestions.map(({ source, why }) => (
               <div key={source.id} className="card flex items-start gap-3 p-3.5">
+                <SourceAvatar name={source.name} site={source.site} size={26} className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <Link href={`/s/${source.id}`} className="text-sm font-semibold hover:underline">
                     {source.name}
                   </Link>
-                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{why}</p>
+                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{reasonText(why)}</p>
                 </div>
                 <button
                   type="button"
@@ -263,6 +306,27 @@ export function SourcesClient() {
         </section>
       )}
 
+      <div className="mb-3">
+        <div className="relative">
+          <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+            <SearchIcon width={16} height={16} />
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("sources.search")}
+            aria-label={t("sources.search")}
+            className="input w-full !pl-9"
+          />
+        </div>
+        {query.trim() && (
+          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted">
+            {matches} {t("sources.matches")}
+          </p>
+        )}
+      </div>
+
       <div className="no-scrollbar mb-4 flex gap-1.5 overflow-x-auto">
         {(["all", "de", "en", "vi"] as const).map((value) => (
           <button
@@ -273,7 +337,7 @@ export function SourcesClient() {
             className="chip"
           >
             {value === "all"
-              ? "All languages"
+              ? t("sources.langAll")
               : value === "de"
                 ? "Deutsch"
                 : value === "en"
@@ -290,6 +354,10 @@ export function SourcesClient() {
         </button>
       </div>
 
+      {matches === 0 && (
+        <p className="card p-5 text-center text-sm text-muted">{t("sources.noMatch")}</p>
+      )}
+
       <div className="space-y-6">
         {grouped.map(([category, list]) => (
           <section key={category}>
@@ -305,6 +373,7 @@ export function SourcesClient() {
                     key={source.id}
                     className={`card flex items-center gap-3 p-3.5 ${on ? "border-accent/40" : ""}`}
                   >
+                    <SourceAvatar name={source.name} site={source.site} size={26} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/s/${source.id}`} className="text-sm font-semibold hover:underline">
@@ -317,7 +386,9 @@ export function SourcesClient() {
                             className={`text-[11px] ${status.ok ? "text-translation" : "text-accent"}`}
                             title={status.reason}
                           >
-                            {status.ok ? `${status.items} articles` : "not answering"}
+                            {status.ok
+                              ? `${status.items} ${t("sources.articles")}`
+                              : t("sources.notAnswering")}
                           </span>
                         )}
                       </div>

@@ -126,11 +126,13 @@ export function Reader({
         if (cancelled) return;
         // The publisher blocked us, but the newsstand already had the summary.
         // A shorter read that still translates beats a dead end.
+        // Remember the refusal however it went, so the shelf can act on it.
+        // Only recording it when a summary happened to be around meant a paper
+        // that fails outright was never learned from, and kept being offered.
+        if (sourceId) noteBlocked(sourceId);
         const known = recallItem(url);
         if (known?.summary) {
           setBlocked(true);
-          // Remember it now, so the shelf acts on it even if this tab is closed.
-          if (sourceId) noteBlocked(sourceId);
           setArticle({
             url,
             title: known.title,
@@ -159,7 +161,7 @@ export function Reader({
     return () => {
       cancelled = true;
     };
-  }, [url, fallbackLang]);
+  }, [url, fallbackLang, sourceId]);
 
   // Log the open once the article is known, so the history has a real title.
   useEffect(() => {
@@ -571,6 +573,39 @@ export function Reader({
           <div className="card p-6">
             <h1 className="text-lg font-semibold">This one will not open here</h1>
             <p className="mt-2 text-sm text-muted">{loadError}</p>
+            {sourceId && publisher && (
+              <p className="mt-2 text-[13px] text-muted">
+                {remembered ? (
+                  <>
+                    {publisher} is back on the shelf.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        noteBlocked(sourceId);
+                        setRemembered(false);
+                      }}
+                      className="font-medium text-accent underline underline-offset-2"
+                    >
+                      Hide it again
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {publisher} will be left off the shelf from now on.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        forgetBlocked(sourceId);
+                        setRemembered(true);
+                      }}
+                      className="font-medium text-accent underline underline-offset-2"
+                    >
+                      Keep showing it
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <a href={url} target="_blank" rel="noreferrer noopener" className="btn btn-primary">
                 <ExternalIcon /> Read on the publisher&apos;s site

@@ -14,7 +14,16 @@ import { SourceAvatar } from "./SourceAvatar";
  * difficulty chip was noise, but "this one is written for learners" is the one
  * signal worth interrupting for.
  */
-function Meta({ item, linkSource = true }: { item: FeedItem; linkSource?: boolean }) {
+function Meta({
+  item,
+  linkSource = true,
+  blocked = false,
+}: {
+  item: FeedItem;
+  linkSource?: boolean;
+  /** True when this device has already been turned away by this publisher. */
+  blocked?: boolean;
+}) {
   const site = SOURCE_BY_ID.get(item.sourceId)?.site;
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted">
@@ -37,7 +46,15 @@ function Meta({ item, linkSource = true }: { item: FeedItem; linkSource?: boolea
           <time dateTime={item.publishedAt}>{timeAgo(item.publishedAt)}</time>
         </>
       )}
-      {item.paywall && (
+      {blocked && (
+        <span
+          className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted"
+          title="This publisher turned us away last time you opened something here."
+        >
+          blocked before
+        </span>
+      )}
+      {!blocked && item.paywall && (
         <span
           className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted"
           title={
@@ -76,7 +93,7 @@ function Thumb({ src, className }: { src?: string; className: string }) {
 }
 
 /** The lead story, given the room a front page would give it. */
-export function FeaturedCard({ item }: { item: FeedItem }) {
+export function FeaturedCard({ item, blocked = false }: { item: FeedItem; blocked?: boolean }) {
   return (
     <article className="card card-hover overflow-hidden">
       <div className="sm:flex sm:items-stretch">
@@ -89,7 +106,7 @@ export function FeaturedCard({ item }: { item: FeedItem }) {
           <Thumb src={item.image} className="h-44 w-full !rounded-none sm:h-full sm:min-h-[13rem]" />
         </Link>
         <div className="p-4 sm:order-1 sm:flex sm:flex-1 sm:flex-col sm:justify-center sm:p-6">
-          <Meta item={item} />
+          <Meta item={item} blocked={blocked} />
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
             onClick={() => rememberItem(item)}
@@ -108,10 +125,18 @@ export function FeaturedCard({ item }: { item: FeedItem }) {
   );
 }
 
-function ArticleCardImpl({ item, linkSource = true }: { item: FeedItem; linkSource?: boolean }) {
+function ArticleCardImpl({
+  item,
+  linkSource = true,
+  blocked = false,
+}: {
+  item: FeedItem;
+  linkSource?: boolean;
+  blocked?: boolean;
+}) {
   return (
     <article className="card card-hover overflow-hidden p-3.5 sm:p-4">
-      <Meta item={item} linkSource={linkSource} />
+      <Meta item={item} linkSource={linkSource} blocked={blocked} />
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
         onClick={() => rememberItem(item)}
