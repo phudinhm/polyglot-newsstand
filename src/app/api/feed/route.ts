@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { TtlCache } from "@/lib/cache";
 import { assertSafeUrl, fetchText } from "@/lib/fetcher";
 import { parseFeed } from "@/lib/rss";
+import { discoverFeedUrl, discoverFromHomepage, refetchPlainly } from "@/lib/discover";
 import { DEFAULT_SOURCE_IDS, SOURCE_BY_ID } from "@/lib/sources";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 
@@ -16,16 +17,48 @@ const feedCache = new TtlCache<FeedItem[]>(FEED_TTL_MS, 300);
 const MAX_SOURCES = 24;
 const MAX_CUSTOM = 12;
 
+/**
+ * A publisher that stops answering is the single most common way this app
+ * disappoints, so a failed feed gets three more chances before it counts as
+ * gone. See src/lib/discover.ts for why each step exists.
+ */
 async function loadSource(source: Source): Promise<FeedItem[]> {
   const cached = feedCache.get(source.feed);
   if (cached) return cached;
-  const xml = await fetchText(source.feed, {
-    timeoutMs: 9_000,
-    accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
-  });
-  const items = parseFeed(xml, source);
-  feedCache.set(source.feed, items);
-  return items;
+
+  const attempts: (() => Promise<FeedItem[]>)[] = [
+    async () => {
+      const xml = await fetchText(source.feed, {
+        timeoutMs: 9_000,
+        accept:
+          "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+      });
+      return parseFeed(xml, source);
+    },
+    () => refetchPlainly(source),
+    async () => {
+      const discovered = await discoverFeedUrl(source.site);
+      if (!discovered) throw new Error("No feed advertised on the home page.");
+      const xml = await fetchText(discovered, { timeoutMs: 9_000, accept: "*/*" });
+      return parseFeed(xml, { ...source, feed: discovered });
+    },
+    () => discoverFromHomepage(source),
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      const items = await attempt();
+      if (items.length) {
+        feedCache.set(source.feed, items);
+        return items;
+      }
+      lastError = new Error("The feed answered but contained no articles.");
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Unavailable");
 }
 
 /** Reader-supplied sources are untrusted input, so validate before fetching. */
@@ -45,7 +78,7 @@ function sanitizeCustom(raw: unknown): Source[] {
       id: e.id,
       name: typeof e.name === "string" ? e.name.slice(0, 80) : "Custom source",
       short: typeof e.name === "string" ? e.name.slice(0, 40) : "Custom",
-      lang: e.lang === "de" ? "de" : "en",
+      lang: e.lang === "de" ? "de" : e.lang === "vi" ? "vi" : "en",
       category: typeof e.category === "string" ? (e.category as Source["category"]) : "world",
       level: e.level === "easy" || e.level === "hard" ? e.level : "medium",
       feed: e.feed,

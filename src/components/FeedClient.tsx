@@ -8,9 +8,11 @@ import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
+import { RecentlyRead } from "./RecentlyRead";
+import { SourceRail } from "./SourceRail";
 import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
-type LangFilter = "all" | "de" | "en";
+type LangFilter = "all" | "de" | "en" | "vi";
 type SortOrder = "newest" | "oldest";
 
 const PAGE_SIZE = 24;
@@ -46,7 +48,9 @@ export function FeedClient() {
   const [category, setCategory] = useState("all");
   const [month, setMonth] = useState("all");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
+  const [source, setSource] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -110,7 +114,22 @@ export function FeedClient() {
     return () => controller.abort();
   }, [ready, load]);
 
-  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query]);
+  // Filtering a few hundred stories per keystroke is felt on a phone.
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(queryInput), 180);
+    return () => clearTimeout(timer);
+  }, [queryInput]);
+
+  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+
+  // How much each paper has on the shelf today, for the rail.
+  const counts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of data?.items ?? []) {
+      map.set(item.sourceId, (map.get(item.sourceId) ?? 0) + 1);
+    }
+    return map;
+  }, [data]);
 
   const months = useMemo(() => {
     const keys = new Set<string>();
@@ -125,6 +144,7 @@ export function FeedClient() {
 
   const filtered = useMemo(() => {
     let list: FeedItem[] = data?.items ?? [];
+    if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
     if (month !== "all") {
@@ -149,14 +169,15 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort]);
+  }, [data, lang, category, month, query, sort, source]);
 
   const categories = useMemo(() => {
     const present = new Set((data?.items ?? []).map((i) => i.category));
     return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
   }, [data]);
 
-  const untouched = lang === "all" && category === "all" && month === "all" && !query.trim();
+  const untouched =
+    lang === "all" && category === "all" && month === "all" && !query.trim() && !source;
   const showFeatured = untouched && sort === "newest" && filtered.length > 3;
   const featured = showFeatured ? filtered[0] : null;
   const rest = showFeatured ? filtered.slice(1) : filtered;
@@ -177,7 +198,7 @@ export function FeedClient() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-3.5 flex items-start justify-between gap-3">
         <Greeting count={data?.items.length ?? 0} />
         <button
           type="button"
@@ -190,14 +211,18 @@ export function FeedClient() {
         </button>
       </div>
 
+      <RecentlyRead />
+
+      <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
+
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
           <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
             <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search headlines"
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label="Search headlines"
@@ -205,7 +230,7 @@ export function FeedClient() {
           </div>
 
           <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
-            {(["all", "de", "en"] as LangFilter[]).map((value) => (
+            {(["all", "de", "en", "vi"] as LangFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"

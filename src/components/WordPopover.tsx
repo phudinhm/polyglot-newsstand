@@ -123,7 +123,8 @@ export function WordPopover({
               {query.word}
             </p>
             <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">
-              {lang === "de" ? "German" : "English"} → {target === "vi" ? "Vietnamese" : "English"}
+              {lang === "de" ? "German" : lang === "vi" ? "Vietnamese" : "English"} →{" "}
+              {target === "vi" ? "Vietnamese" : "English"}
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn px-1.5 py-1" aria-label="Close">

@@ -10,6 +10,10 @@ import { formatDate } from "@/lib/format";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import type { Article, SourceLang } from "@/lib/types";
 import { setReadingNow } from "@/lib/reading";
+import { noteRead } from "@/lib/recent";
+import { recallItem } from "@/lib/handoff";
+import { cancelSpeech, speak, speechSupported } from "@/lib/tts";
+import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { WordPopover, type WordQuery } from "./WordPopover";
@@ -19,7 +23,9 @@ import {
   ExternalIcon,
   LanguagesIcon,
   SlidersIcon,
+  SpeakerIcon,
   SpinnerIcon,
+  StopIcon,
 } from "./Icons";
 
 interface Line {
@@ -55,6 +61,9 @@ export function Reader({
   const [knownWords, setKnownWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [speakingKey, setSpeakingKey] = useState<string | null>(null);
+  const [readingAloud, setReadingAloud] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   const lang = article?.lang ?? fallbackLang;
   const tr = useTranslator(lang, settings.target);
@@ -76,7 +85,33 @@ export function Reader({
         if (!res.ok) throw new Error(json.error ?? `Could not load the article (${res.status}).`);
         if (!cancelled) setArticle(json);
       } catch (err) {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load it.");
+        if (cancelled) return;
+        // The publisher blocked us, but the newsstand already had the summary.
+        // A shorter read that still translates beats a dead end.
+        const known = recallItem(url);
+        if (known?.summary) {
+          setBlocked(true);
+          setArticle({
+            url,
+            title: known.title,
+            siteName: known.sourceName,
+            lang: fallbackLang,
+            blocks: splitSentences(known.summary, fallbackLang).length
+              ? [
+                  {
+                    id: "b0",
+                    kind: "paragraph",
+                    sentences: splitSentences(known.summary, fallbackLang),
+                  },
+                ]
+              : [],
+            wordCount: known.summary.split(/\s+/).length,
+            readingMinutes: 1,
+            partial: true,
+          });
+        } else {
+          setLoadError(err instanceof Error ? err.message : "Could not load it.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -85,6 +120,21 @@ export function Reader({
       cancelled = true;
     };
   }, [url, fallbackLang]);
+
+  // Log the open once the article is known, so the history has a real title.
+  useEffect(() => {
+    if (!article) return;
+    noteRead({
+      url,
+      title: article.title,
+      sourceName: source?.name ?? article.siteName ?? "",
+      sourceId,
+      lang: article.lang,
+      progress: 0,
+    });
+    // Only on arrival; progress is updated by the scroll handler below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article?.url]);
 
   useEffect(() => {
     setSaved(isSaved(url));
@@ -114,6 +164,14 @@ export function Reader({
           sourceName: source?.name ?? article.siteName ?? "",
           lang: article.lang,
           sourceId,
+          progress: pct,
+        });
+        noteRead({
+          url,
+          title: article.title,
+          sourceName: source?.name ?? article.siteName ?? "",
+          sourceId,
+          lang: article.lang,
           progress: pct,
         });
       }
@@ -184,6 +242,56 @@ export function Reader({
     blockRefs.current.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [settings.bilingual, article, sentencesByBlock, tr]);
+
+  // ----------------------------------------------------------- read aloud
+  const stopSpeaking = useCallback(() => {
+    cancelSpeech();
+    setSpeakingKey(null);
+    setReadingAloud(false);
+  }, []);
+
+  // Leaving the article mid-sentence should not leave a voice talking.
+  useEffect(() => () => cancelSpeech(), []);
+
+  const speakLine = useCallback(
+    (index: number, continuous: boolean) => {
+      const line = lines[index];
+      if (!line) {
+        stopSpeaking();
+        return;
+      }
+      setSpeakingKey(line.key);
+      setActiveKey(line.key);
+      document.getElementById(`line-${line.key}`)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+      speak(line.text, {
+        lang,
+        rate: settings.speechRate,
+        voiceUri: settings.voices[lang],
+        onEnd: () => {
+          if (!continuous) {
+            setSpeakingKey(null);
+            return;
+          }
+          speakLine(index + 1, true);
+        },
+        onError: stopSpeaking,
+      });
+    },
+    [lines, lang, settings.speechRate, settings.voices, stopSpeaking],
+  );
+
+  function toggleReadAloud() {
+    if (readingAloud) {
+      stopSpeaking();
+      return;
+    }
+    const start = Math.max(0, lines.findIndex((l) => l.key === activeKey));
+    setReadingAloud(true);
+    speakLine(start, true);
+  }
 
   // ------------------------------------------------------------------ keyboard
   useEffect(() => {
@@ -258,6 +366,28 @@ export function Reader({
           <span className="min-w-0 flex-1 truncate text-sm text-muted">
             {source?.name ?? article?.siteName ?? "Reading"}
           </span>
+
+          {article && (
+            <span
+              className="shrink-0 text-[12px] tabular-nums text-muted"
+              aria-label={`${Math.round(progress)} percent read`}
+            >
+              {Math.round(progress)}%
+            </span>
+          )}
+
+          {article && speechSupported() && (
+            <button
+              type="button"
+              onClick={toggleReadAloud}
+              className={`btn px-2 py-1.5 ${readingAloud ? "btn-primary" : ""}`}
+              aria-pressed={readingAloud}
+              aria-label={readingAloud ? "Stop reading aloud" : "Read aloud from here"}
+              title={readingAloud ? "Stop reading aloud" : "Read aloud from here"}
+            >
+              {readingAloud ? <StopIcon /> : <SpeakerIcon />}
+            </button>
+          )}
 
           <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
             {(["en", "vi"] as const).map((t) => (
@@ -355,7 +485,8 @@ export function Reader({
                 src={article.leadImage}
                 alt=""
                 onError={() => setImageFailed(true)}
-                className="reading mb-6 !max-w-[var(--reading-measure)] w-full rounded-xl border border-border object-cover"
+                // A lead image should set the scene, not fill the first screen.
+                className="reading mb-6 !max-w-[var(--reading-measure)] max-h-[min(42vh,18rem)] w-full rounded-xl border border-border object-cover"
               />
             )}
             <h1 className="reading !max-w-[var(--reading-measure)] text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]">
@@ -391,11 +522,23 @@ export function Reader({
               </div>
             )}
 
-            {article.partial && (
-              <p className="reading mt-5 rounded-xl border border-border bg-surface-2 px-4 py-3 text-[13px] text-muted">
-                Only part of this article was readable, most likely a paywall. The original is
-                linked above.
-              </p>
+            {(blocked || article.partial) && (
+              <div className="reading mt-5 rounded-xl border border-border bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-muted">
+                <p>
+                  {blocked
+                    ? "This publisher blocked our request, which usually means a paywall. What you see is the summary the publication itself put in its feed."
+                    : "Only part of this article was readable, most likely a paywall."}{" "}
+                  Everything else still works here: tap a line to translate it, or use read aloud.
+                </p>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn mt-2.5 inline-flex !py-1.5 text-xs"
+                >
+                  <ExternalIcon width={14} height={14} /> Read the full piece on their site
+                </a>
+              </div>
             )}
 
             {tr.error && (
@@ -439,6 +582,7 @@ export function Reader({
                             role="button"
                             tabIndex={0}
                             data-active={activeKey === key}
+                            data-speaking={speakingKey === key}
                             className={isLines ? "sentence-row" : "sentence inline"}
                             onClick={() => {
                               if (suppressClick.current) {
@@ -490,6 +634,36 @@ export function Reader({
                               <>{sentence}</>
                             )}{" "}
                           </div>
+
+                          {activeKey === key && speechSupported() && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (speakingKey === key) {
+                                  stopSpeaking();
+                                } else {
+                                  setReadingAloud(false);
+                                  speakLine(
+                                    lines.findIndex((l) => l.key === key),
+                                    false,
+                                  );
+                                }
+                              }}
+                              className="mb-1 ml-[-0.55em] inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              aria-label={speakingKey === key ? "Stop" : "Hear this line"}
+                            >
+                              {speakingKey === key ? (
+                                <>
+                                  <StopIcon width={13} height={13} /> stop
+                                </>
+                              ) : (
+                                <>
+                                  <SpeakerIcon width={13} height={13} /> hear this line
+                                </>
+                              )}
+                            </button>
+                          )}
 
                           {open && (
                             <div className="translation" lang={settings.target}>

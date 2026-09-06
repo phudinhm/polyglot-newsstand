@@ -13,7 +13,7 @@ import { CheckIcon, CloseIcon, PlusIcon, SpinnerIcon } from "./Icons";
 
 export function SourcesClient() {
   const [settings, update] = useSettings();
-  const [lang, setLang] = useState<"all" | "de" | "en">("all");
+  const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [health, setHealth] = useState<SourceHealth[] | null>(null);
@@ -198,7 +198,7 @@ export function SourcesClient() {
       )}
 
       <div className="no-scrollbar mb-4 flex gap-1.5 overflow-x-auto">
-        {(["all", "de", "en"] as const).map((value) => (
+        {(["all", "de", "en", "vi"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -206,7 +206,13 @@ export function SourcesClient() {
             data-selected={lang === value}
             className="chip"
           >
-            {value === "all" ? "All languages" : value === "de" ? "Deutsch" : "English"}
+            {value === "all"
+              ? "All languages"
+              : value === "de"
+                ? "Deutsch"
+                : value === "en"
+                  ? "English"
+                  : "Tiếng Việt"}
           </button>
         ))}
         <button

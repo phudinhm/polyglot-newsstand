@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         .map((c) => ({
           id: c.id,
           name: c.name,
-          lang: c.lang === "de" ? "de" : "en",
+          lang: c.lang === "de" ? "de" : c.lang === "vi" ? "vi" : "en",
           category: "world",
           level: "medium",
           feed: c.feed,

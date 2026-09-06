@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { FeedItem } from "@/lib/types";
 import { readerHref, timeAgo } from "@/lib/format";
+import { rememberItem } from "@/lib/handoff";
+import { SOURCE_BY_ID } from "@/lib/sources";
+import { SourceAvatar } from "./SourceAvatar";
 
 /**
  * The source name is its own link, so it has to sit outside the card link
@@ -12,8 +15,10 @@ import { readerHref, timeAgo } from "@/lib/format";
  * signal worth interrupting for.
  */
 function Meta({ item, linkSource = true }: { item: FeedItem; linkSource?: boolean }) {
+  const site = SOURCE_BY_ID.get(item.sourceId)?.site;
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted">
+      <SourceAvatar name={item.sourceName} site={site} size={16} />
       {linkSource ? (
         <Link
           href={`/s/${encodeURIComponent(item.sourceId)}`}
@@ -75,6 +80,7 @@ export function FeaturedCard({ item }: { item: FeedItem }) {
           <Meta item={item} />
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
+            onClick={() => rememberItem(item)}
             className="mt-1.5 block"
           >
             <h2 className="text-[1.15rem] font-bold leading-snug tracking-tight sm:text-[1.55rem]">
@@ -90,12 +96,13 @@ export function FeaturedCard({ item }: { item: FeedItem }) {
   );
 }
 
-export function ArticleCard({ item, linkSource = true }: { item: FeedItem; linkSource?: boolean }) {
+function ArticleCardImpl({ item, linkSource = true }: { item: FeedItem; linkSource?: boolean }) {
   return (
     <article className="card card-hover overflow-hidden p-3.5 sm:p-4">
       <Meta item={item} linkSource={linkSource} />
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
+        onClick={() => rememberItem(item)}
         className="mt-1.5 flex gap-3.5"
       >
         <div className="min-w-0 flex-1">
@@ -111,3 +118,10 @@ export function ArticleCard({ item, linkSource = true }: { item: FeedItem; linkS
     </article>
   );
 }
+
+/**
+ * The shelf can hold a couple of hundred of these, and the search box types
+ * into shared state, so re-rendering every card per keystroke is the one
+ * obvious waste worth removing.
+ */
+export const ArticleCard = memo(ArticleCardImpl);

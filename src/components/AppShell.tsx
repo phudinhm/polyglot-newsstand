@@ -28,14 +28,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isReader && (
         <header className="glass sticky top-0 z-30 border-b border-border">
           <div className="mx-auto flex h-[var(--header-height)] max-w-5xl items-center gap-3 px-4">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span
-                aria-hidden
-                className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-fg"
-              >
-                PN
+            <Link href="/" className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" width={30} height={30} className="shrink-0 rounded-lg" />
+              <span className="hidden leading-tight sm:block">
+                <span className="block text-[15px] font-semibold tracking-tight">
+                  Polyglot Newsstand
+                </span>
+                <span className="block text-[11px] text-muted">The news, one line at a time</span>
               </span>
-              <span className="hidden sm:inline">Polyglot Newsstand</span>
             </Link>
 
             <nav className="ml-auto hidden items-center gap-1 sm:flex">

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { greetingFor, type Greeting as GreetingValue } from "@/lib/greetings";
+import { BUCKET_ICON, bucketFor, greetingFor, type Greeting as GreetingValue } from "@/lib/greetings";
+import { MoonIcon, StarsIcon, SunIcon, SunriseIcon, SunsetIcon } from "./Icons";
+
+const ICONS = {
+  sunrise: SunriseIcon,
+  sun: SunIcon,
+  sunset: SunsetIcon,
+  moon: MoonIcon,
+  stars: StarsIcon,
+};
 
 /**
  * The corner that says hello.
@@ -12,40 +21,51 @@ import { greetingFor, type Greeting as GreetingValue } from "@/lib/greetings";
  */
 export function Greeting({ count }: { count: number }) {
   const [value, setValue] = useState<GreetingValue | null>(null);
+  const [icon, setIcon] = useState<keyof typeof ICONS>("sun");
   const [today, setToday] = useState("");
 
   useEffect(() => {
-    const now = new Date();
-    setValue(greetingFor(now));
-    setToday(
-      now.toLocaleDateString(undefined, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      }),
-    );
+    const apply = () => {
+      const now = new Date();
+      setValue(greetingFor(now));
+      setIcon(BUCKET_ICON[bucketFor(now.getHours())]);
+      setToday(
+        now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }),
+      );
+    };
+    apply();
     // Re-greet if the app is left open across an hour boundary.
-    const timer = setInterval(() => setValue(greetingFor(new Date())), 5 * 60 * 1000);
+    const timer = setInterval(apply, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const Icon = ICONS[icon];
 
   return (
     <div className="min-h-[3.75rem]">
       {value ? (
         <>
-          <h1
-            lang={value.lang}
-            className="text-[1.6rem] font-bold leading-tight tracking-tight sm:text-3xl"
-          >
-            {value.text}
-            <span className="text-accent">.</span>
-          </h1>
-          <p className="mt-1 text-[13px] text-muted sm:text-sm">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent"
+            >
+              <Icon width={19} height={19} />
+            </span>
+            <h1
+              lang={value.lang}
+              className="text-[1.6rem] font-bold leading-tight tracking-tight sm:text-[1.9rem]"
+            >
+              {value.text}
+              <span className="text-accent">.</span>
+            </h1>
+          </div>
+          <p className="mt-1.5 text-[13px] text-muted sm:text-sm">
             {today}
             {count > 0 && (
               <>
                 <span aria-hidden> · </span>
-                {count} stories on the shelf
+                {count} stories
               </>
             )}
             <span className="hidden sm:inline">
@@ -56,7 +76,7 @@ export function Greeting({ count }: { count: number }) {
         </>
       ) : (
         <>
-          <div className="skeleton h-8 w-48" />
+          <div className="skeleton h-9 w-52" />
           <div className="skeleton mt-2 h-4 w-64" />
         </>
       )}

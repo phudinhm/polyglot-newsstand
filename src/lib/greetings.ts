@@ -8,6 +8,17 @@
 
 export type Bucket = "dawn" | "morning" | "midday" | "afternoon" | "evening" | "night" | "lateNight";
 
+/** Which sky to draw beside the greeting. */
+export const BUCKET_ICON: Record<Bucket, "sunrise" | "sun" | "sunset" | "moon" | "stars"> = {
+  dawn: "sunrise",
+  morning: "sunrise",
+  midday: "sun",
+  afternoon: "sun",
+  evening: "sunset",
+  night: "moon",
+  lateNight: "stars",
+};
+
 export interface Greeting {
   text: string;
   lang: "de" | "en" | "vi";

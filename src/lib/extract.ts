@@ -103,6 +103,7 @@ function detectLang(html: string, fallback: SourceLang): SourceLang {
   const lang = match?.[1]?.slice(0, 2).toLowerCase();
   if (lang === "de") return "de";
   if (lang === "en") return "en";
+  if (lang === "vi") return "vi";
   return fallback;
 }
 

@@ -33,14 +33,16 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
     .slice(0, 3)
     .map(([category]) => category);
 
-  const germanCount = byLang.get("de") ?? 0;
-  const englishCount = byLang.get("en") ?? 0;
+  // Reading two languages is the point, so a shelf that has drifted into one
+  // gets nudged back. Vietnamese only counts once the reader has added some.
+  const counts: [SourceLang, number][] = [
+    ["de", byLang.get("de") ?? 0],
+    ["en", byLang.get("en") ?? 0],
+  ];
+  const [thinnest, thinnestCount] = counts.sort((a, b) => a[1] - b[1])[0];
+  const fattest = counts[counts.length - 1][1];
   const thinLanguage: SourceLang | null =
-    germanCount === 0 || germanCount * 3 < englishCount
-      ? "de"
-      : englishCount === 0 || englishCount * 3 < germanCount
-        ? "en"
-        : null;
+    thinnestCount === 0 || thinnestCount * 3 < fattest ? thinnest : null;
   const hasEasy = current.some((s) => s.level === "easy");
 
   const scored = SOURCES.filter((s) => !onShelf.has(s.id)).map((source) => {
@@ -85,10 +87,15 @@ function labelFor(category: Category): string {
   const labels: Record<Category, string> = {
     top: "front-page news",
     world: "world news",
+    politics: "politics",
     business: "business",
+    finance: "markets and finance",
     tech: "technology",
     science: "science",
+    health: "health",
+    environment: "climate",
     culture: "culture",
+    opinion: "opinion",
     sport: "sport",
     learner: "learner material",
   };

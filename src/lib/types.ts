@@ -1,5 +1,5 @@
 /** Languages we serve news in. */
-export type SourceLang = "de" | "en";
+export type SourceLang = "de" | "en" | "vi";
 
 /** Languages a reader can translate into. */
 export type TargetLang = "en" | "vi";
@@ -7,10 +7,15 @@ export type TargetLang = "en" | "vi";
 export type Category =
   | "top"
   | "world"
+  | "politics"
   | "business"
+  | "finance"
   | "tech"
   | "science"
+  | "health"
+  | "environment"
   | "culture"
+  | "opinion"
   | "sport"
   | "learner";
 
@@ -33,6 +38,12 @@ export interface Source {
   fullTextFeed?: boolean;
   /** One line on why a learner might pick this. */
   note?: string;
+  /**
+   * How much of the journalism you can actually read.
+   * "soft" means some articles are metered; "hard" means most are locked.
+   * Nothing is hidden for it, but the reader deserves to know in advance.
+   */
+  paywall?: "soft" | "hard";
 }
 
 export interface FeedItem {

@@ -12,7 +12,8 @@ const articleCache = new TtlCache<Article>(30 * 60 * 1000, 300);
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const target = params.get("url");
-  const lang = (params.get("lang") === "en" ? "en" : "de") as SourceLang;
+  const requested = params.get("lang");
+  const lang: SourceLang = requested === "en" ? "en" : requested === "vi" ? "vi" : "de";
 
   if (!target) {
     return NextResponse.json({ error: "Missing ?url" }, { status: 400 });
@@ -24,10 +25,19 @@ export async function GET(req: Request) {
     const cached = articleCache.get(cacheKey);
     if (cached) return NextResponse.json(cached);
 
-    const html = await fetchText(safe.toString(), {
-      timeoutMs: 15_000,
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    });
+    // Some publishers answer 406 to a specific Accept header but serve the
+    // same page happily to a plain one, so a rejection earns a second try.
+    let html: string;
+    try {
+      html = await fetchText(safe.toString(), {
+        timeoutMs: 15_000,
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      });
+    } catch (first) {
+      const status = first instanceof FetchError ? first.status : undefined;
+      if (status !== 406 && status !== 403) throw first;
+      html = await fetchText(safe.toString(), { timeoutMs: 15_000, accept: "*/*" });
+    }
     const article = extractArticle(html, safe.toString(), lang);
 
     if (!article.blocks.length) {

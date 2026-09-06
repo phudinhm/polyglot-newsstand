@@ -93,7 +93,9 @@ export function googleNewsFeed(options: {
   const locale =
     lang === "de"
       ? { hl: "de", gl: "DE", ceid: "DE:de" }
-      : { hl: "en-US", gl: "US", ceid: "US:en" };
+      : lang === "vi"
+        ? { hl: "vi", gl: "VN", ceid: "VN:vi" }
+        : { hl: "en-US", gl: "US", ceid: "US:en" };
   const params = new URLSearchParams({ q: query, ...locale });
   return `https://news.google.com/rss/search?${params.toString()}`;
 }
@@ -118,4 +120,8 @@ export const SOURCE_PRESETS: {
   { label: "Bain & Company", domain: "bain.com", category: "business", level: "hard", note: "Strategy and private equity" },
   { label: "Statista", domain: "statista.com", category: "business", level: "medium", note: "Data and market figures" },
   { label: "Handelsblatt (DE)", domain: "handelsblatt.com", category: "business", level: "hard", note: "German business daily" },
+  { label: "Reuters", domain: "reuters.com", category: "finance", level: "medium", note: "Wire copy, plain and fast" },
+  { label: "Bloomberg", domain: "bloomberg.com", category: "finance", level: "hard", note: "Markets and deals" },
+  { label: "WSJ", domain: "wsj.com", category: "finance", level: "hard", note: "US business daily" },
+  { label: "Nikkei Asia", domain: "asia.nikkei.com", category: "finance", level: "hard", note: "Asian business and markets" },
 ];

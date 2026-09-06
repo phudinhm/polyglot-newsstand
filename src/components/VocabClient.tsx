@@ -10,7 +10,7 @@ import { DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
 export function VocabClient() {
   const [entries, setEntries] = useState<VocabEntry[]>([]);
   const [query, setQuery] = useState("");
-  const [lang, setLang] = useState<"all" | "de" | "en">("all");
+  const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export function VocabClient() {
             aria-label="Search your vocabulary"
           />
         </div>
-        {(["all", "de", "en"] as const).map((value) => (
+        {(["all", "de", "en", "vi"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -99,7 +99,7 @@ export function VocabClient() {
             data-selected={lang === value}
             className="chip"
           >
-            {value === "all" ? "All" : value === "de" ? "Deutsch" : "English"}
+            {value === "all" ? "All" : value === "de" ? "Deutsch" : value === "en" ? "English" : "Tiếng Việt"}
           </button>
         ))}
         {entries.length > 0 && (

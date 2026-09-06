@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s · Polyglot Newsstand",
   },
   description:
-    "Read German and English news line by line, with English and Vietnamese translation on tap, in a reading environment built for long sessions.",
+    "The news, one line at a time. Read German, English and Vietnamese journalism sentence by sentence, with translation on tap and a reading environment built for long sessions.",
   applicationName: "Polyglot Newsstand",
   manifest: "/manifest.webmanifest",
   icons: {

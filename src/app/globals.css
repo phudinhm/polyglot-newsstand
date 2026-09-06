@@ -75,19 +75,26 @@
   --reading-measure: 66ch;
   --reading-tracking: 0em;
 
-  --font-reading-serif: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype",
-    Palatino, "Book Antiqua", Georgia, ui-serif, serif;
-  --font-reading-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  --font-charter: Charter, "Bitstream Charter", "Iowan Old Style", "Charis SIL", Georgia,
+    ui-serif, serif;
+  --font-georgia: Georgia, "Times New Roman", "Liberation Serif", ui-serif, serif;
+  --font-palatino: "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia,
+    ui-serif, serif;
+  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  --font-verdana: Verdana, Tahoma, "DejaVu Sans", Geneva, ui-sans-serif, sans-serif;
+
   --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
-  --reading-family: var(--font-reading-serif);
+  --reading-family: var(--font-charter);
   --header-height: 3.5rem;
+  --ui-zoom: 1;
 }
 
-[data-font="sans"] {
-  --reading-family: var(--font-reading-sans);
-}
+[data-font="georgia"] { --reading-family: var(--font-georgia); }
+[data-font="palatino"] { --reading-family: var(--font-palatino); }
+[data-font="inter"] { --reading-family: var(--font-inter); }
+[data-font="verdana"] { --reading-family: var(--font-verdana); }
 
 /* Expose the tokens to Tailwind utilities: bg-bg, text-fg, border-border ... */
 @theme inline {
@@ -118,6 +125,9 @@ body {
   background-color: var(--bg);
   color: var(--fg);
   font-family: var(--font-ui);
+  /* Whole-page zoom, for readers who want everything larger rather than just
+     the article text. Kept off the reading controls on purpose. */
+  zoom: var(--ui-zoom);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   padding-bottom: env(safe-area-inset-bottom);
@@ -251,6 +261,13 @@ body {
   background-color: var(--highlight);
 }
 
+/* The line being read aloud, so the ear and the eye stay together. */
+.sentence-row[data-speaking="true"],
+.sentence[data-speaking="true"] {
+  background-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .translation {
   color: var(--translation);
   font-size: 0.88em;
@@ -315,6 +332,17 @@ body {
 }
 
 /* ------------------------------------------------------------------ chrome */
+
+/*
+ * Off-screen cards and paragraphs are skipped entirely by the browser. On a
+ * phone scrolling a long shelf this is the difference between smooth and not,
+ * and the size hint stops the scrollbar from jumping around.
+ */
+.card,
+.reading .para {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
 
 .card {
   background-color: var(--surface);

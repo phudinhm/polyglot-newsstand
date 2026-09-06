@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
-import { LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
+import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
@@ -113,7 +113,7 @@ export function SourcePageClient({ id }: { id: string }) {
           <div className="min-w-0">
             <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{source.name}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-              <span className="uppercase">{source.lang === "de" ? "Deutsch" : "English"}</span>
+              <span>{LANG_LABELS[source.lang]}</span>
               <span aria-hidden>·</span>
               <span>{LEVEL_LABELS[source.level]}</span>
               <span aria-hidden>·</span>
