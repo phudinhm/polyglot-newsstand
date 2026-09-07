@@ -126,11 +126,13 @@ export function Reader({
         if (cancelled) return;
         // The publisher blocked us, but the newsstand already had the summary.
         // A shorter read that still translates beats a dead end.
+        // Remember the refusal however it went, so the shelf can act on it.
+        // Only recording it when a summary happened to be around meant a paper
+        // that fails outright was never learned from, and kept being offered.
+        if (sourceId) noteBlocked(sourceId);
         const known = recallItem(url);
         if (known?.summary) {
           setBlocked(true);
-          // Remember it now, so the shelf acts on it even if this tab is closed.
-          if (sourceId) noteBlocked(sourceId);
           setArticle({
             url,
             title: known.title,
@@ -159,7 +161,7 @@ export function Reader({
     return () => {
       cancelled = true;
     };
-  }, [url, fallbackLang]);
+  }, [url, fallbackLang, sourceId]);
 
   // Log the open once the article is known, so the history has a real title.
   useEffect(() => {
@@ -244,18 +246,33 @@ export function Reader({
   }, [article, levelled]);
 
   // ------------------------------------------------------------- translations
+  /**
+   * The line whose translation has just been asked for.
+   *
+   * On a phone the line you tap is often near the bottom, and its translation
+   * arrives a moment later and lands underneath the floating toolbar: the one
+   * thing you asked for is the one thing you cannot see. Scrolling at tap time
+   * is too early, because the translation is not on the page yet, so this
+   * remembers the line and the effect below acts once it is.
+   */
+  const [justOpened, setJustOpened] = useState<string | null>(null);
+
   const revealLine = useCallback(
     (line: Line) => {
       setActiveKey(line.key);
+      let opening = true;
       setRevealed((prev) => {
         const next = new Set(prev);
         if (next.has(line.key)) {
           next.delete(line.key);
+          opening = false;
           return next;
         }
         next.add(line.key);
         return next;
       });
+
+      if (opening) setJustOpened(line.key);
       // Translate the whole paragraph at once: it is one request either way,
       // and the next line is then instant.
       const batch = sentencesByBlock.get(line.blockId) ?? [line.text];
@@ -283,6 +300,27 @@ export function Reader({
     blockRefs.current.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [settings.bilingual, article, sentencesByBlock, tr]);
+
+  useEffect(() => {
+    if (!justOpened) return;
+
+    const settle = () => {
+      const block = document.getElementById(`line-${justOpened}`)?.parentElement;
+      if (!block) return;
+      // Everything below this belongs to the toolbar and the safe area.
+      const limit = window.innerHeight - 104;
+      const overshoot = block.getBoundingClientRect().bottom - limit;
+      if (overshoot > 0) window.scrollBy({ top: overshoot, behavior: "smooth" });
+    };
+
+    // Runs once now for the sentence itself, and again when the translation
+    // arrives and makes the block taller - which is the case that was landing
+    // under the toolbar. Clearing the flag on the first pass, as an earlier
+    // version did, meant the second pass never happened.
+    settle();
+    const done = setTimeout(() => setJustOpened(null), 1500);
+    return () => clearTimeout(done);
+  }, [justOpened, revealed, tr.version]);
 
   // ----------------------------------------------------------- read aloud
   const stopSpeaking = useCallback(() => {
@@ -439,13 +477,13 @@ export function Reader({
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-1.5 px-3 py-2.5 sm:gap-2">
-          <Link href="/" className="btn !px-1.5 !py-1.5 sm:!px-2" aria-label={t("reader.back")}>
+          <Link href="/" className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2" aria-label={t("reader.back")}>
             <ArrowLeftIcon />
           </Link>
           {source ? (
             <Link
               href={`/s/${source.id}`}
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-muted hover:text-fg"
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-muted hover:text-fg"
               title={source.name}
             >
               <SourceAvatar name={source.name} site={source.site} size={18} />
@@ -461,7 +499,7 @@ export function Reader({
             <button
               type="button"
               onClick={togglePause}
-              className="btn !px-1.5 !py-1.5 sm:!px-2"
+              className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
               aria-label={paused ? t("reader.resume") : t("reader.pause")}
               title={paused ? t("reader.resume") : t("reader.pause")}
             >
@@ -473,7 +511,7 @@ export function Reader({
             <button
               type="button"
               onClick={toggleReadAloud}
-              className={`btn !px-1.5 !py-1.5 sm:!px-2 ${readingAloud ? "btn-primary" : ""}`}
+              className={`btn min-h-11 !px-1.5 !py-1.5 sm:!px-2 ${readingAloud ? "btn-primary" : ""}`}
               aria-pressed={readingAloud}
               aria-label={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
               title={readingAloud ? t("reader.stopReading") : t("reader.readAloud")}
@@ -485,7 +523,7 @@ export function Reader({
           <button
             type="button"
             onClick={() => update({ target: settings.target === "en" ? "vi" : "en" })}
-            className="btn !px-1.5 !py-1.5 text-xs font-semibold sm:hidden"
+            className="btn min-h-11 !px-1.5 !py-1.5 text-xs font-semibold sm:hidden"
             aria-label={t("reader.translateInto")}
             title={t("reader.translateInto")}
           >
@@ -536,7 +574,7 @@ export function Reader({
                 }),
               );
             }}
-            className={`btn !px-1.5 !py-1.5 sm:!px-2 ${saved ? "btn-primary" : ""}`}
+            className={`btn min-h-11 !px-1.5 !py-1.5 sm:!px-2 ${saved ? "btn-primary" : ""}`}
             aria-pressed={saved}
             aria-label={t("reader.save")}
           >
@@ -546,7 +584,7 @@ export function Reader({
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="btn !px-1.5 !py-1.5 sm:!px-2"
+            className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
             aria-label={t("reader.settings")}
           >
             <SlidersIcon />
@@ -571,6 +609,39 @@ export function Reader({
           <div className="card p-6">
             <h1 className="text-lg font-semibold">This one will not open here</h1>
             <p className="mt-2 text-sm text-muted">{loadError}</p>
+            {sourceId && publisher && (
+              <p className="mt-2 text-[13px] text-muted">
+                {remembered ? (
+                  <>
+                    {publisher} is back on the shelf.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        noteBlocked(sourceId);
+                        setRemembered(false);
+                      }}
+                      className="font-medium text-accent underline underline-offset-2"
+                    >
+                      Hide it again
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {publisher} will be left off the shelf from now on.{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        forgetBlocked(sourceId);
+                        setRemembered(true);
+                      }}
+                      className="font-medium text-accent underline underline-offset-2"
+                    >
+                      Keep showing it
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <a href={url} target="_blank" rel="noreferrer noopener" className="btn btn-primary">
                 <ExternalIcon /> Read on the publisher&apos;s site
@@ -628,15 +699,20 @@ export function Reader({
             </p>
 
             {showHint && (
-              <div className="reading mt-5 rounded-xl border border-border bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-muted">
-                <p>
-                  Tap any line to see it in {settings.target === "vi" ? "Vietnamese" : "English"}.
-                  Double click or long press a single word to look it up and save it. On a keyboard,
-                  use <kbd className="font-semibold">j</kbd> and <kbd className="font-semibold">k</kbd>{" "}
-                  to move and <kbd className="font-semibold">t</kbd> to translate.
-                </p>
-                <button type="button" onClick={dismissHint} className="btn mt-2 px-2 py-1 text-xs">
-                  Got it
+              // One line, not a paragraph. This sits between the reader and
+              // the first sentence, and on a phone the old version took half
+              // the screen to explain something a single tap teaches anyway.
+              <div className="reading mt-4 flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2 text-[12.5px] leading-snug text-muted">
+                <span className="min-w-0 flex-1">
+                  {t("reader.hintTap")}{" "}
+                  <span className="hidden sm:inline">{t("reader.hintKeys")}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={dismissHint}
+                  className="btn shrink-0 !px-2 !py-1 text-[12px]"
+                >
+                  {t("reader.gotIt")}
                 </button>
               </div>
             )}
@@ -828,16 +904,16 @@ export function Reader({
                                   );
                                 }
                               }}
-                              className="mb-1 ml-[-0.55em] inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              className="line-action"
                               aria-label={speakingKey === key ? "Stop" : "Hear this line"}
                             >
                               {speakingKey === key ? (
                                 <>
-                                  <StopIcon width={13} height={13} /> {t("reader.stop")}
+                                  <StopIcon width={15} height={15} /> {t("reader.stop")}
                                 </>
                               ) : (
                                 <>
-                                  <SpeakerIcon width={13} height={13} /> {t("reader.hearLine")}
+                                  <SpeakerIcon width={15} height={15} /> {t("reader.hearLine")}
                                 </>
                               )}
                             </button>
@@ -851,10 +927,10 @@ export function Reader({
                                 stopSpeaking();
                                 setPracticeLine(sentence);
                               }}
-                              className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              className="line-action"
                               aria-label="Practise saying this line"
                             >
-                              <MicIcon width={13} height={13} /> {t("reader.sayItBack")}
+                              <MicIcon width={15} height={15} /> {t("reader.sayItBack")}
                             </button>
                           )}
 
@@ -865,10 +941,10 @@ export function Reader({
                                 e.stopPropagation();
                                 setStructureLine(sentence);
                               }}
-                              className="mb-1 ml-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                              className="line-action"
                               aria-label="Break this sentence down"
                             >
-                              <BranchIcon width={13} height={13} /> {t("reader.structure")}
+                              <BranchIcon width={15} height={15} /> {t("reader.structure")}
                             </button>
                           )}
 

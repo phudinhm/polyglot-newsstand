@@ -11,7 +11,8 @@
     "check:sources": "node scripts/check-sources.mjs",
     "check:grammar": "node scripts/check-grammar.mjs",
     "check:dictionary": "node scripts/check-dictionary.mjs",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "check:feeds": "node scripts/check-feeds.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

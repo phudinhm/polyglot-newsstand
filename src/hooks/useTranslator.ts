@@ -40,7 +40,9 @@ function persist(cache: Cache) {
  */
 export function useTranslator(source: SourceLang, target: TargetLang) {
   const cacheRef = useRef<Cache>({});
-  const [, forceRender] = useState(0);
+  // Translations land in a ref, so this counter is what tells React, and
+  // anything downstream, that one has arrived.
+  const [version, forceRender] = useState(0);
   const pendingRef = useRef<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
@@ -106,5 +108,5 @@ export function useTranslator(source: SourceLang, target: TargetLang) {
     [keyFor, source, target],
   );
 
-  return { get, isPending, request, error, provider, clearError: () => setError(null) };
+  return { get, isPending, request, error, provider, version, clearError: () => setError(null) };
 }

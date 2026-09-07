@@ -9,3 +9,6 @@ build
 next-env.d.ts
 .DS_Store
 npm-debug.log*
+
+# Scratch output from the check scripts
+.check-*/

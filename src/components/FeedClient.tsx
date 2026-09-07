@@ -9,12 +9,14 @@ import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
-import { SOURCE_BY_ID } from "@/lib/sources";
+import { SOURCE_BY_ID, SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
 import { RecentlyRead } from "./RecentlyRead";
+import { RecentSources } from "./RecentSources";
 import { SourceRail } from "./SourceRail";
+import { SourceAvatar } from "./SourceAvatar";
 import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
 type LangFilter = "all" | "de" | "en" | "vi";
@@ -206,6 +208,24 @@ export function FeedClient() {
     return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
   }, [data]);
 
+  /**
+   * When a section comes up empty, the papers that would fill it. Ranked so a
+   * reader gets something they can actually read: their own languages first,
+   * then the ones that are not behind a paywall.
+   */
+  const emptyCategoryPicks = useMemo(() => {
+    if (category === "all" || filtered.length) return [];
+    const onShelf = new Set(settings.sources);
+    return SOURCES.filter((s) => s.category === category && !onShelf.has(s.id))
+      .sort(
+        (a, b) =>
+          Number(a.paywall === "hard") - Number(b.paywall === "hard") ||
+          Number(b.lang === "de") - Number(a.lang === "de") ||
+          a.name.localeCompare(b.name),
+      )
+      .slice(0, 3);
+  }, [category, filtered.length, settings.sources]);
+
   const untouched =
     lang === "all" && category === "all" && month === "all" && !query.trim() && !source;
   const showFeatured = untouched && sort === "newest" && filtered.length > 3;
@@ -259,6 +279,8 @@ export function FeedClient() {
       </div>
 
       <RecentlyRead />
+
+      <RecentSources />
 
       <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
 
@@ -396,7 +418,9 @@ export function FeedClient() {
           </div>
         </div>
 
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+        {/* Twenty-three sections do not fit on one line anywhere, so a phone
+            scrolls them sideways and a wider screen wraps them onto two. */}
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 sm:flex-wrap sm:overflow-x-visible">
           <button
             type="button"
             onClick={() => setCategory("all")}
@@ -450,21 +474,56 @@ export function FeedClient() {
       )}
 
       {!loading && !filtered.length && !error && (
-        <div className="card p-8 text-center">
-          <p className="font-medium">{t("feed.nothingMatches")}</p>
-          <p className="mt-1 text-sm text-muted">
-            Try another category, or add more publications on the{" "}
-            <Link href="/sources" className="underline underline-offset-2">
-              Sources
-            </Link>{" "}
-            page.
-          </p>
+        <div className="card p-6 text-center sm:p-8">
+          {/* An empty section is almost always an empty shelf rather than a
+              quiet news day, so the useful answer is the papers that would
+              have filled it, not an apology. */}
+          {emptyCategoryPicks.length > 0 ? (
+            <>
+              <p className="font-medium">
+                {t("feed.noneOnShelf")} {t(categoryKey(category)).toLowerCase()}
+              </p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                {t("feed.addTheseToFill")}
+              </p>
+              <div className="mt-4 space-y-2 text-left">
+                {emptyCategoryPicks.map((pick) => (
+                  <div key={pick.id} className="flex items-center gap-2.5 rounded-xl border border-border p-2.5">
+                    <SourceAvatar name={pick.name} site={pick.site} size={24} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{pick.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => update({ sources: [...settings.sources, pick.id] })}
+                      className="btn btn-primary shrink-0 !px-2.5 !py-1.5 text-xs"
+                      aria-label={`${t("feed.add")} ${pick.name}`}
+                    >
+                      {t("feed.add")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Link href="/sources" className="mt-4 inline-block text-[13px] text-accent underline underline-offset-2">
+                {t("feed.browseAll")}
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">{t("feed.nothingMatches")}</p>
+              <p className="mt-1 text-sm text-muted">
+                {t("feed.tryAnother")}{" "}
+                <Link href="/sources" className="underline underline-offset-2">
+                  {t("nav.sources")}
+                </Link>
+                .
+              </p>
+            </>
+          )}
         </div>
       )}
 
       {featured && (
         <div className="mb-5">
-          <FeaturedCard item={featured} />
+          <FeaturedCard item={featured} blocked={blocked.has(featured.sourceId)} />
         </div>
       )}
 
@@ -476,7 +535,7 @@ export function FeedClient() {
             </h2>
             <div className="space-y-2.5">
               {group.items.map((item) => (
-                <ArticleCard key={item.id} item={item} />
+                <ArticleCard key={item.id} item={item} blocked={blocked.has(item.sourceId)} />
               ))}
             </div>
           </section>

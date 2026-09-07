@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
 import type { ThemeName } from "@/lib/settings";
-import { onVoicesReady, speak, speechSupported, voicesFor } from "@/lib/tts";
+import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang } from "@/lib/types";
 import { SpeakerIcon } from "./Icons";
 
@@ -104,10 +104,14 @@ export function ReaderToolbar({
               className="input mt-1 w-full"
               disabled={!forLang.length}
             >
-              <option value="">{forLang.length ? "Device default" : "No voice installed"}</option>
+              <option value="">
+                {forLang.length
+                  ? `${t("settings.deviceDefault")} (${forLang.length})`
+                  : t("settings.noVoice")}
+              </option>
               {forLang.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name}
+                  {v.name} · {regionOf(v)}
                 </option>
               ))}
             </select>
@@ -127,7 +131,7 @@ export function ReaderToolbar({
               disabled={!forLang.length}
               className="btn mt-2 w-full justify-center !py-1.5 text-xs"
             >
-              <SpeakerIcon width={14} height={14} /> Try this voice
+              <SpeakerIcon width={14} height={14} /> {t("settings.tryVoice")}
             </button>
             <p className="mt-2 text-[11px] leading-relaxed text-muted">
               Voices come from your device. Android and Windows let you install more in the system

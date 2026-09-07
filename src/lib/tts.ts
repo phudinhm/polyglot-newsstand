@@ -39,36 +39,82 @@ export function onVoicesReady(callback: (voices: SpeechSynthesisVoice[]) => void
 }
 
 /**
- * macOS and some Android builds ship novelty voices - bells, robots, whispers.
- * They are fun and useless for pronunciation practice, so they are excluded.
+ * The joke voices, and only those.
+ *
+ * Apple ships a set of voices with first names - Eddy, Flo, Grandma, Grandpa,
+ * Reed, Rocko, Sandy, Shelley - and every one of them exists in German. An
+ * earlier version of this list read them as novelty and threw them out, which
+ * silently deleted eight German voices from a picker that then looked bare.
+ * What actually belongs here is the instruments and the robots: things that do
+ * not sound like a person reading, in any language.
  */
 const NOVELTY = new Set([
   "albert", "bad news", "bahh", "bells", "boing", "bubbles", "cellos",
-  "deranged", "good news", "jester", "junior", "organ", "superstar",
-  "trinoids", "whisper", "wobble", "zarvox", "hysterical", "pipe organ",
-  "bad guy", "grandma", "grandpa", "rocko", "shelley", "sandy", "flo",
-  "eddy", "reed", "ralph", "fred", "kathy", "princess",
+  "deranged", "good news", "jester", "organ", "pipe organ", "superstar",
+  "trinoids", "whisper", "wobble", "zarvox", "hysterical", "bad guy",
 ]);
+
+/**
+ * Older, thinner voices that still read like a person. Kept, because on a
+ * device with nothing else they are the difference between hearing the
+ * sentence and not, but ranked below anything newer.
+ */
+const LEGACY = new Set(["fred", "ralph", "kathy", "junior", "princess", "victoria", "agnes"]);
 
 /** Names that mark a modern, more natural engine on the platforms that have one. */
 const QUALITY_HINTS = ["neural", "natural", "premium", "enhanced", "siri", "online", "wavenet"];
 
+const baseName = (voice: SpeechSynthesisVoice) =>
+  voice.name.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim();
+
 function isHumanVoice(voice: SpeechSynthesisVoice): boolean {
-  const name = voice.name.toLowerCase();
+  const name = baseName(voice);
   return ![...NOVELTY].some((n) => name === n || name.startsWith(`${n} `));
 }
 
 function voiceRank(voice: SpeechSynthesisVoice): number {
   const name = voice.name.toLowerCase();
+  if (LEGACY.has(baseName(voice))) return 9;
   const quality = QUALITY_HINTS.some((hint) => name.includes(hint)) ? 0 : 1;
   // A network voice usually sounds better; a local one always works offline.
   return quality * 2 + (voice.localService ? 1 : 0);
 }
 
+/** Where a voice is from, which is a real choice for German. */
+export const VOICE_REGIONS: Record<string, string> = {
+  "de-de": "Deutschland",
+  "de-at": "Österreich",
+  "de-ch": "Schweiz",
+  "en-gb": "UK",
+  "en-us": "US",
+  "en-au": "Australia",
+  "en-ie": "Ireland",
+  "en-in": "India",
+  "en-za": "South Africa",
+  "en-nz": "New Zealand",
+  "vi-vn": "Việt Nam",
+};
+
+export const regionOf = (voice: SpeechSynthesisVoice) =>
+  VOICE_REGIONS[voice.lang.toLowerCase()] ?? voice.lang;
+
+/**
+ * Every installed voice for a language, across regions. German is spoken in
+ * three countries and the browser tags them separately, so a reader who wants
+ * an Austrian voice can have one.
+ */
 export function voicesFor(lang: SourceLang | TargetLang): SpeechSynthesisVoice[] {
   const prefix = BCP47[lang].slice(0, 2);
+  const seen = new Set<string>();
   return listVoices()
-    .filter((v) => v.lang.toLowerCase().startsWith(prefix) && isHumanVoice(v))
+    .filter((v) => {
+      if (!v.lang.toLowerCase().startsWith(prefix) || !isHumanVoice(v)) return false;
+      // Some platforms list the same voice twice; a duplicate row is noise.
+      const key = `${v.name.toLowerCase()}|${v.lang.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
 }
 

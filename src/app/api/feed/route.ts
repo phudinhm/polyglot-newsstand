@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { TtlCache } from "@/lib/cache";
-import { assertSafeUrl, fetchText } from "@/lib/fetcher";
-import { parseFeed } from "@/lib/rss";
-import { discoverFeedUrl, discoverFromHomepage, refetchPlainly } from "@/lib/discover";
+import { assertSafeUrl } from "@/lib/fetcher";
+import { loadFeedWithRecovery } from "@/lib/discover";
 import { DEFAULT_SOURCE_IDS, SOURCE_BY_ID } from "@/lib/sources";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 
@@ -26,39 +25,9 @@ async function loadSource(source: Source): Promise<FeedItem[]> {
   const cached = feedCache.get(source.feed);
   if (cached) return cached;
 
-  const attempts: (() => Promise<FeedItem[]>)[] = [
-    async () => {
-      const xml = await fetchText(source.feed, {
-        timeoutMs: 9_000,
-        accept:
-          "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
-      });
-      return parseFeed(xml, source);
-    },
-    () => refetchPlainly(source),
-    async () => {
-      const discovered = await discoverFeedUrl(source.site);
-      if (!discovered) throw new Error("No feed advertised on the home page.");
-      const xml = await fetchText(discovered, { timeoutMs: 9_000, accept: "*/*" });
-      return parseFeed(xml, { ...source, feed: discovered });
-    },
-    () => discoverFromHomepage(source),
-  ];
-
-  let lastError: unknown;
-  for (const attempt of attempts) {
-    try {
-      const items = await attempt();
-      if (items.length) {
-        feedCache.set(source.feed, items);
-        return items;
-      }
-      lastError = new Error("The feed answered but contained no articles.");
-    } catch (err) {
-      lastError = err;
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("Unavailable");
+  const { items } = await loadFeedWithRecovery(source);
+  feedCache.set(source.feed, items);
+  return items;
 }
 
 /** Reader-supplied sources are untrusted input, so validate before fetching. */

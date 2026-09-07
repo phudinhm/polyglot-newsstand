@@ -24,7 +24,7 @@ for (const file of ["grammar.js", "cases.js", "explain.js"]) {
 
 const { analyseSentence } = await import(join(out, "grammar.js"));
 const { findCase, findAdjective, declensionAfter } = await import(join(out, "cases.js"));
-const { noteRole, noteDetail, caseReason } = await import(join(out, "explain.js"));
+const { noteRole, noteDetail, caseReason, sentenceNoteText } = await import(join(out, "explain.js"));
 
 let failures = 0;
 const check = (label, actual, expected) => {
@@ -49,6 +49,44 @@ check('"auf" belongs to Angriffe', roleOf(power, "auf"), "Part of a fixed pair")
 check('"teil" is a separable prefix', roleOf("Er nimmt an der Konferenz teil.", "teil"), "Separable prefix");
 check('"auf" in warten auf is a fixed pair', roleOf("Wir warten auf die Entscheidung.", "auf"), "Part of a fixed pair");
 check('"mit" is a plain preposition', roleOf("Sie spricht mit dem Minister.", "mit"), "Preposition");
+
+console.log("\nWords that only look like prepositions");
+// The reported case: zu in front of an infinitive is not a dative preposition.
+const debt = "Der Schuldenberg der USA ist so gigantisch, dass es schwieriger wird, freiwillige Gläubiger zu finden.";
+check('"zu" before an infinitive', roleOf(debt, "zu"), "Infinitive marker");
+check('"zu" before an adjective means too', roleOf("Das Haus ist zu klein.", "zu"), "Intensifier");
+check('"zu" before an article is a preposition', roleOf("Sie geht zu dem Haus.", "zu"), "Preposition");
+check('"während" as a conjunction is not flagged', roleOf("Während er schlief, klingelte das Telefon.", "während"), "(not flagged)");
+check('"während" with a noun is a preposition', roleOf("Während des Krieges floh die Familie.", "während"), "Preposition");
+check('"um" opening an infinitive clause', roleOf("Er kam, um freiwillige Gläubiger zu finden.", "um"), "Infinitive clause");
+check('"um" with a noun is a preposition', roleOf("Sie stritten um das Geld.", "um"), "Preposition");
+
+console.log("\nsein, haben and werden are not always auxiliaries");
+check('"ist" with an adjective is the main verb', roleOf(debt, "ist"), "Main verb");
+check('"wird" with an adjective is the main verb', roleOf(debt, "wird"), "Main verb");
+check('"hat" with a participle is an auxiliary',
+  roleOf("Die Ministerin hat sich mit ihren Kollegen getroffen.", "hat"), "Perfect auxiliary");
+check('"hat" with an object is the main verb', roleOf("Er hat ein Auto.", "hat"), "Main verb");
+check('"wird" with a participle is passive', roleOf("Das Haus wird gebaut.", "wird"), "Passive auxiliary");
+check('"wird" with an infinitive is future', roleOf("Er wird morgen kommen.", "wird"), "Future auxiliary");
+check('"ist" with a participle is an auxiliary', roleOf("Sie ist nach Berlin gefahren.", "ist"), "Perfect auxiliary");
+check('a modal is still a modal', roleOf("Er muss das Buch lesen.", "muss"), "Modal verb");
+
+console.log("\nInfinitive clauses");
+const clauses = analyseSentence(debt, "de").clauses;
+check("three clauses", clauses.length, 3);
+check("the last one is an Infinitivsatz", clauses[2].kind, "infinitive");
+check("and claims no finite verb", clauses[2].finiteVerb ?? "none", "none");
+check("the dass clause is subordinate", clauses[1].kind, "subordinate");
+check("its verb is at the end", clauses[1].finiteVerb, "wird");
+// The note used to claim "um … zu" on any infinitive clause, um or no um.
+const debtNotes = analyseSentence(debt, "de").notes.map((n) => sentenceNoteText(n, "en"));
+check("no um in the sentence, no um in the note", debtNotes.some((n) => n.includes("um …")), "false");
+check("the bare infinitive clause is named", debtNotes.some((n) => n.includes("no subject of its own")), "true");
+const purpose = analyseSentence("Er kam, um Gläubiger zu finden.", "de").notes.map((n) => sentenceNoteText(n, "en"));
+check("um … zu is named when it is there", purpose.some((n) => n.includes("um … zu")), "true");
+check("notes speak Vietnamese too",
+  analyseSentence(debt, "de").notes.some((n) => /mệnh đề/.test(sentenceNoteText(n, "vi"))), "true");
 
 console.log("\nSplit verbs are named");
 const split = noteFor(power, "an");

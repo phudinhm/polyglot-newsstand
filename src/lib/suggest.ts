@@ -1,10 +1,22 @@
 import { SOURCES, SOURCE_BY_ID } from "./sources";
 import type { Category, Source, SourceLang } from "./types";
 
+/**
+ * Why a publication is being suggested. A key rather than a sentence, so the
+ * nudge reads in the language the rest of the app is speaking.
+ */
+export type Reason =
+  | { key: "forLearners" }
+  | { key: "lightOnLanguage"; lang: "de" | "en" | "vi" }
+  | { key: "alreadyRead"; category: Category }
+  | { key: "note"; note: string }
+  | { key: "worthALook" };
+
 export interface Suggestion {
   source: Source;
   /** Shown to the reader, so a recommendation never looks arbitrary. */
-  why: string;
+  /** Why this one, as a key the interface can say in its own language. */
+  why: Reason;
 }
 
 /**
@@ -47,23 +59,19 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
 
   const scored = SOURCES.filter((s) => !onShelf.has(s.id)).map((source) => {
     let score = 0;
-    const reasons: string[] = [];
+    const reasons: Reason[] = [];
 
     if (!hasEasy && source.level === "easy") {
       score += 6;
-      reasons.push("nothing on your shelf is written for learners yet");
+      reasons.push({ key: "forLearners" });
     }
     if (thinLanguage && source.lang === thinLanguage) {
       score += 4;
-      reasons.push(
-        thinLanguage === "de"
-          ? "your shelf is light on German"
-          : "your shelf is light on English",
-      );
+      reasons.push({ key: "lightOnLanguage", lang: thinLanguage });
     }
     if (topCategories.includes(source.category)) {
       score += 3;
-      reasons.push(`you already read ${labelFor(source.category)}`);
+      reasons.push({ key: "alreadyRead", category: source.category });
     }
     // A publication with a note is one worth explaining, so worth suggesting.
     if (source.note) score += 1;
@@ -73,7 +81,7 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
     return {
       source,
       score,
-      why: reasons[0] ? capitalise(reasons[0]) : (source.note ?? "Worth a look"),
+      why: reasons[0] ?? (source.note ? { key: "note", note: source.note } : { key: "worthALook" }),
     };
   });
 
@@ -81,27 +89,4 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
     .sort((a, b) => b.score - a.score || a.source.name.localeCompare(b.source.name))
     .slice(0, limit)
     .map(({ source, why }) => ({ source, why }));
-}
-
-function labelFor(category: Category): string {
-  const labels: Record<Category, string> = {
-    top: "front-page news",
-    world: "world news",
-    politics: "politics",
-    business: "business",
-    finance: "markets and finance",
-    tech: "technology",
-    science: "science",
-    health: "health",
-    environment: "climate",
-    culture: "culture",
-    opinion: "opinion",
-    sport: "sport",
-    learner: "learner material",
-  };
-  return labels[category];
-}
-
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
