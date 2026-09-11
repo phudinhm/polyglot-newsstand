@@ -220,9 +220,28 @@ export function FeedClient() {
   }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
   const categories = useMemo(() => {
-    const present = new Set((data?.items ?? []).map((i) => i.category));
-    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
-  }, [data]);
+    const present = new Set<string>();
+    
+    // Add all categories from sources currently on the shelf
+    for (const sourceId of settings.sources) {
+      const source = SOURCE_BY_ID.get(sourceId);
+      if (source) present.add(source.category);
+    }
+    
+    // Add categories from custom sources
+    for (const customSource of custom) {
+      if (settings.sources.includes(customSource.id)) {
+        present.add(customSource.category);
+      }
+    }
+    
+    // Fallback: add whatever is present in data
+    for (const item of data?.items ?? []) {
+      present.add(item.category);
+    }
+
+    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c));
+  }, [data, settings.sources, custom]);
 
   /**
    * When a section comes up empty, the papers that would fill it. Ranked so a

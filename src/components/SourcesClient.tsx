@@ -368,6 +368,18 @@ export function SourcesClient() {
         >
           {t("sources.reset")}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const visibleIds = grouped.flatMap(([, list]) => list.map((s) => s.id));
+            const next = new Set([...settings.sources, ...visibleIds]);
+            update({ sources: Array.from(next) });
+          }}
+          className="chip"
+        >
+          <PlusIcon width={14} height={14} className="mr-1 inline-block" />
+          {t("sources.addAll")}
+        </button>
       </div>
 
       {matches === 0 && (

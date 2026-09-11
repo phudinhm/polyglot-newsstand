@@ -26,17 +26,20 @@ const CASE_EN: Record<Case, string> = {
 
 /** English names the case and puts the German alongside; Vietnamese uses the German. */
 export function caseLabel(kasus: Case, lang: TargetLang): string {
-  return lang === "vi" ? CASE_GERMAN[kasus] : `${CASE_EN[kasus]} (${CASE_GERMAN[kasus]})`;
+  if (lang === "de" || lang === "vi") return CASE_GERMAN[kasus];
+  return `${CASE_EN[kasus]} (${CASE_GERMAN[kasus]})`;
 }
 
 export const GENDER_TEXT: Record<TargetLang, Record<Gender, string>> = {
   en: { m: "masculine", f: "feminine", n: "neuter", pl: "plural" },
   vi: { m: "giống đực", f: "giống cái", n: "giống trung", pl: "số nhiều" },
+  de: { m: "Maskulinum", f: "Femininum", n: "Neutrum", pl: "Plural" },
 };
 
 export const DECLENSION_TEXT: Record<TargetLang, Record<Declension, string>> = {
   en: { weak: "weak", mixed: "mixed", strong: "strong" },
   vi: { weak: "yếu", mixed: "hỗn hợp", strong: "mạnh" },
+  de: { weak: "schwach", mixed: "gemischt", strong: "stark" },
 };
 
 const POSSESSIVE_TEXT: Record<TargetLang, Record<string, string>> = {
@@ -48,6 +51,10 @@ const POSSESSIVE_TEXT: Record<TargetLang, Record<string, string>> = {
     mein: "của tôi", dein: "của bạn", sein: "của anh ấy hoặc của nó",
     ihr: "của cô ấy, của nó hoặc của họ", unser: "của chúng tôi", euer: "của các bạn",
   },
+  de: {
+    mein: "mein", dein: "dein", sein: "sein",
+    ihr: "ihr", unser: "unser", euer: "euer",
+  },
 };
 
 /* ------------------------------------------------------------------ the case */
@@ -55,6 +62,27 @@ const POSSESSIVE_TEXT: Record<TargetLang, Record<string, string>> = {
 export function caseReason(reason: CaseReason, kasus: Case, lang: TargetLang): string {
   const c = caseLabel(kasus, lang);
   const { preposition = "", article = "", determiner = "" } = reason;
+
+  if (lang === "de") {
+    switch (reason.key) {
+      case "contraction":
+        return `${determiner} ist ${preposition} + ${article} zusammengezogen, und ${article} steht im ${c}.`;
+      case "fixedPreposition":
+        return `${preposition} verlangt immer den ${c}, unabhängig vom Kontext.`;
+      case "twoWayResolved":
+        return determiner
+          ? `${preposition} kann beide Kasus regieren. Hier steht ${determiner} im ${c}, es geht also um ${
+              kasus === "accusative" ? "eine Richtung" : "einen Ort"
+            }.`
+          : `Hier steht ${preposition} mit dem ${c}.`;
+      case "twoWayUnmarked":
+        return `${preposition} kann beide Kasus regieren, und ${determiner} ist in beiden gleich. Die Bedeutung des Verbs entscheidet: Akkusativ für Richtung, Dativ für Ort.`;
+      case "determinerOnly":
+        return `${determiner} kann nur im ${c} stehen, das ist auch ohne Präposition eindeutig.`;
+      case "determinerLikely":
+        return `${determiner} hat in mehreren Kasus dieselbe Form, daher ist dies die wahrscheinlichste Lesart.`;
+    }
+  }
 
   if (lang === "vi") {
     switch (reason.key) {
@@ -147,12 +175,83 @@ const ROLE_TEXT: Record<TargetLang, Record<NoteKey, string>> = {
     auxiliaryPassive: "Trợ động từ bị động",
     auxiliaryFuture: "Trợ động từ tương lai",
   },
+  de: {
+    separablePrefix: "Trennbares Präfix",
+    contraction: "Kontraktion",
+    fixedPair: "Teil eines festen Begriffs",
+    twoWayResolved: "Wechselpräposition",
+    twoWayUnmarked: "Wechselpräposition",
+    twoWayGeneric: "Wechselpräposition",
+    preposition: "Präposition",
+    possessive: "Possessivpronomen",
+    reflexive: "Reflexivpronomen",
+    modal: "Modalverb",
+    auxiliary: "Hilfsverb",
+    infinitiveMarker: "Infinitivpartikel",
+    purposeMarker: "Infinitivsatz",
+    intensifier: "Intensivpartikel",
+    copula: "Vollverb",
+    fullVerbHaben: "Vollverb",
+    fullVerbWerden: "Vollverb",
+    auxiliaryPerfect: "Perfekt-Hilfsverb",
+    auxiliaryPassive: "Passiv-Hilfsverb",
+    auxiliaryFuture: "Futur-Hilfsverb",
+  },
 };
 
 export const noteRole = (note: WordNote, lang: TargetLang) => ROLE_TEXT[lang][note.key];
 
 export function noteDetail(note: WordNote, lang: TargetLang): string {
   const c = note.kasus ? caseLabel(note.kasus, lang) : "";
+
+  if (lang === "de") {
+    switch (note.key) {
+      case "separablePrefix":
+        return note.verb
+          ? note.infinitive
+            ? `Keine Präposition: Es ist die vordere Hälfte von ${note.infinitive}, die abgetrennt am Ende steht. Lies es zusammen mit ${note.verb}.`
+            : `Keine Präposition: Es gehört zu ${note.verb} am Anfang des Satzes, welches getrennt wird.`
+          : "Keine Präposition: Es ist Teil eines trennbaren Verbs am Ende des Satzes.";
+      case "contraction":
+        return `${note.preposition} + ${note.article} in einem Wort, daher steht das Nomen im ${c}.`;
+      case "fixedPair":
+        return `${note.lemma} ist ein fester Begriff und verlangt den ${c}. ${note.word} hat hier keine eigene Bedeutung.`;
+      case "twoWayResolved":
+        return note.reason && note.kasus ? caseReason(note.reason, note.kasus, lang) : "";
+      case "twoWayUnmarked":
+        return `Akkusativ für Richtung, Dativ für Ort. Vor ${note.noun} ist nichts markiert, das Verb entscheidet.`;
+      case "twoWayGeneric":
+        return "Akkusativ bei Bewegung dorthin, Dativ bei Verweilen.";
+      case "preposition":
+        return `Verlangt immer den ${c}${note.determiner && note.noun ? `: ${note.word} ${note.determiner} ${note.noun}` : ""}.`;
+      case "possessive":
+        return `${POSSESSIVE_TEXT.de[note.person ?? ""] ?? ""} - die Endung richtet sich nach dem folgenden Nomen.`;
+      case "reflexive":
+        return "Das Verb bezieht sich auf das Subjekt zurück.";
+      case "modal":
+        return "Schickt das Vollverb als Infinitiv ans Satzende.";
+      case "auxiliary":
+        return "Trägt das Tempus; das Vollverb wartet als Partizip oder Infinitiv am Ende.";
+      case "infinitiveMarker":
+        return `Keine Präposition. zu bildet mit dem Infinitiv eine Einheit, lies es mit ${note.verb ?? "dem folgenden Verb"}.`;
+      case "purposeMarker":
+        return `${note.lemma ?? "Dieses Wort"} leitet einen Infinitivsatz ein.`;
+      case "intensifier":
+        return "Hier bedeutet zu 'zu sehr', vor einem Adjektiv oder Adverb. Keine Präposition.";
+      case "copula":
+        return "Hier ist sein das Vollverb. Es gibt kein Partizip am Ende.";
+      case "fullVerbHaben":
+        return "Hier ist haben das Vollverb. Es gibt kein Partizip am Ende.";
+      case "fullVerbWerden":
+        return "Hier ist werden das Vollverb. Weder Passiv noch Futur.";
+      case "auxiliaryPerfect":
+        return `Bildet das Perfekt; das Partizip ${note.verb ?? ""} steht am Ende.`.replace("  ", " ");
+      case "auxiliaryPassive":
+        return `Bildet das Passiv; das Partizip ${note.verb ?? ""} steht am Ende.`.replace("  ", " ");
+      case "auxiliaryFuture":
+        return `Markiert Futur oder eine Vermutung; der Infinitiv ${note.verb ?? ""} steht am Ende.`.replace("  ", " ");
+    }
+  }
 
   if (lang === "vi") {
     switch (note.key) {
@@ -283,11 +382,43 @@ export const LOOKUP_TEXT: Record<TargetLang, Record<string, string>> = {
     singular: "số ít",
     fullEntry: "Xem đầy đủ trên Wiktionary",
   },
+  de: {
+    looking: "Suche...",
+    nothing: "Nichts gefunden. Versuche, die ganze Zeile anzutippen.",
+    inUse: "Im Gebrauch",
+    usedWith: "Oft verwendet mit",
+    showMore: "Mehr anzeigen",
+    save: "Wort speichern",
+    saved: "Gespeichert",
+    inflected: "flektierte Form",
+    plural: "Plural",
+    singular: "Singular",
+    fullEntry: "Vollständiger Eintrag auf Wiktionary",
+  },
 };
 
 /* ------------------------------------------------- the sentence as a whole */
 
 export function sentenceNoteText(note: SentenceNote, lang: TargetLang): string {
+  if (lang === "de") {
+    switch (note.key) {
+      case "passive":
+        return "Passiv: werden plus Partizip II, der Handelnde muss nicht genannt werden.";
+      case "reported":
+        return "Indirekte Rede: Konjunktiv I markiert eine fremde Aussage.";
+      case "relative":
+        return "Ein Relativsatz beschreibt das Nomen davor, das Verb steht am Ende.";
+      case "subordinate":
+        return "Im Nebensatz steht das konjugierte Verb am Ende.";
+      case "purpose":
+        return "um … zu drückt einen Zweck aus.";
+      case "infinitiveWithConnector":
+        return `${note.connector} leitet einen Infinitivsatz ohne eigenes Subjekt ein.`;
+      case "infinitiveBare":
+        return "Der Infinitivsatz hat kein eigenes Subjekt: Er übernimmt das des Hauptsatzes.";
+    }
+  }
+
   if (lang === "vi") {
     switch (note.key) {
       case "passive":

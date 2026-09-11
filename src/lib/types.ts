@@ -2,7 +2,7 @@
 export type SourceLang = "de" | "en" | "vi";
 
 /** Languages a reader can translate into. */
-export type TargetLang = "en" | "vi";
+export type TargetLang = "en" | "vi" | "de";
 
 export type Category =
   | "top"
