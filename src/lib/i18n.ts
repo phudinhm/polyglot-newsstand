@@ -124,6 +124,7 @@ const EN = {
   "sources.addOwn": "Add a source of your own",
   "sources.allLanguages": "All languages",
   "sources.reset": "Reset shelf",
+  "sources.addAll": "Add all",
   "sources.onShelf": "On shelf",
 
   "vocab.title": "Vocabulary",
@@ -271,6 +272,7 @@ const DE: Record<StringKey, string> = {
   "sources.addOwn": "Eigene Quelle hinzufügen",
   "sources.allLanguages": "Alle Sprachen",
   "sources.reset": "Auswahl zurücksetzen",
+  "sources.addAll": "Alle hinzufügen",
   "sources.onShelf": "Im Regal",
 
   "vocab.title": "Wortschatz",
@@ -416,6 +418,7 @@ const VI: Record<StringKey, string> = {
   "sources.addOwn": "Thêm nguồn của bạn",
   "sources.allLanguages": "Mọi ngôn ngữ",
   "sources.reset": "Đặt lại kệ báo",
+  "sources.addAll": "Thêm tất cả",
   "sources.onShelf": "Trên kệ",
 
   "vocab.title": "Từ vựng",
