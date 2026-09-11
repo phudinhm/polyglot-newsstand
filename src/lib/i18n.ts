@@ -80,7 +80,7 @@ const EN = {
   "settings.deviceDefault": "Device default",
   "settings.noVoice": "No voice installed",
   "settings.tryVoice": "Try this voice",
-  "settings.voicesFrom": "These are the voices your device has. More German voices can be added in the system settings: on iPhone under Accessibility, Spoken Content, Voices; on Android under Text-to-speech.",
+  "settings.voicesFrom": "These are the voices your device has. More German voices can be added in the system settings: on iPhone under Accessibility, Spoken Content, Voices; on Android under Text-to-speech; on Windows under Time & Language, Speech; on Mac under Accessibility, Spoken Content, System Voice.",
 
   "settings.title": "Reading settings",
   "settings.interface": "Interface language",
@@ -227,7 +227,7 @@ const DE: Record<StringKey, string> = {
   "settings.deviceDefault": "Gerätestandard",
   "settings.noVoice": "Keine Stimme installiert",
   "settings.tryVoice": "Stimme anhören",
-  "settings.voicesFrom": "Das sind die Stimmen, die dein Gerät hat. Weitere deutsche Stimmen lassen sich in den Systemeinstellungen nachinstallieren: auf dem iPhone unter Bedienungshilfen, Gesprochene Inhalte, Stimmen; auf Android unter Sprachausgabe.",
+  "settings.voicesFrom": "Das sind die Stimmen, die dein Gerät hat. Weitere deutsche Stimmen lassen sich in den Systemeinstellungen nachinstallieren: auf dem iPhone unter Bedienungshilfen, Gesprochene Inhalte, Stimmen; auf Android unter Sprachausgabe; unter Windows unter Zeit und Sprache, Sprache; auf dem Mac unter Bedienungshilfen, Gesprochene Inhalte, Systemstimme.",
 
   "settings.title": "Leseeinstellungen",
   "settings.interface": "Sprache der Oberfläche",
@@ -372,7 +372,7 @@ const VI: Record<StringKey, string> = {
   "settings.deviceDefault": "Mặc định của máy",
   "settings.noVoice": "Chưa cài giọng nào",
   "settings.tryVoice": "Nghe thử giọng này",
-  "settings.voicesFrom": "Đây là các giọng máy bạn đang có. Cài thêm giọng tiếng Đức trong cài đặt hệ thống: iPhone vào Trợ năng, Nội dung nói, Giọng nói; Android vào Chuyển văn bản thành giọng nói.",
+  "settings.voicesFrom": "Đây là các giọng máy bạn đang có. Cài thêm giọng tiếng Đức trong cài đặt hệ thống: iPhone vào Trợ năng, Nội dung nói, Giọng nói; Android vào Chuyển văn bản thành giọng nói; Windows vào Thời gian và Ngôn ngữ, Giọng nói; Mac vào Trợ năng, Nội dung nói, Giọng hệ thống.",
 
   "settings.title": "Cài đặt đọc",
   "settings.interface": "Ngôn ngữ giao diện",
