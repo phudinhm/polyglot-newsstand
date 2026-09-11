@@ -156,8 +156,8 @@ export function speak(text: string, options: SpeakOptions): void {
   cancelSpeech();
 
   if (options.voiceUri === "google-translate-ai") {
-    // Google Translate TTS works well for short sentences without CORS issues when used in an <audio> tag.
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${options.lang}&client=tw-ob`;
+    // Route through our own backend proxy to bypass any CORS/Referer blocks
+    const url = `/api/tts?lang=${options.lang}&text=${encodeURIComponent(text)}`;
     activeAudio = new Audio(url);
     activeAudio.playbackRate = options.rate ?? 1;
     activeAudio.onended = () => {
