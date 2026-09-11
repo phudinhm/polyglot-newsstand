@@ -103,7 +103,7 @@ export function Reader({
   // that option never appears, and a saved preference that no longer applies
   // (an English preference, opening a German piece) falls back quietly
   // rather than being overwritten - it is still right the next time it fits.
-  const targetOptions = (["en", "vi"] as const).filter((t) => t !== lang);
+  const targetOptions = (["en", "vi", "de"] as const).filter((t) => t !== lang);
   const target = targetOptions.includes(settings.target) ? settings.target : targetOptions[0];
   const tr = useTranslator(lang, target);
   const source = sourceId ? SOURCE_BY_ID.get(sourceId) : undefined;
@@ -638,7 +638,7 @@ export function Reader({
                 aria-pressed={target === opt}
                 title={t("reader.translateInto")}
               >
-                {opt === "en" ? "EN" : "VI"}
+                {opt === "en" ? "EN" : opt === "de" ? "DE" : "VI"}
               </button>
             ))}
           </div>

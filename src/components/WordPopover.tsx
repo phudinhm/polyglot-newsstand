@@ -232,7 +232,7 @@ export function WordPopover({
                 <p className="text-translation">
                   {entry.translation}
                   <span className="ml-1.5 text-[11px] uppercase tracking-wide text-muted">
-                    {target === "vi" ? "vi" : "en"}
+                    {target === "vi" ? "vi" : target === "de" ? "de" : "en"}
                   </span>
                 </p>
               )}

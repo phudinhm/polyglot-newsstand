@@ -33,6 +33,13 @@ const UI = {
     endings: "Đuôi tính từ theo mẫu này",
     declension: (kind: string) => `đuôi ${kind}`,
   },
+  de: {
+    heading: "In diesem Satz",
+    likeliest: "wahrscheinlichste Lesart",
+    articles: "Der bestimmte Artikel nach Kasus und Genus",
+    endings: "Adjektivendungen in diesem Muster",
+    declension: (kind: string) => `${kind}e Endungen`,
+  },
 } as const;
 
 function Table({
@@ -190,7 +197,40 @@ export function CaseCard({
         )}
 
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-          {target === "vi" ? (
+          {target === "de" ? (
+            <>
+              {found.determiner ? (
+                <>
+                  Nach{" "}
+                  <span className="font-medium text-fg" lang="de">
+                    {found.determiner}
+                  </span>{" "}
+                  folgt das Adjektiv der <span className="font-medium text-fg">{kind}</span>{" "}
+                  Deklination
+                </>
+              ) : (
+                <>
+                  Ohne Artikel davor trägt das Adjektiv den Kasus selbst und folgt der{" "}
+                  <span className="font-medium text-fg">{kind}</span> Deklination
+                </>
+              )}
+              {found.ending ? (
+                <>
+                  , und im {CASE_GERMAN[found.kasus]} lautet die Endung{" "}
+                  <span className="font-medium text-fg" lang="de">
+                    {found.ending}
+                  </span>
+                  . Also:{" "}
+                  <span className="font-medium text-fg" lang="de">
+                    {phrase}
+                  </span>
+                  .
+                </>
+              ) : (
+                ". Das Genus des Nomens steht hier nicht fest, daher gilt es, die Zeile zu vergleichen."
+              )}
+            </>
+          ) : target === "vi" ? (
             <>
               {found.determiner ? (
                 <>
@@ -297,7 +337,34 @@ export function CaseCard({
 
       {shown && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-          {target === "vi" ? (
+          {target === "de" ? (
+            <>
+              <span className="font-medium text-fg" lang="de">
+                {word}
+              </span>{" "}
+              ist {GENDER_TEXT.de[shown]}. Allein steht{" "}
+              <span className="font-medium text-fg" lang="de">
+                {DEFINITE.nominative[shown]} {displayNoun}
+              </span>
+              {sameForm ? (
+                <>
+                  , und im {CASE_GERMAN[finding.kasus]} bleibt es bei{" "}
+                  <span className="font-medium text-fg" lang="de">
+                    {DEFINITE.nominative[shown]}
+                  </span>
+                  . Nur beim Maskulinum ändert es sich dort.
+                </>
+              ) : (
+                <>
+                  , hier wird daraus{" "}
+                  <span className="font-medium text-fg" lang="de">
+                    {DEFINITE[finding.kasus][shown]} {displayNoun}
+                  </span>
+                  .
+                </>
+              )}
+            </>
+          ) : target === "vi" ? (
             <>
               <span className="font-medium text-fg" lang="de">
                 {word}

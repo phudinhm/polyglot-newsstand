@@ -18,6 +18,7 @@ const KIND_LABEL: Record<TargetLang, Record<Clause["kind"], string>> = {
     relative: "Mệnh đề quan hệ",
     infinitive: "Mệnh đề nguyên thể",
   },
+  de: CLAUSE_GERMAN,
 };
 
 /** The panel's own words, which have to travel with the explanations. */
@@ -45,6 +46,18 @@ const UI = {
     words: "Những từ đang làm nhiệm vụ ngữ pháp",
     caveat:
       "Đây là bản phác, không phải phân tích cú pháp đầy đủ. Nó dựa vào trật tự từ tiếng Đức và các nhóm từ đóng, nên đáng tin về ranh giới mệnh đề và kém chắc hơn với những cấu trúc lạ.",
+  },
+  de: {
+    title: "Satzstruktur",
+    onlyGerman:
+      "Die Satzanalyse gibt es nur für Deutsch, wo die Wortstellung Lesern am meisten Mühe macht.",
+    introducedBy: "eingeleitet durch",
+    finiteVerb: "das konjugierte Verb",
+    atTheEnd: "am Ende",
+    inSecond: "an zweiter Stelle",
+    words: "Wörter mit grammatischer Funktion",
+    caveat:
+      "Dies ist ein Überblick, keine vollständige Analyse. Sie stützt sich auf die deutsche Wortstellung und geschlossene Wortklassen, ist also bei Satzgrenzen zuverlässig und bei ungewöhnlichen Konstruktionen weniger.",
   },
 } as const;
 
