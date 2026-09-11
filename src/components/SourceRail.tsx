@@ -10,7 +10,7 @@ import type { Source } from "@/lib/types";
 import { useT } from "@/hooks/useT";
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import { SourceAvatar } from "./SourceAvatar";
-import { HistoryIcon, PlusIcon } from "./Icons";
+import { HistoryIcon, PlusIcon, StarIcon } from "./Icons";
 
 interface RailEntry {
   id: string;
@@ -21,6 +21,7 @@ interface RailEntry {
   filterable: boolean;
   count?: number;
   recentAt?: string;
+  favorite?: boolean;
 }
 
 /**
@@ -36,11 +37,13 @@ interface RailEntry {
  */
 export function SourceRail({
   shelf,
+  favorites,
   selected,
   onSelect,
   counts,
 }: {
   shelf: string[];
+  favorites: string[];
   selected: string | null;
   onSelect: (id: string | null) => void;
   counts: Map<string, number>;
@@ -79,6 +82,24 @@ export function SourceRail({
 
   const entries: RailEntry[] = [];
   const seen = new Set<string>();
+
+  // A favorite leads the rail, ahead of even the most recently opened paper -
+  // that is the entire point of marking it one.
+  for (const id of favorites) {
+    if (seen.has(id) || !shelfWithContent.has(id)) continue;
+    const source = resolve(id);
+    if (!source) continue;
+    seen.add(id);
+    entries.push({
+      id: source.id,
+      name: source.name,
+      short: source.short ?? source.name,
+      site: source.site,
+      filterable: true,
+      count: counts.get(id),
+      favorite: true,
+    });
+  }
 
   for (const { sourceId, at } of recent) {
     const source = resolve(sourceId);
@@ -132,12 +153,14 @@ export function SourceRail({
             data-selected={selected === entry.id}
             className="relative chip !gap-2 !py-1.5 !pr-1.5"
             title={
-              entry.recentAt
-                ? `${entry.name} · opened ${timeAgo(entry.recentAt)}`
-                : `${entry.name} · ${entry.count ?? 0} stories`
+              entry.favorite
+                ? `${entry.name} · favorite`
+                : entry.recentAt
+                  ? `${entry.name} · opened ${timeAgo(entry.recentAt)}`
+                  : `${entry.name} · ${entry.count ?? 0} stories`
             }
           >
-            {entry.recentAt && <RecentDot />}
+            {entry.favorite ? <FavoriteDot /> : entry.recentAt && <RecentDot />}
             <SourceAvatar name={entry.name} site={entry.site} size={18} />
             <span className="max-w-[9rem] truncate">{entry.short}</span>
             <span className="rounded-full bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1.5 py-0.5 text-[11px] tabular-nums leading-none">
@@ -172,6 +195,19 @@ function RecentDot() {
       width={11}
       height={11}
       className="absolute -left-0.5 -top-0.5 rounded-full bg-surface text-muted"
+      aria-hidden
+    />
+  );
+}
+
+/** Same spot as the clock mark, since a favorite always leads and never shares its chip with one. */
+function FavoriteDot() {
+  return (
+    <StarIcon
+      width={11}
+      height={11}
+      fill="currentColor"
+      className="absolute -left-0.5 -top-0.5 rounded-full bg-surface text-accent"
       aria-hidden
     />
   );
