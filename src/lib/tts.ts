@@ -151,6 +151,30 @@ export interface SpeakOptions {
 
 let activeAudio: HTMLAudioElement | null = null;
 
+/**
+ * One persistent element for every cloud line, not a fresh Audio() per tap.
+ *
+ * Tapping "hear this line" down a paragraph fires one of these a second, and
+ * a new HTMLAudioElement per tap gave each its own audio session to fight
+ * over - the exact pattern that leaves mobile browsers dropping a play()
+ * silently until some later gesture nudges the session loose. Reusing one
+ * element and only ever changing its source is the reliable way to play a
+ * quick sequence of short clips.
+ */
+let cloudAudio: HTMLAudioElement | null = null;
+// Bumped on every new request, so a superseded request's play()/onended/
+// onerror can never fire late and clobber the line that is actually
+// speaking now.
+let cloudGeneration = 0;
+
+function ensureCloudAudio(): HTMLAudioElement {
+  if (!cloudAudio) {
+    cloudAudio = new Audio();
+    cloudAudio.setAttribute("playsinline", "true");
+  }
+  return cloudAudio;
+}
+
 export function speak(text: string, options: SpeakOptions): void {
   if (!text.trim()) return;
   cancelSpeech();
@@ -165,19 +189,27 @@ export function speak(text: string, options: SpeakOptions): void {
   if (resolvedUri === "google-translate-ai") {
     // Route through our own backend proxy to bypass any CORS/Referer blocks
     const url = `/api/tts?lang=${options.lang}&text=${encodeURIComponent(text)}`;
-    activeAudio = new Audio(url);
-    activeAudio.playbackRate = options.rate ?? 1;
-    activeAudio.onended = () => {
+    const audio = ensureCloudAudio();
+    const generation = ++cloudGeneration;
+    audio.playbackRate = options.rate ?? 1;
+    audio.onended = () => {
+      if (generation !== cloudGeneration) return;
       activeAudio = null;
       options.onEnd?.();
     };
-    activeAudio.onerror = () => {
+    audio.onerror = () => {
+      if (generation !== cloudGeneration) return;
       activeAudio = null;
       options.onError?.();
     };
     // Simulate word boundary for the whole sentence since we don't have word-level timings
     options.onWord?.(0, text.length);
-    activeAudio.play().catch(() => options.onError?.());
+    audio.src = url;
+    activeAudio = audio;
+    audio.play().catch(() => {
+      if (generation !== cloudGeneration) return;
+      options.onError?.();
+    });
     return;
   }
 
@@ -221,6 +253,9 @@ export function isPaused(): boolean {
 
 export function cancelSpeech(): void {
   if (activeAudio) {
+    // Invalidate the request being cancelled, so its play()/onended/onerror
+    // cannot fire later and be mistaken for whatever speaks next.
+    cloudGeneration++;
     activeAudio.pause();
     activeAudio = null;
   }
