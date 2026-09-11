@@ -67,6 +67,11 @@ const QUALITY_HINTS = ["neural", "natural", "premium", "enhanced", "siri", "onli
 const baseName = (voice: SpeechSynthesisVoice) =>
   voice.name.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim();
 
+export function isAIVoice(voice: SpeechSynthesisVoice): boolean {
+  const name = voice.name.toLowerCase();
+  return QUALITY_HINTS.some((hint) => name.includes(hint));
+}
+
 function isHumanVoice(voice: SpeechSynthesisVoice): boolean {
   const name = baseName(voice);
   return ![...NOVELTY].some((n) => name === n || name.startsWith(`${n} `));

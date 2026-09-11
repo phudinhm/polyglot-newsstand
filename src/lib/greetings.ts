@@ -82,6 +82,8 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "G'day", lang: "en", region: "Australia", hint: "aussieHello" },
     { text: "Chào buổi sáng nhé", lang: "vi" },
     { text: "Wie geht's?", lang: "de", hint: "howAreYou" },
+    { text: "Hallo", lang: "de", hint: "toEveryone" },
+    { text: "Morning", lang: "en", hint: "shortForm" },
   ],
   midday: [
     { text: "Mahlzeit", lang: "de", hint: "aroundLunch" },
@@ -106,6 +108,8 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Wie läuft's?", lang: "de", hint: "howAreYou" },
     { text: "Chiều rồi hả", lang: "vi" },
     { text: "Guten Nachmittag", lang: "de" },
+    { text: "Hallo", lang: "de", hint: "toEveryone" },
+    { text: "Na, alles klar?", lang: "de", hint: "howAreYou" },
   ],
   evening: [
     { text: "Guten Abend", lang: "de" },
