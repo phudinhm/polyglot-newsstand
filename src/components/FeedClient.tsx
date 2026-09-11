@@ -19,7 +19,7 @@ import { RecentlyRead } from "./RecentlyRead";
 import { RecentSources } from "./RecentSources";
 import { SourceRail } from "./SourceRail";
 import { SourceAvatar } from "./SourceAvatar";
-import { RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
+import { CloseIcon, RefreshIcon, SearchIcon, SlidersIcon, SpinnerIcon } from "./Icons";
 
 type LangFilter = "all" | "de" | "en" | "vi";
 type SortOrder = "newest" | "oldest";
@@ -320,9 +320,22 @@ export function FeedClient() {
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder={t("feed.search")}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label={t("feed.search")}
             />
+            {queryInput && (
+              <button
+                type="button"
+                onClick={() => setQueryInput("")}
+                className="shrink-0 text-muted hover:text-fg"
+                aria-label={t("feed.clearSearch")}
+              >
+                <CloseIcon width={14} height={14} />
+              </button>
+            )}
           </div>
 
           <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
