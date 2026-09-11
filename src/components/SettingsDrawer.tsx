@@ -5,7 +5,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { FONTS, THEMES } from "@/lib/settings";
 import { UI_LANGUAGES } from "@/lib/i18n";
 import { useT } from "@/hooks/useT";
-import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
+import { isAIVoice, onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CloseIcon, SpeakerIcon } from "./Icons";
 
@@ -243,7 +243,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
                           </option>
                           {available.map((v) => (
                             <option key={v.voiceURI} value={v.voiceURI}>
-                              {v.name} · {regionOf(v)}
+                              {v.name} {isAIVoice(v) ? " [AI Voice]" : ""} · {regionOf(v)}
                             </option>
                           ))}
                         </select>
