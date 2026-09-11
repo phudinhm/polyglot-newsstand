@@ -42,7 +42,10 @@ export type HintKey =
   | "howAreYou"
   | "austrianFormal"
   | "sleepWell"
-  | "toEveryone";
+  | "toEveryone"
+  | "earlyBirdProverb"
+  | "aussieHello"
+  | "nightOwl";
 
 export interface Greeting {
   text: string;
@@ -61,6 +64,10 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Frühaufsteher", lang: "de" },
     { text: "Grüezi", lang: "de", region: "Schweiz", hint: "swissHello" },
     { text: "Xin chào", lang: "vi", hint: "toEveryone" },
+    { text: "Guete Morge", lang: "de", region: "Schweiz", hint: "swissHello" },
+    { text: "Rise and shine", lang: "en" },
+    { text: "Dậy sớm nhé", lang: "vi" },
+    { text: "Morgenstund hat Gold im Mund", lang: "de", hint: "earlyBirdProverb" },
   ],
   morning: [
     { text: "Guten Morgen", lang: "de" },
@@ -72,6 +79,9 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Servus", lang: "de", region: "Bayern & Österreich", hint: "helloAndGoodbye" },
     { text: "Ăn cơm chưa?", lang: "vi", hint: "haveYouEaten" },
     { text: "Na?", lang: "de", region: "Berlin", hint: "oneSyllable" },
+    { text: "G'day", lang: "en", region: "Australia", hint: "aussieHello" },
+    { text: "Chào buổi sáng nhé", lang: "vi" },
+    { text: "Wie geht's?", lang: "de", hint: "howAreYou" },
   ],
   midday: [
     { text: "Mahlzeit", lang: "de", hint: "aroundLunch" },
@@ -80,6 +90,9 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Grüezi mitenand", lang: "de", region: "Schweiz", hint: "swissHello" },
     { text: "Tach", lang: "de", region: "Rheinland & Ruhrgebiet", hint: "shortForm" },
     { text: "Servus", lang: "de", region: "Bayern & Österreich", hint: "helloAndGoodbye" },
+    { text: "Ăn trưa chưa?", lang: "vi", hint: "haveYouEaten" },
+    { text: "Lunchtime", lang: "en" },
+    { text: "Mahlzeit zäme", lang: "de", region: "Schweiz", hint: "aroundLunch" },
   ],
   afternoon: [
     { text: "Guten Tag", lang: "de" },
@@ -90,6 +103,9 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Grüß dich", lang: "de" },
     { text: "Khoẻ không?", lang: "vi", hint: "howAreYou" },
     { text: "Alright?", lang: "en", region: "England", hint: "howAreYou" },
+    { text: "Wie läuft's?", lang: "de", hint: "howAreYou" },
+    { text: "Chiều rồi hả", lang: "vi" },
+    { text: "Guten Nachmittag", lang: "de" },
   ],
   evening: [
     { text: "Guten Abend", lang: "de" },
@@ -98,6 +114,9 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Feierabend", lang: "de", hint: "endOfWork" },
     { text: "N'Abend", lang: "de", hint: "shortForm" },
     { text: "Moin", lang: "de", region: "Norddeutschland", hint: "allDayNorth" },
+    { text: "Guete Abig", lang: "de", region: "Schweiz", hint: "swissHello" },
+    { text: "Evening", lang: "en" },
+    { text: "Chào buổi tối nhé", lang: "vi" },
   ],
   night: [
     { text: "Gute Nacht", lang: "de" },
@@ -105,12 +124,18 @@ const GREETINGS: Record<Bucket, Greeting[]> = {
     { text: "Chào buổi tối muộn", lang: "vi" },
     { text: "Schlaf gut", lang: "de", hint: "sleepWell" },
     { text: "Ngủ ngon", lang: "vi", hint: "sleepWell" },
+    { text: "Träum süß", lang: "de", hint: "sleepWell" },
+    { text: "Sweet dreams", lang: "en", hint: "sleepWell" },
+    { text: "Chúc ngủ ngon", lang: "vi", hint: "sleepWell" },
   ],
   lateNight: [
     { text: "Nachtschicht", lang: "de", hint: "nightShift" },
     { text: "Late one", lang: "en" },
     { text: "Khuya rồi", lang: "vi" },
     { text: "Noch wach?", lang: "de" },
+    { text: "Eulenzeit", lang: "de", hint: "nightOwl" },
+    { text: "Night owl", lang: "en", hint: "nightOwl" },
+    { text: "Cú đêm à", lang: "vi", hint: "nightOwl" },
   ],
 };
 
@@ -131,6 +156,9 @@ const HINTS: Record<UiLang, Record<HintKey, string>> = {
     austrianFormal: "old-fashioned, courtly, and still used",
     sleepWell: "sleep well",
     toEveryone: "the all-purpose hello, safe with anyone",
+    earlyBirdProverb: "an old proverb: the early hour carries gold in its mouth, said of getting up early",
+    aussieHello: "the classic Australian hello, said at any hour",
+    nightOwl: "for whoever is still reading this late",
   },
   de: {
     allDayNorth: "zu jeder Tageszeit, nicht nur morgens",
@@ -147,6 +175,9 @@ const HINTS: Record<UiLang, Record<HintKey, string>> = {
     austrianFormal: "altmodisch, höfisch und immer noch in Gebrauch",
     sleepWell: "schlaf gut",
     toEveryone: "der Allzweckgruß, passt bei jedem",
+    earlyBirdProverb: "ein altes Sprichwort für alle, die früh aufstehen",
+    aussieHello: "der klassische australische Gruß, zu jeder Tageszeit",
+    nightOwl: "für alle, die jetzt noch lesen",
   },
   vi: {
     allDayNorth: "chào cả ngày, không riêng buổi sáng",
@@ -163,6 +194,9 @@ const HINTS: Record<UiLang, Record<HintKey, string>> = {
     austrianFormal: "cổ kính, trang trọng, và vẫn còn được dùng",
     sleepWell: "ngủ ngon",
     toEveryone: "lời chào dùng được với mọi người",
+    earlyBirdProverb: "một câu tục ngữ Đức khen ai dậy sớm",
+    aussieHello: "lời chào kiểu Úc kinh điển, dùng bất kỳ giờ nào",
+    nightOwl: "dành cho ai vẫn còn đọc lúc này",
   },
 };
 

@@ -7,6 +7,7 @@ import { getCustomSources } from "@/lib/customSources";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { timeAgo } from "@/lib/format";
 import { useT } from "@/hooks/useT";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import { SourceAvatar } from "./SourceAvatar";
 import { HistoryIcon } from "./Icons";
 
@@ -29,6 +30,7 @@ interface Entry {
 export function RecentSources({ limit = 8 }: { limit?: number }) {
   const t = useT();
   const [items, setItems] = useState<Entry[]>([]);
+  const rowRef = useHorizontalScroll<HTMLDivElement>();
 
   useEffect(() => {
     const sync = () => {
@@ -57,14 +59,17 @@ export function RecentSources({ limit = 8 }: { limit?: number }) {
     return () => window.removeEventListener("pn:store", sync);
   }, [limit]);
 
-  if (items.length < 2) return null;
+  if (!items.length) return null;
 
   return (
     <section className="mb-4">
       <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
         <HistoryIcon width={14} height={14} /> {t("feed.recentPapers")}
       </h2>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={rowRef}
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {items.map((entry) => (
           <Link
             key={entry.id}

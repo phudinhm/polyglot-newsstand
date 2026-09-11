@@ -5,6 +5,7 @@ import { SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
 import type { Source } from "@/lib/types";
 import { useT } from "@/hooks/useT";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import { SourceAvatar } from "./SourceAvatar";
 import { PlusIcon } from "./Icons";
 
@@ -27,6 +28,7 @@ export function SourceRail({
   counts: Map<string, number>;
 }) {
   const t = useT();
+  const rowRef = useHorizontalScroll<HTMLDivElement>();
   const custom = getCustomSources();
   const sources: Source[] = shelf
     .map((id) => {
@@ -53,7 +55,7 @@ export function SourceRail({
   if (sources.length < 2) return null;
 
   return (
-    <div className="no-scrollbar -mx-4 mb-3.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
+    <div ref={rowRef} className="no-scrollbar -mx-4 mb-3.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
       <button
         type="button"
         onClick={() => onSelect(null)}

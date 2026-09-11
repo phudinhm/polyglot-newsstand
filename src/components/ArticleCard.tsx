@@ -18,11 +18,14 @@ function Meta({
   item,
   linkSource = true,
   blocked = false,
+  read = false,
 }: {
   item: FeedItem;
   linkSource?: boolean;
   /** True when this device has already been turned away by this publisher. */
   blocked?: boolean;
+  /** True when this device has already read this piece. */
+  read?: boolean;
 }) {
   const site = SOURCE_BY_ID.get(item.sourceId)?.site;
   return (
@@ -71,6 +74,14 @@ function Meta({
           Easy German
         </span>
       )}
+      {read && (
+        <span
+          className="rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-accent"
+          title="You have already read this one."
+        >
+          read
+        </span>
+      )}
     </div>
   );
 }
@@ -93,7 +104,15 @@ function Thumb({ src, className }: { src?: string; className: string }) {
 }
 
 /** The lead story, given the room a front page would give it. */
-export function FeaturedCard({ item, blocked = false }: { item: FeedItem; blocked?: boolean }) {
+export function FeaturedCard({
+  item,
+  blocked = false,
+  read = false,
+}: {
+  item: FeedItem;
+  blocked?: boolean;
+  read?: boolean;
+}) {
   return (
     <article className="card card-hover overflow-hidden">
       <div className="sm:flex sm:items-stretch">
@@ -106,7 +125,7 @@ export function FeaturedCard({ item, blocked = false }: { item: FeedItem; blocke
           <Thumb src={item.image} className="h-44 w-full !rounded-none sm:h-full sm:min-h-[13rem]" />
         </Link>
         <div className="p-4 sm:order-1 sm:flex sm:flex-1 sm:flex-col sm:justify-center sm:p-6">
-          <Meta item={item} blocked={blocked} />
+          <Meta item={item} blocked={blocked} read={read} />
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
             onClick={() => rememberItem(item)}
@@ -129,14 +148,16 @@ function ArticleCardImpl({
   item,
   linkSource = true,
   blocked = false,
+  read = false,
 }: {
   item: FeedItem;
   linkSource?: boolean;
   blocked?: boolean;
+  read?: boolean;
 }) {
   return (
     <article className="card card-hover overflow-hidden p-3.5 sm:p-4">
-      <Meta item={item} linkSource={linkSource} blocked={blocked} />
+      <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} />
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
         onClick={() => rememberItem(item)}

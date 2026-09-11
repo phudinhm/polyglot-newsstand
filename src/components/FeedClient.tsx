@@ -8,7 +8,9 @@ import { categoryKey } from "@/lib/i18n";
 import { CATEGORY_LABELS } from "@/lib/sources";
 import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
+import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
+import { getReadUrls } from "@/lib/recent";
 import { SOURCE_BY_ID, SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
@@ -52,19 +54,33 @@ export function FeedClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [lang, setLang] = useState<LangFilter>("all");
-  const [category, setCategory] = useState("all");
-  const [month, setMonth] = useState("all");
-  const [sort, setSort] = useState<SortOrder>("newest");
-  const [queryInput, setQueryInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [source, setSource] = useState<string | null>(null);
+  const initialFilters = useRef(getFeedFilters()).current;
+  const [lang, setLang] = useState<LangFilter>(initialFilters.lang);
+  const [category, setCategory] = useState(initialFilters.category);
+  const [month, setMonth] = useState(initialFilters.month);
+  const [sort, setSort] = useState<SortOrder>(initialFilters.sort);
+  const [queryInput, setQueryInput] = useState(initialFilters.query);
+  const [query, setQuery] = useState(initialFilters.query);
+  const [source, setSource] = useState<string | null>(initialFilters.source);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sync = () => setCustom(getCustomSources());
+    sync();
+    window.addEventListener("pn:store", sync);
+    return () => window.removeEventListener("pn:store", sync);
+  }, []);
+
+  // Persisted so a trip to an article and back does not reset the filters.
+  useEffect(() => {
+    setFeedFilters({ lang, category, month, sort, query: queryInput, source });
+  }, [lang, category, month, sort, queryInput, source]);
+
+  const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    const sync = () => setReadUrls(getReadUrls());
     sync();
     window.addEventListener("pn:store", sync);
     return () => window.removeEventListener("pn:store", sync);
@@ -176,6 +192,7 @@ export function FeedClient() {
     if (settings.hidePaywalled && !source) {
       list = list.filter((i) => i.paywall !== "hard" && !blocked.has(i.sourceId));
     }
+    if (settings.hideRead) list = list.filter((i) => !readUrls.has(i.link));
     if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
@@ -201,7 +218,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, blocked]);
+  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
   const categories = useMemo(() => {
     const present = new Set((data?.items ?? []).map((i) => i.category));
@@ -245,12 +262,22 @@ export function FeedClient() {
   }, [page, t]);
 
   const extraFilters =
-    (month !== "all" ? 1 : 0) + (sort !== "newest" ? 1 : 0) + (settings.hidePaywalled ? 0 : 1);
+    (month !== "all" ? 1 : 0) +
+    (sort !== "newest" ? 1 : 0) +
+    (settings.hidePaywalled ? 0 : 1) +
+    (settings.hideRead ? 1 : 0);
 
   // How many stories the paywall filter is holding back, so the toggle can say.
   const hiddenByPaywall = useMemo(
     () => (data?.items ?? []).filter((i) => i.paywall === "hard" || blocked.has(i.sourceId)).length,
     [data, blocked],
+  );
+
+  // How many stories are already read, so the toggle can say, whether or not
+  // it is currently hiding them.
+  const hiddenByRead = useMemo(
+    () => (data?.items ?? []).filter((i) => readUrls.has(i.link)).length,
+    [data, readUrls],
   );
 
   // Named rather than counted: a reader who wonders where a paper went
@@ -376,6 +403,23 @@ export function FeedClient() {
                     : "Showing everything, including papers where most articles open on their own site."}
                 </p>
 
+                <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {t("feed.alreadyRead")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => update({ hideRead: !settings.hideRead })}
+                  data-selected={settings.hideRead}
+                  className="chip mt-1 w-full !justify-center !py-1.5"
+                >
+                  {settings.hideRead ? t("feed.showingRead") : t("feed.hideRead")}
+                </button>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                  {hiddenByRead
+                    ? `${hiddenByRead} ${hiddenByRead === 1 ? "story" : "stories"} on the shelf ${hiddenByRead === 1 ? "is" : "are"} already read.`
+                    : "Nothing on the shelf today has been read yet."}
+                </p>
+
                 {blockedNames.length > 0 && (
                   <div className="mt-2 rounded-lg bg-surface-2 px-2.5 py-2">
                     <p className="text-[11px] leading-relaxed text-muted">
@@ -406,7 +450,7 @@ export function FeedClient() {
                     onClick={() => {
                       setMonth("all");
                       setSort("newest");
-                      update({ hidePaywalled: true });
+                      update({ hidePaywalled: true, hideRead: false });
                     }}
                     className="btn mt-3 w-full justify-center !py-1.5 text-xs"
                   >
@@ -523,7 +567,11 @@ export function FeedClient() {
 
       {featured && (
         <div className="mb-5">
-          <FeaturedCard item={featured} blocked={blocked.has(featured.sourceId)} />
+          <FeaturedCard
+            item={featured}
+            blocked={blocked.has(featured.sourceId)}
+            read={readUrls.has(featured.link)}
+          />
         </div>
       )}
 
@@ -535,7 +583,12 @@ export function FeedClient() {
             </h2>
             <div className="space-y-2.5">
               {group.items.map((item) => (
-                <ArticleCard key={item.id} item={item} blocked={blocked.has(item.sourceId)} />
+                <ArticleCard
+                  key={item.id}
+                  item={item}
+                  blocked={blocked.has(item.sourceId)}
+                  read={readUrls.has(item.link)}
+                />
               ))}
             </div>
           </section>
