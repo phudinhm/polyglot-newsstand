@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
 import { useTranslator } from "@/hooks/useTranslator";
@@ -76,6 +77,7 @@ export function Reader({
 }) {
   const [settings, update] = useSettings();
   const t = useT();
+  const router = useRouter();
   const [article, setArticle] = useState<Article | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -528,6 +530,16 @@ export function Reader({
     setVocab(vocabIndex(lang));
   }, [lang]);
 
+  // A reader can land here from the home feed, a source's own page, Saved,
+  // Recently Read or Continue Reading - a fixed "/" undid whichever of those
+  // it was and always dropped back to the home feed instead. Real browser
+  // history already knows which one it actually was. A page opened fresh
+  // (a shared link, a new tab) has nothing to go back to either way, and
+  // that is exactly what history.back() already does nothing on its own.
+  function goBack() {
+    router.back();
+  }
+
   function dismissHint() {
     setShowHint(false);
     try {
@@ -572,9 +584,14 @@ export function Reader({
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-1.5 px-3 py-2.5 sm:gap-2">
-          <Link href="/" className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2" aria-label={t("reader.back")}>
+          <button
+            type="button"
+            onClick={goBack}
+            className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
+            aria-label={t("reader.back")}
+          >
             <ArrowLeftIcon />
-          </Link>
+          </button>
           {source ? (
             <Link
               href={`/s/${source.id}`}
