@@ -13,18 +13,20 @@ import { getRecent } from "@/lib/recent";
 import { SourceAvatar } from "./SourceAvatar";
 import type { SourceHealth } from "@/app/api/source-health/route";
 import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
-import { CheckIcon, CloseIcon, PlusIcon, SearchIcon, SpinnerIcon } from "./Icons";
+import { CheckIcon, CloseIcon, PlusIcon, SearchIcon, SpinnerIcon, StarIcon } from "./Icons";
 
 export function SourcesClient() {
   const [settings, update] = useSettings();
   const t = useT();
   const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [query, setQuery] = useState("");
+  const [favOnly, setFavOnly] = useState(false);
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [health, setHealth] = useState<SourceHealth[] | null>(null);
   const [checking, setChecking] = useState(false);
   const selected = useMemo(() => new Set(settings.sources), [settings.sources]);
+  const favorites = useMemo(() => new Set(settings.favorites), [settings.favorites]);
 
   const [mostRead, setMostRead] = useState<{ id?: string; name: string; count: number }[]>([]);
 
@@ -55,6 +57,7 @@ export function SourcesClient() {
   const grouped = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const visible = SOURCES.filter((source) => {
+      if (favOnly && !favorites.has(source.id)) return false;
       if (lang !== "all" && source.lang !== lang) return false;
       if (!needle) return true;
       // Search what a reader would actually type: the paper's name, the
@@ -79,7 +82,7 @@ export function SourcesClient() {
       ([a], [b]) =>
         Object.keys(CATEGORY_LABELS).indexOf(a) - Object.keys(CATEGORY_LABELS).indexOf(b),
     );
-  }, [lang, query]);
+  }, [lang, query, favOnly, favorites]);
 
   const matches = useMemo(
     () => grouped.reduce((total, [, list]) => total + list.length, 0),
@@ -112,6 +115,16 @@ export function SourcesClient() {
     else next.add(id);
     // An empty shelf would show an empty newsstand, so keep at least one.
     update({ sources: next.size ? Array.from(next) : settings.sources });
+  }
+
+  // Favoriting only means something for a source already on the shelf -
+  // sanitize() drops a favorite the moment its source leaves the shelf, so
+  // this never needs to add it back on its own.
+  function toggleFavorite(id: string) {
+    const next = new Set(settings.favorites);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    update({ favorites: Array.from(next) });
   }
 
   async function runHealthCheck() {
@@ -310,7 +323,9 @@ export function SourcesClient() {
                 key={source.id}
                 source={source}
                 enabled={selected.has(source.id)}
+                favorite={favorites.has(source.id)}
                 onToggle={() => toggle(source.id)}
+                onToggleFavorite={() => toggleFavorite(source.id)}
                 onRemove={() => {
                   removeCustomSource(source.id);
                   setCustom(getCustomSources());
@@ -363,6 +378,15 @@ export function SourcesClient() {
         ))}
         <button
           type="button"
+          onClick={() => setFavOnly((v) => !v)}
+          data-selected={favOnly}
+          className="chip !gap-1"
+        >
+          <StarIcon width={14} height={14} fill={favOnly ? "currentColor" : "none"} />
+          {t("sources.favoritesOnly")}
+        </button>
+        <button
+          type="button"
           onClick={() => update({ sources: DEFAULT_SETTINGS.sources })}
           className="chip"
         >
@@ -395,6 +419,7 @@ export function SourcesClient() {
             <div className="space-y-2">
               {list.map((source) => {
                 const on = selected.has(source.id);
+                const fav = favorites.has(source.id);
                 const status = healthById.get(source.id);
                 return (
                   <div
@@ -424,6 +449,22 @@ export function SourcesClient() {
                         <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{source.note}</p>
                       )}
                     </div>
+                    {/* Favoriting only means something once a source is on the
+                        shelf, so the star only appears alongside it. */}
+                    {on && (
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(source.id)}
+                        className={`btn shrink-0 !px-2 !py-1.5 ${fav ? "text-accent" : ""}`}
+                        aria-pressed={fav}
+                        aria-label={
+                          fav ? `Unfavorite ${source.name}` : `Favorite ${source.name}`
+                        }
+                        title={t("sources.favorite")}
+                      >
+                        <StarIcon width={15} height={15} fill={fav ? "currentColor" : "none"} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => toggle(source.id)}

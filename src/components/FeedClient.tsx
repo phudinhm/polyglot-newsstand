@@ -102,18 +102,30 @@ export function FeedClient() {
 
   const sourceKey = settings.sources.join(",");
   const customKey = custom.map((c) => c.feed).join(",");
-  const cacheKey = `${sourceKey}|${customKey}`;
+  const favoritesKey = settings.favorites.join(",");
+  // Folded into the cache key, not just load()'s own deps: toggling a
+  // favorite has to refetch with the new priority order right away, not wait
+  // out however much of the 5-minute staleness window is left.
+  const cacheKey = `${sourceKey}|${customKey}|${favoritesKey}`;
 
   const load = useCallback(
     async (signal?: AbortSignal, background = false) => {
       if (!background) setLoading(true);
       setError(null);
       try {
+        // The feed API only ever fetches the first MAX_SOURCES of these, so a
+        // favorite needs to be near the front of the list to survive a shelf
+        // bigger than that - not wherever it happened to land (Array.sort is
+        // stable, so everything else keeps its existing relative order).
+        const favoriteSet = new Set(settings.favorites);
+        const orderedSources = [...settings.sources].sort(
+          (a, b) => Number(favoriteSet.has(b)) - Number(favoriteSet.has(a)),
+        );
         const res = await fetch("/api/feed", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            sources: settings.sources,
+            sources: orderedSources,
             custom: custom.filter((c) => settings.sources.includes(c.id)),
           }),
           signal,
@@ -131,7 +143,7 @@ export function FeedClient() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sourceKey, customKey],
+    [sourceKey, customKey, favoritesKey],
   );
 
   useEffect(() => {
@@ -313,7 +325,13 @@ export function FeedClient() {
 
       <RecentlyRead />
 
-      <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
+      <SourceRail
+        shelf={settings.sources}
+        favorites={settings.favorites}
+        selected={source}
+        onSelect={setSource}
+        counts={counts}
+      />
 
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">

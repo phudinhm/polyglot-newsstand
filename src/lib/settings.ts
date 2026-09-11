@@ -54,6 +54,12 @@ export interface Settings {
   /** Keep articles already read off the shelf too. */
   hideRead: boolean;
   sources: string[];
+  /**
+   * A source on the shelf the reader specifically wants: pinned first on the
+   * home rail, and sent first when the feed is built, so it is never one of
+   * the ones dropped once the shelf holds more than fits in a single fetch.
+   */
+  favorites: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -76,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hidePaywalled: true,
   hideRead: false,
   sources: DEFAULT_SOURCE_IDS,
+  favorites: [],
 };
 
 export const SETTINGS_KEY = "pn:settings:v1";
@@ -107,6 +114,8 @@ function clamp(value: number, min: number, max: number, fallback: number): numbe
 }
 
 export function sanitize(s: Settings): Settings {
+  const sources = Array.isArray(s.sources) && s.sources.length ? s.sources : DEFAULT_SOURCE_IDS;
+  const sourceSet = new Set(sources);
   return {
     ...s,
     fontSize: clamp(s.fontSize, 15, 28, DEFAULT_SETTINGS.fontSize),
@@ -116,7 +125,10 @@ export function sanitize(s: Settings): Settings {
     speechRate: clamp(s.speechRate, 0.5, 1.5, DEFAULT_SETTINGS.speechRate),
     voices: s.voices && typeof s.voices === "object" ? s.voices : {},
     tracking: clamp(s.tracking, 0, 0.06, DEFAULT_SETTINGS.tracking),
-    sources: Array.isArray(s.sources) && s.sources.length ? s.sources : DEFAULT_SOURCE_IDS,
+    sources,
+    // Favoriting a source you have since removed from the shelf would leave
+    // it silently pinned again the moment it was re-added for any reason.
+    favorites: Array.isArray(s.favorites) ? s.favorites.filter((id) => sourceSet.has(id)) : [],
   };
 }
 

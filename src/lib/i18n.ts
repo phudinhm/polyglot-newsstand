@@ -127,6 +127,8 @@ const EN = {
   "sources.reset": "Reset shelf",
   "sources.addAll": "Add all",
   "sources.onShelf": "On shelf",
+  "sources.favorite": "Favorite",
+  "sources.favoritesOnly": "Favorites",
 
   "vocab.title": "Vocabulary",
   "vocab.search": "Search your words",
@@ -276,6 +278,8 @@ const DE: Record<StringKey, string> = {
   "sources.reset": "Auswahl zurücksetzen",
   "sources.addAll": "Alle hinzufügen",
   "sources.onShelf": "Im Regal",
+  "sources.favorite": "Favorit",
+  "sources.favoritesOnly": "Favoriten",
 
   "vocab.title": "Wortschatz",
   "vocab.search": "Wörter durchsuchen",
@@ -423,6 +427,8 @@ const VI: Record<StringKey, string> = {
   "sources.reset": "Đặt lại kệ báo",
   "sources.addAll": "Thêm tất cả",
   "sources.onShelf": "Trên kệ",
+  "sources.favorite": "Yêu thích",
+  "sources.favoritesOnly": "Yêu thích",
 
   "vocab.title": "Từ vựng",
   "vocab.search": "Tìm từ đã lưu",
