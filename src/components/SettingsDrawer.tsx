@@ -17,6 +17,7 @@ interface Props {
 const SAMPLE_DE = "Die Bundesregierung hat am Montag neue Maßnahmen vorgestellt.";
 const SAMPLE_TRANSLATION: Record<TargetLang, string> = {
   en: "The federal government presented new measures on Monday.",
+  de: "Die Bundesregierung hat am Montag neue Maßnahmen vorgestellt.",
   vi: "Chính phủ liên bang đã công bố các biện pháp mới vào thứ Hai.",
 };
 
@@ -194,6 +195,14 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 className="chip flex-1 !justify-center !py-2"
               >
                 English
+              </button>
+              <button
+                type="button"
+                onClick={() => update({ target: "de" })}
+                data-selected={settings.target === "de"}
+                className="chip flex-1 !justify-center !py-2"
+              >
+                Deutsch
               </button>
               <button
                 type="button"
