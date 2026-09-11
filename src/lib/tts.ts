@@ -179,3 +179,88 @@ export function cancelSpeech(): void {
 export function isSpeaking(): boolean {
   return speechSupported() && window.speechSynthesis.speaking;
 }
+
+/* ------------------------------------------------------- reading with the screen off */
+
+/**
+ * iOS suspends a plain Speech Synthesis utterance the moment the screen
+ * locks - there is no audio session to keep the process alive without one.
+ * A silent, looping audio element playing underneath is the standard
+ * workaround: iOS sees an active playback session and keeps the tab (and
+ * the voice reading from it) running with the screen off.
+ */
+let keepAliveAudio: HTMLAudioElement | null = null;
+
+function ensureKeepAliveAudio(): HTMLAudioElement {
+  if (!keepAliveAudio) {
+    keepAliveAudio = new Audio("/silence.wav");
+    keepAliveAudio.loop = true;
+    keepAliveAudio.preload = "auto";
+    keepAliveAudio.setAttribute("playsinline", "true");
+  }
+  return keepAliveAudio;
+}
+
+export function startBackgroundKeepAlive(): void {
+  if (typeof window === "undefined") return;
+  // Always follows a tap (the read-aloud button), so the user gesture
+  // autoplay restrictions are already satisfied here.
+  void ensureKeepAliveAudio()
+    .play()
+    .catch(() => {
+      // Worst case, read-aloud stops when the screen locks, same as before.
+    });
+}
+
+export function stopBackgroundKeepAlive(): void {
+  keepAliveAudio?.pause();
+}
+
+/**
+ * The iOS/Android lock screen and control-centre "now playing" card, so a
+ * reader can see what is being read and pause or stop it without unlocking
+ * the phone. Every call is a no-op where the Media Session API does not
+ * exist, which today means most desktop browsers.
+ */
+export interface NowPlayingHandlers {
+  onPlay?: () => void;
+  onPause?: () => void;
+  onStop?: () => void;
+}
+
+function hasMediaSession(): boolean {
+  return typeof navigator !== "undefined" && "mediaSession" in navigator;
+}
+
+export function setNowPlaying(title: string, artist?: string): void {
+  if (!hasMediaSession()) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist: artist ?? "Polyglot Newsstand",
+    });
+  } catch {
+    // A lock-screen title is a nicety; losing it should not stop playback.
+  }
+}
+
+export function setPlaybackState(state: MediaSessionPlaybackState): void {
+  if (!hasMediaSession()) return;
+  navigator.mediaSession.playbackState = state;
+}
+
+export function setNowPlayingHandlers(handlers: NowPlayingHandlers): void {
+  if (!hasMediaSession()) return;
+  navigator.mediaSession.setActionHandler("play", handlers.onPlay ?? null);
+  navigator.mediaSession.setActionHandler("pause", handlers.onPause ?? null);
+  navigator.mediaSession.setActionHandler("stop", handlers.onStop ?? null);
+}
+
+/** Called once reading stops for good: clears the card and the keep-alive audio together. */
+export function clearNowPlaying(): void {
+  stopBackgroundKeepAlive();
+  if (!hasMediaSession()) return;
+  navigator.mediaSession.metadata = null;
+  navigator.mediaSession.playbackState = "none";
+  setNowPlayingHandlers({});
+}
