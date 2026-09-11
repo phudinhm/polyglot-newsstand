@@ -1,13 +1,16 @@
 import { TtlCache } from "../cache";
 import type { SourceLang, TargetLang } from "../types";
-import { deepl, google, libre, mymemory, type Provider } from "./providers";
+import { deepl, deepseek, google, gemini, groq, libre, mymemory, type Provider } from "./providers";
 
 /**
  * Provider order is quality first, availability last. Whichever is configured
  * and answers first wins; a failure falls through to the next one so a missing
- * key or an exhausted quota degrades instead of breaking the page.
+ * key or an exhausted quota degrades instead of breaking the page. Gemini,
+ * Groq and DeepSeek sit between the dedicated translation APIs and the
+ * self-hosted/free fallbacks: general-purpose LLMs, good quality, but not
+ * built for translation the way DeepL and Google Cloud Translation are.
  */
-const CHAIN: Provider[] = [deepl, google, libre, mymemory];
+const CHAIN: Provider[] = [deepl, google, gemini, groq, deepseek, libre, mymemory];
 
 // Translations of a given sentence never change, so cache them generously.
 const cache = new TtlCache<string>(24 * 60 * 60 * 1000, 4_000);
