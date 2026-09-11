@@ -75,3 +75,22 @@ export function isCommon(word: string, lang: string): boolean {
   if (lang === "en") return COMMON_ENGLISH.has(lower);
   return true;
 }
+
+/**
+ * How many distinct words in this text are worth learning, at a glance.
+ *
+ * A headline and its summary are a rough preview, not a lesson, so this is
+ * an estimate rather than the heatmap's word-by-word judgement - but it is
+ * enough to tell a browsing reader which story is worth the vocabulary. Only
+ * meaningful for German and English, the two languages with a common-word
+ * list; Vietnamese always reads as zero rather than counting every word.
+ */
+export function newWordCount(text: string, lang: string): number {
+  if (lang !== "de" && lang !== "en") return 0;
+  const seen = new Set<string>();
+  for (const match of text.matchAll(/[\p{L}\p{M}]+/gu)) {
+    const word = match[0].toLowerCase();
+    if (!isCommon(word, lang)) seen.add(word);
+  }
+  return seen.size;
+}

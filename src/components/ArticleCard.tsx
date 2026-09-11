@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import type { FeedItem } from "@/lib/types";
 import { readerHref, timeAgo } from "@/lib/format";
 import { rememberItem } from "@/lib/handoff";
+import { newWordCount } from "@/lib/frequency";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { SourceAvatar } from "./SourceAvatar";
 
@@ -51,15 +52,15 @@ function Meta({
       )}
       {blocked && (
         <span
-          className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted"
+          className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-fg"
           title="This publisher turned us away last time you opened something here."
         >
-          blocked before
+          didn&apos;t load last time
         </span>
       )}
       {!blocked && item.paywall && (
         <span
-          className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-muted"
+          className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-fg"
           title={
             item.paywall === "hard"
               ? "Most articles here are locked; you will usually need the publisher's site."
@@ -74,15 +75,37 @@ function Meta({
           Easy German
         </span>
       )}
+      <NewWordsBadge item={item} />
       {read && (
         <span
-          className="rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-accent"
+          className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-muted"
           title="You have already read this one."
         >
           read
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * A quiet nudge toward the point of the app: this headline alone carries a
+ * few words worth learning. Only shown past a small threshold, so it reads
+ * as a genuine signal rather than decorating every single card.
+ */
+function NewWordsBadge({ item }: { item: FeedItem }) {
+  const count = useMemo(
+    () => newWordCount(`${item.title} ${item.summary}`, item.lang),
+    [item.title, item.summary, item.lang],
+  );
+  if (count < 4) return null;
+  return (
+    <span
+      className="rounded-full bg-[color-mix(in_srgb,var(--translation)_10%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation"
+      title="Roughly how many words here are worth adding to your vocabulary."
+    >
+      {count} new words
+    </span>
   );
 }
 
@@ -171,7 +194,7 @@ function ArticleCardImpl({
             </p>
           )}
         </div>
-        <Thumb src={item.image} className="h-[4.5rem] w-[4.5rem] shrink-0 sm:h-[5.5rem] sm:w-[7.5rem]" />
+        <Thumb src={item.image} className="h-[5rem] w-[5rem] shrink-0 sm:h-[6rem] sm:w-[8.5rem]" />
       </Link>
     </article>
   );

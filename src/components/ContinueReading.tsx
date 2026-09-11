@@ -47,7 +47,7 @@ export function ContinueReading() {
             aria-hidden
             className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full"
             style={{
-              background: `conic-gradient(var(--accent) ${current.progress * 3.6}deg, color-mix(in srgb, var(--accent) 18%, transparent) 0deg)`,
+              background: `conic-gradient(var(--translation) ${current.progress * 3.6}deg, color-mix(in srgb, var(--translation) 18%, transparent) 0deg)`,
             }}
           >
             <span className="grid h-[1.9rem] w-[1.9rem] place-items-center rounded-full bg-surface text-[10px] font-semibold tabular-nums">

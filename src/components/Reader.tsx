@@ -87,7 +87,13 @@ export function Reader({
   const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
-  const tr = useTranslator(lang, settings.target);
+  // Translating an article into its own language would just repeat it, so
+  // that option never appears, and a saved preference that no longer applies
+  // (an English preference, opening a German piece) falls back quietly
+  // rather than being overwritten - it is still right the next time it fits.
+  const targetOptions = (["en", "vi"] as const).filter((t) => t !== lang);
+  const target = targetOptions.includes(settings.target) ? settings.target : targetOptions[0];
+  const tr = useTranslator(lang, target);
   const source = sourceId ? SOURCE_BY_ID.get(sourceId) : undefined;
   // The paper's own name, shown in full rather than cut off mid-word.
   const publisher = source?.name ?? article?.siteName;
@@ -217,7 +223,8 @@ export function Reader({
         lang: article.lang,
         progress: pct,
       });
-      if (pct >= 90) markRead(url);
+      // Reaching the end, not just opening it, is what "read" means here.
+      if (pct >= 99) markRead(url);
     };
     const onScroll = () => {
       const pct = currentPct();
@@ -454,7 +461,7 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-0 z-40 h-0.5 bg-accent transition-[width] duration-150"
+        className="fixed inset-x-0 top-0 z-40 h-0.5 bg-translation transition-[width] duration-150"
         style={{ width: `${progress}%` }}
         aria-hidden
       />
@@ -470,7 +477,7 @@ export function Reader({
             aria-hidden
             className="grid h-4 w-4 place-items-center rounded-full"
             style={{
-              background: `conic-gradient(var(--accent) ${progress * 3.6}deg, color-mix(in srgb, var(--accent) 20%, transparent) 0deg)`,
+              background: `conic-gradient(var(--translation) ${progress * 3.6}deg, color-mix(in srgb, var(--translation) 20%, transparent) 0deg)`,
             }}
           />
           <span className="text-[11.5px] font-medium tabular-nums">{Math.round(progress)}%</span>
@@ -526,28 +533,30 @@ export function Reader({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => update({ target: settings.target === "en" ? "vi" : "en" })}
-            className="btn min-h-11 !px-1.5 !py-1.5 text-xs font-semibold sm:hidden"
+          {/*
+            One control, not two: a same-language target used to still be
+            offered here, so a reader on an English piece with an English
+            preference saw "translate into English" produce the very text
+            they were already reading. Only the languages the article can
+            actually be translated into ever appear.
+          */}
+          <div
+            className="flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5"
+            role="group"
             aria-label={t("reader.translateInto")}
-            title={t("reader.translateInto")}
           >
-            {settings.target === "en" ? "EN" : "VI"}
-          </button>
-
-          <div className="hidden items-center gap-1 rounded-lg border border-border bg-surface p-0.5 sm:flex">
-            {(["en", "vi"] as const).map((target) => (
+            {targetOptions.map((opt) => (
               <button
-                key={target}
+                key={opt}
                 type="button"
-                onClick={() => update({ target })}
-                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                  settings.target === target ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
+                onClick={() => update({ target: opt })}
+                className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-2 sm:py-1 ${
+                  target === opt ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
                 }`}
-                aria-pressed={settings.target === target}
+                aria-pressed={target === opt}
+                title={t("reader.translateInto")}
               >
-                {target === "en" ? "EN" : "VI"}
+                {opt === "en" ? "EN" : "VI"}
               </button>
             ))}
           </div>
@@ -955,7 +964,7 @@ export function Reader({
                           )}
 
                           {open && (
-                            <div className="translation" lang={settings.target}>
+                            <div className="translation" lang={target}>
                               {translation ? (
                                 translation
                               ) : pending ? (
@@ -997,7 +1006,7 @@ export function Reader({
         <WordPopover
           query={word}
           lang={lang}
-          target={settings.target}
+          target={target}
           articleTitle={article?.title}
           articleUrl={url}
           sentenceTranslation={tr.get(word.sentence)}
@@ -1011,7 +1020,7 @@ export function Reader({
         <SentenceStructure
           sentence={structureLine}
           lang={lang}
-          target={settings.target}
+          target={target}
           onClose={() => setStructureLine(null)}
         />
       )}

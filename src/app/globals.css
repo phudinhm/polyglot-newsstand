@@ -308,11 +308,15 @@ body {
 
 .translation {
   color: var(--translation);
-  font-size: 0.88em;
-  line-height: 1.55;
+  font-size: 0.82em;
+  font-style: italic;
+  line-height: 1.5;
   letter-spacing: 0;
-  padding: 0.15em 0.55em 0.35em;
-  margin-inline-start: -0.55em;
+  /* A touch narrower than the sentence above it, not flush with it: the
+     indent is what says "gloss", the way a size and colour change alone
+     did not make obvious enough at a glance. */
+  padding: 0.05em 0.55em 0.35em 0.4em;
+  margin-inline-start: -0.15em;
   border-inline-start: 2px solid color-mix(in srgb, var(--translation) 45%, transparent);
   animation: reveal 160ms ease-out;
 }
@@ -389,7 +393,9 @@ body {
 }
 
 .reading .para + .para {
-  margin-top: 1.05em;
+  /* Wider than the gap between a sentence and its own translation, so a
+     paragraph reads as a cluster and the next one reads as a new one. */
+  margin-top: 1.9em;
 }
 
 .reading .quote {
@@ -428,7 +434,7 @@ body {
 .thumb {
   background-color: var(--surface-2);
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
 .chip {
@@ -522,6 +528,17 @@ body {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * A soft fade at the trailing edge of a horizontally-scrolling row, so a
+ * card cut off mid-width reads as "more this way" instead of a layout bug.
+ * Only the trailing edge: the leading edge stays solid, since there is
+ * nothing to suggest there before the row has been scrolled.
+ */
+.scroll-fade-r {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
 }
 
 .skeleton {
