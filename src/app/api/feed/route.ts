@@ -76,7 +76,7 @@ async function build(ids: string[], custom: Source[]): Promise<FeedResponse> {
   settled.forEach((result, i) => {
     const source = sources[i];
     if (result.status === "fulfilled") {
-      items.push(...result.value);
+      items.push(...result.value.slice(0, 50));
     } else {
       failed.push({
         sourceId: source.id,
@@ -102,7 +102,7 @@ async function build(ids: string[], custom: Source[]): Promise<FeedResponse> {
   });
 
   return {
-    items: deduped.slice(0, 300),
+    items: deduped.slice(0, 800),
     failed,
     fetchedAt: new Date().toISOString(),
   };
