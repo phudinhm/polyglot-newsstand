@@ -100,6 +100,29 @@ export const mymemory: Provider = {
     const results: string[] = new Array(texts.length);
     const CONCURRENCY = 4;
 
+    // A 429 here is usually the free tier's burst limit, not the daily word
+    // quota (that one comes back as a 200 with a warning string instead), so
+    // a couple of short, jittered waits recover a request that just landed
+    // in a crowded second rather than one that is genuinely out for the day.
+    async function fetchOnce(params: URLSearchParams, attempt: number): Promise<Response> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15_000);
+      try {
+        const res = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (res.status === 429 && attempt < 2) {
+          const wait = 500 * 2 ** attempt + Math.random() * 300;
+          await new Promise((r) => setTimeout(r, wait));
+          return fetchOnce(params, attempt + 1);
+        }
+        return res;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     async function one(index: number): Promise<void> {
       const text = texts[index];
       // The endpoint rejects long strings, so send a trimmed request and
@@ -110,24 +133,15 @@ export const mymemory: Provider = {
       }
       const params = new URLSearchParams({ q: text, langpair: `${source}|${target}` });
       if (email) params.set("de", email);
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15_000);
-      try {
-        const res = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`${res.status}`);
-        const json = (await res.json()) as {
-          responseData?: { translatedText?: string };
-          responseStatus?: number | string;
-        };
-        const status = Number(json.responseStatus);
-        if (status && status !== 200) throw new Error(`MyMemory status ${status}`);
-        results[index] = decodeEntities(json.responseData?.translatedText ?? "");
-      } finally {
-        clearTimeout(timer);
-      }
+      const res = await fetchOnce(params, 0);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const json = (await res.json()) as {
+        responseData?: { translatedText?: string };
+        responseStatus?: number | string;
+      };
+      const status = Number(json.responseStatus);
+      if (status && status !== 200) throw new Error(`MyMemory status ${status}`);
+      results[index] = decodeEntities(json.responseData?.translatedText ?? "");
     }
 
     for (let i = 0; i < texts.length; i += CONCURRENCY) {

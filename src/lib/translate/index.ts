@@ -73,7 +73,7 @@ export async function translate(
 
   throw new Error(
     errors.length
-      ? `Every translation provider failed. ${errors.join(" | ")}`
+      ? `Translation is temporarily unavailable - the free tier's quota is likely used up for now, and it usually recovers within a few hours. (${errors.join(" | ")})`
       : "No translation provider is configured.",
   );
 }
