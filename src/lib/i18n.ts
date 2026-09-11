@@ -25,6 +25,7 @@ const EN = {
   "app.slogan": "The news, one line at a time",
 
   "feed.search": "Search headlines",
+  "feed.clearSearch": "Clear search",
   "feed.all": "All",
   "feed.everything": "Everything",
   "feed.moreFilters": "More filters",
@@ -171,6 +172,7 @@ const DE: Record<StringKey, string> = {
   "app.slogan": "Nachrichten, Zeile für Zeile",
 
   "feed.search": "Schlagzeilen durchsuchen",
+  "feed.clearSearch": "Suche löschen",
   "feed.all": "Alle",
   "feed.everything": "Alles",
   "feed.moreFilters": "Weitere Filter",
@@ -315,6 +317,7 @@ const VI: Record<StringKey, string> = {
   "app.slogan": "Tin tức, từng dòng một",
 
   "feed.search": "Tìm tiêu đề",
+  "feed.clearSearch": "Xóa tìm kiếm",
   "feed.all": "Tất cả",
   "feed.everything": "Tất cả",
   "feed.moreFilters": "Bộ lọc khác",
