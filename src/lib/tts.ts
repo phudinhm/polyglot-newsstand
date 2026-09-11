@@ -68,6 +68,7 @@ const baseName = (voice: SpeechSynthesisVoice) =>
   voice.name.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim();
 
 export function isAIVoice(voice: SpeechSynthesisVoice): boolean {
+  if (voice.voiceURI === "google-translate-ai") return true;
   const name = voice.name.toLowerCase();
   return QUALITY_HINTS.some((hint) => name.includes(hint));
 }
@@ -78,6 +79,7 @@ function isHumanVoice(voice: SpeechSynthesisVoice): boolean {
 }
 
 function voiceRank(voice: SpeechSynthesisVoice): number {
+  if (voice.voiceURI === "google-translate-ai") return -1; // Top priority
   const name = voice.name.toLowerCase();
   if (LEGACY.has(baseName(voice))) return 9;
   const quality = QUALITY_HINTS.some((hint) => name.includes(hint)) ? 0 : 1;
@@ -101,7 +103,7 @@ export const VOICE_REGIONS: Record<string, string> = {
 };
 
 export const regionOf = (voice: SpeechSynthesisVoice) =>
-  VOICE_REGIONS[voice.lang.toLowerCase()] ?? voice.lang;
+  voice.voiceURI === "google-translate-ai" ? "Cloud" : (VOICE_REGIONS[voice.lang.toLowerCase()] ?? voice.lang);
 
 /**
  * Every installed voice for a language, across regions. German is spoken in
@@ -111,7 +113,7 @@ export const regionOf = (voice: SpeechSynthesisVoice) =>
 export function voicesFor(lang: SourceLang | TargetLang): SpeechSynthesisVoice[] {
   const prefix = BCP47[lang].slice(0, 2);
   const seen = new Set<string>();
-  return listVoices()
+  const nativeVoices = listVoices()
     .filter((v) => {
       if (!v.lang.toLowerCase().startsWith(prefix) || !isHumanVoice(v)) return false;
       // Some platforms list the same voice twice; a duplicate row is noise.
@@ -121,6 +123,16 @@ export function voicesFor(lang: SourceLang | TargetLang): SpeechSynthesisVoice[]
       return true;
     })
     .sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
+
+  const cloudVoice = {
+    voiceURI: "google-translate-ai",
+    name: "Google Cloud AI",
+    lang: BCP47[lang],
+    localService: false,
+    default: false,
+  } as SpeechSynthesisVoice;
+
+  return [cloudVoice, ...nativeVoices];
 }
 
 export interface SpeakOptions {
@@ -137,9 +149,32 @@ export interface SpeakOptions {
   onWord?: (charIndex: number, charLength: number) => void;
 }
 
+let activeAudio: HTMLAudioElement | null = null;
+
 export function speak(text: string, options: SpeakOptions): void {
-  if (!speechSupported() || !text.trim()) return;
+  if (!text.trim()) return;
   cancelSpeech();
+
+  if (options.voiceUri === "google-translate-ai") {
+    // Google Translate TTS works well for short sentences without CORS issues when used in an <audio> tag.
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${options.lang}&client=tw-ob`;
+    activeAudio = new Audio(url);
+    activeAudio.playbackRate = options.rate ?? 1;
+    activeAudio.onended = () => {
+      activeAudio = null;
+      options.onEnd?.();
+    };
+    activeAudio.onerror = () => {
+      activeAudio = null;
+      options.onError?.();
+    };
+    // Simulate word boundary for the whole sentence since we don't have word-level timings
+    options.onWord?.(0, text.length);
+    activeAudio.play().catch(() => options.onError?.());
+    return;
+  }
+
+  if (!speechSupported()) return;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = BCP47[options.lang];
@@ -165,23 +200,30 @@ export function speak(text: string, options: SpeakOptions): void {
 }
 
 export function pauseSpeech(): void {
-  if (speechSupported()) window.speechSynthesis.pause();
+  if (activeAudio) activeAudio.pause();
+  else if (speechSupported()) window.speechSynthesis.pause();
 }
 
 export function resumeSpeech(): void {
-  if (speechSupported()) window.speechSynthesis.resume();
+  if (activeAudio) activeAudio.play();
+  else if (speechSupported()) window.speechSynthesis.resume();
 }
 
 export function isPaused(): boolean {
+  if (activeAudio) return activeAudio.paused;
   return speechSupported() && window.speechSynthesis.paused;
 }
 
 export function cancelSpeech(): void {
-  if (!speechSupported()) return;
-  window.speechSynthesis.cancel();
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio = null;
+  }
+  if (speechSupported()) window.speechSynthesis.cancel();
 }
 
 export function isSpeaking(): boolean {
+  if (activeAudio) return !activeAudio.paused;
   return speechSupported() && window.speechSynthesis.speaking;
 }
 
