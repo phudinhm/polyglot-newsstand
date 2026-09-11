@@ -263,6 +263,7 @@ export function WordPopover({
                   word={headword}
                   surface={query.word}
                   article={entry.article}
+                  plural={entry.plural}
                   isAdjective={isAdjective}
                   target={target}
                 />

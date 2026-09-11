@@ -8,6 +8,7 @@ import {
   DEFINITE,
   findAdjective,
   findCase,
+  normalise,
   type Case,
   type Gender,
 } from "@/lib/cases";
@@ -148,6 +149,7 @@ export function CaseCard({
   word,
   surface,
   article,
+  plural,
   isAdjective,
   target,
 }: {
@@ -158,6 +160,8 @@ export function CaseCard({
   surface: string;
   /** "der", "die" or "das" from the dictionary, for nouns only. */
   article?: string;
+  /** The dictionary's plural spelling, for nouns only. */
+  plural?: string;
   isAdjective?: boolean;
   target: TargetLang;
 }) {
@@ -265,12 +269,20 @@ export function CaseCard({
     );
   }
 
-  const gender = article ? ARTICLE_GENDER[article] : undefined;
+  // A neuter, feminine or masculine noun in the plural declines exactly
+  // like every other plural - "der Urteile", not "des Urteile" - so the
+  // singular gender from the dictionary is the wrong thing to narrow by
+  // once the tapped word is actually the plural spelling.
+  const isPlural = Boolean(plural) && normalise(surface) === normalise(plural ?? "");
+  const gender = isPlural ? "pl" : article ? ARTICLE_GENDER[article] : undefined;
   const finding = findCase(sentence, surface, gender);
   if (!finding) return null;
 
   const shown = finding.gender ?? gender;
   const sameForm = shown && DEFINITE[finding.kasus][shown] === DEFINITE.nominative[shown];
+  // The headword is always the singular dictionary form, which is the wrong
+  // spelling to show once the table being read is the plural row.
+  const displayNoun = shown === "pl" && plural ? plural : word;
 
   return (
     <Shell
@@ -292,7 +304,7 @@ export function CaseCard({
               </span>{" "}
               thuộc {GENDER_TEXT.vi[shown]}. Đứng một mình là{" "}
               <span className="font-medium text-fg" lang="de">
-                {DEFINITE.nominative[shown]} {word}
+                {DEFINITE.nominative[shown]} {displayNoun}
               </span>
               {sameForm ? (
                 <>
@@ -306,7 +318,7 @@ export function CaseCard({
                 <>
                   , ở đây thành{" "}
                   <span className="font-medium text-fg" lang="de">
-                    {DEFINITE[finding.kasus][shown]} {word}
+                    {DEFINITE[finding.kasus][shown]} {displayNoun}
                   </span>
                   .
                 </>
@@ -319,7 +331,7 @@ export function CaseCard({
               </span>{" "}
               is {GENDER_TEXT.en[shown]}. On its own it is{" "}
               <span className="font-medium text-fg" lang="de">
-                {DEFINITE.nominative[shown]} {word}
+                {DEFINITE.nominative[shown]} {displayNoun}
               </span>
               {sameForm ? (
                 <>
@@ -333,7 +345,7 @@ export function CaseCard({
                 <>
                   , which becomes{" "}
                   <span className="font-medium text-fg" lang="de">
-                    {DEFINITE[finding.kasus][shown]} {word}
+                    {DEFINITE[finding.kasus][shown]} {displayNoun}
                   </span>{" "}
                   here.
                 </>
