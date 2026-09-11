@@ -15,7 +15,18 @@ import { markRead, noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
 import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
-import { cancelSpeech, isPaused, pauseSpeech, resumeSpeech, speak, speechSupported } from "@/lib/tts";
+import {
+  cancelSpeech,
+  clearNowPlaying,
+  pauseSpeech,
+  resumeSpeech,
+  setNowPlaying,
+  setNowPlayingHandlers,
+  setPlaybackState,
+  speak,
+  speechSupported,
+  startBackgroundKeepAlive,
+} from "@/lib/tts";
 import { useScrollActivity } from "@/hooks/useScrollActivity";
 import { PronunciationPractice } from "./PronunciationPractice";
 import { SentenceStructure } from "./SentenceStructure";
@@ -338,13 +349,21 @@ export function Reader({
   // ----------------------------------------------------------- read aloud
   const stopSpeaking = useCallback(() => {
     cancelSpeech();
+    clearNowPlaying();
     setSpeakingKey(null);
     setReadingAloud(false);
     setSpokenChar(-1);
   }, []);
 
-  // Leaving the article mid-sentence should not leave a voice talking.
-  useEffect(() => () => cancelSpeech(), []);
+  // Leaving the article mid-sentence should not leave a voice talking, or a
+  // lock-screen card and keep-alive audio running for a page that is gone.
+  useEffect(
+    () => () => {
+      cancelSpeech();
+      clearNowPlaying();
+    },
+    [],
+  );
 
   const speakLine = useCallback(
     (index: number, continuous: boolean) => {
@@ -388,16 +407,41 @@ export function Reader({
     const start = Math.max(0, lines.findIndex((l) => l.key === activeKey));
     setReadingAloud(true);
     setPaused(false);
+    if (article) {
+      setNowPlaying(article.title, publisher);
+      setPlaybackState("playing");
+      startBackgroundKeepAlive();
+      setNowPlayingHandlers({
+        onPlay: () => {
+          resumeSpeech();
+          setPaused(false);
+          setPlaybackState("playing");
+        },
+        onPause: () => {
+          pauseSpeech();
+          setPaused(true);
+          setPlaybackState("paused");
+        },
+        onStop: stopSpeaking,
+      });
+    }
     speakLine(start, true);
   }
 
   function togglePause() {
-    if (isPaused()) {
+    // Driven by our own state, not a re-query of the engine's paused flag:
+    // the lock screen's own play/pause card can set the engine's paused
+    // state directly, and this button's label is already this state, so
+    // asking the engine again risked the two disagreeing about which way
+    // a tap should go.
+    if (paused) {
       resumeSpeech();
       setPaused(false);
+      setPlaybackState("playing");
     } else {
       pauseSpeech();
       setPaused(true);
+      setPlaybackState("paused");
     }
   }
 

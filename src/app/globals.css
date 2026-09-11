@@ -213,13 +213,12 @@ body {
   margin-inline: auto;
 }
 
-/* German compounds are long; hyphenation keeps the right edge from tearing. */
-.reading [lang="de"],
-.reading[lang="de"] {
-  hyphens: auto;
-  -webkit-hyphens: auto;
-}
-
+/*
+ * A whole word moves to the next line rather than splitting. Auto-hyphenating
+ * German compounds here read as a rendering bug, not a typesetting choice -
+ * mid-word breaks are gone, and overflow-wrap stays only as a last-resort
+ * safety net for the rare token too long to fit a line on its own.
+ */
 .reading p,
 .reading .para {
   text-wrap: pretty;

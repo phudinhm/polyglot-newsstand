@@ -81,6 +81,15 @@ export function WordPopover({
     };
   }, [query.word, lang, target]);
 
+  // Hearing the word is as much the point of tapping it as reading its
+  // translation is, so it plays the moment the popover opens rather than
+  // waiting for a second tap on the speaker button.
+  useEffect(() => {
+    if (!speechSupported()) return;
+    speak(query.word, { lang, rate: settings.speechRate, voiceUri: settings.voices[lang] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.word, lang]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);

@@ -1734,7 +1734,7 @@ export const DEFAULT_SOURCE_IDS = [
   "tagesschau",
   "ntv",
   "zeit",
-  "handelsblatt",
+  "dw-de-wirtschaft",
   "voa-learning",
   "bbc-top",
   "guardian-intl",
