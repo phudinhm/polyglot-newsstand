@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { noteSourceVisit } from "@/lib/recent";
+import { getReadUrls, noteSourceVisit } from "@/lib/recent";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
@@ -24,9 +24,17 @@ export function SourcePageClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(20);
+  const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
 
   // Opening a paper counts as visiting it, whether or not anything is read.
   useEffect(() => noteSourceVisit(id), [id]);
+
+  useEffect(() => {
+    const sync = () => setReadUrls(getReadUrls());
+    sync();
+    window.addEventListener("pn:store", sync);
+    return () => window.removeEventListener("pn:store", sync);
+  }, []);
 
   useEffect(() => {
     if (SOURCE_BY_ID.has(id)) return;
@@ -189,13 +197,13 @@ export function SourcePageClient({ id }: { id: string }) {
 
       {featured && (
         <div className="mb-4">
-          <FeaturedCard item={featured} />
+          <FeaturedCard item={featured} read={readUrls.has(featured.link)} />
         </div>
       )}
 
       <div className="space-y-2.5">
         {rest.slice(0, visible).map((item) => (
-          <ArticleCard key={item.id} item={item} linkSource={false} />
+          <ArticleCard key={item.id} item={item} linkSource={false} read={readUrls.has(item.link)} />
         ))}
       </div>
 

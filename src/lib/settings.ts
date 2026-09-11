@@ -51,6 +51,8 @@ export interface Settings {
   heatmap: boolean;
   /** Keep papers that lock most articles off the shelf until asked for. */
   hidePaywalled: boolean;
+  /** Keep articles already read off the shelf too. */
+  hideRead: boolean;
   sources: string[];
 }
 
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: Settings = {
   texture: true,
   heatmap: true,
   hidePaywalled: true,
+  hideRead: false,
   sources: DEFAULT_SOURCE_IDS,
 };
 

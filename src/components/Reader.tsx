@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/format";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import type { Article, SourceLang } from "@/lib/types";
 import { setReadingNow } from "@/lib/reading";
-import { noteRead } from "@/lib/recent";
+import { markRead, noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
 import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
@@ -193,36 +193,42 @@ export function Reader({
   useEffect(() => {
     if (!article) return;
     let lastWrite = 0;
-    const onScroll = () => {
+    const currentPct = () => {
       const height = document.documentElement.scrollHeight - window.innerHeight;
-      const pct = height > 0 ? Math.min(100, (window.scrollY / height) * 100) : 0;
+      return height > 0 ? Math.min(100, (window.scrollY / height) * 100) : 0;
+    };
+    // Leaving the page is the moment the true final progress matters most, so
+    // it always writes, even if the throttle below would otherwise skip it.
+    const write = (pct: number) => {
+      lastWrite = Date.now();
+      setReadingNow({
+        url,
+        title: article.title,
+        sourceName: source?.name ?? article.siteName ?? "",
+        lang: article.lang,
+        sourceId,
+        progress: pct,
+      });
+      noteRead({
+        url,
+        title: article.title,
+        sourceName: source?.name ?? article.siteName ?? "",
+        sourceId,
+        lang: article.lang,
+        progress: pct,
+      });
+      if (pct >= 90) markRead(url);
+    };
+    const onScroll = () => {
+      const pct = currentPct();
       setProgress(pct);
-      const now = Date.now();
-      if (now - lastWrite > 1500) {
-        lastWrite = now;
-        setReadingNow({
-          url,
-          title: article.title,
-          sourceName: source?.name ?? article.siteName ?? "",
-          lang: article.lang,
-          sourceId,
-          progress: pct,
-        });
-        noteRead({
-          url,
-          title: article.title,
-          sourceName: source?.name ?? article.siteName ?? "",
-          sourceId,
-          lang: article.lang,
-          progress: pct,
-        });
-      }
+      if (Date.now() - lastWrite > 1500) write(pct);
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
-      onScroll();
+      write(currentPct());
     };
   }, [article, url, sourceId, source]);
 

@@ -110,3 +110,52 @@ export function clearRecentSources(): void {
     // Ignore.
   }
 }
+
+/* ------------------------------------------------------- already read, kept longer */
+
+const READ_KEY = "pn:read:v1";
+const READ_MAX = 2000;
+
+function readReadList(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const list = JSON.parse(window.localStorage.getItem(READ_KEY) ?? "[]") as string[];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A much longer-lived record than the 40-item recent list, so "hide what I
+ * already read" keeps working long after an article has scrolled off it.
+ */
+export function getReadUrls(): Set<string> {
+  return new Set(readReadList());
+}
+
+export function isRead(url: string): boolean {
+  return readReadList().includes(url);
+}
+
+export function markRead(url: string): void {
+  if (!url) return;
+  try {
+    const list = readReadList().filter((u) => u !== url);
+    list.unshift(url);
+    window.localStorage.setItem(READ_KEY, JSON.stringify(list.slice(0, READ_MAX)));
+    window.dispatchEvent(new CustomEvent("pn:store", { detail: READ_KEY }));
+  } catch {
+    // Not worth interrupting a reading session for.
+  }
+}
+
+export function markUnread(url: string): void {
+  try {
+    const list = readReadList().filter((u) => u !== url);
+    window.localStorage.setItem(READ_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent("pn:store", { detail: READ_KEY }));
+  } catch {
+    // Ignore.
+  }
+}
