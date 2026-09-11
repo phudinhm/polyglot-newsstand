@@ -426,6 +426,11 @@ export function Reader({
           speakLine(index + 1, true);
         },
         onError: stopSpeaking,
+        // Something else took over mid-line - a word tapped for its own
+        // pronunciation, most often - so this line is no longer speaking,
+        // full stop. Never treated as this line finishing: continuing on to
+        // the next one would skip past text the reader never actually heard.
+        onInterrupted: stopSpeaking,
       });
     },
     [lines, lang, settings.speechRate, settings.voices, stopSpeaking],
