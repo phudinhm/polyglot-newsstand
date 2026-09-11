@@ -155,7 +155,14 @@ export function speak(text: string, options: SpeakOptions): void {
   if (!text.trim()) return;
   cancelSpeech();
 
-  if (options.voiceUri === "google-translate-ai") {
+  // The cloud voice is a placeholder entry, not a real SpeechSynthesisVoice,
+  // and it is also voicesFor()'s top-ranked pick - so an unset voiceUri
+  // resolves to it exactly as often as an explicit choice does. Resolving
+  // the URI first, before touching the Speech Synthesis API at all, is what
+  // catches both: handing that placeholder to utterance.voice throws.
+  const resolvedUri = options.voiceUri || voicesFor(options.lang)[0]?.voiceURI;
+
+  if (resolvedUri === "google-translate-ai") {
     // Route through our own backend proxy to bypass any CORS/Referer blocks
     const url = `/api/tts?lang=${options.lang}&text=${encodeURIComponent(text)}`;
     activeAudio = new Audio(url);
@@ -181,9 +188,7 @@ export function speak(text: string, options: SpeakOptions): void {
   // Learners need it slower than a native pace, but not comically so.
   utterance.rate = options.rate ?? 0.9;
 
-  const preferred = options.voiceUri
-    ? listVoices().find((v) => v.voiceURI === options.voiceUri)
-    : voicesFor(options.lang)[0];
+  const preferred = listVoices().find((v) => v.voiceURI === resolvedUri);
   if (preferred) utterance.voice = preferred;
 
   if (options.onEnd) utterance.addEventListener("end", options.onEnd);
