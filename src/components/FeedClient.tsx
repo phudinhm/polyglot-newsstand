@@ -11,7 +11,7 @@ import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { getReadUrls } from "@/lib/recent";
-import { SOURCE_BY_ID, SOURCES } from "@/lib/sources";
+import { SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
@@ -219,29 +219,17 @@ export function FeedClient() {
     });
   }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
+  // A tab only ever appears once its category actually has a story behind it.
+  // Deriving this from the shelf's sources instead - every category any added
+  // source is filed under - looked more stable, but the feed only ever
+  // fetches the first MAX_SOURCES of them (see src/app/api/feed/route.ts):
+  // past that cap a source sits on the shelf without ever being fetched, so
+  // its category got a tab that could never show anything. "Add all" is the
+  // fastest way to hit that ceiling - 175 sources on the shelf, 24 fetched.
   const categories = useMemo(() => {
-    const present = new Set<string>();
-    
-    // Add all categories from sources currently on the shelf
-    for (const sourceId of settings.sources) {
-      const source = SOURCE_BY_ID.get(sourceId);
-      if (source) present.add(source.category);
-    }
-    
-    // Add categories from custom sources
-    for (const customSource of custom) {
-      if (settings.sources.includes(customSource.id)) {
-        present.add(customSource.category);
-      }
-    }
-    
-    // Fallback: add whatever is present in data
-    for (const item of data?.items ?? []) {
-      present.add(item.category);
-    }
-
-    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c));
-  }, [data, settings.sources, custom]);
+    const present = new Set((data?.items ?? []).map((i) => i.category));
+    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
+  }, [data]);
 
   /**
    * When a section comes up empty, the papers that would fill it. Ranked so a
