@@ -1,6 +1,6 @@
 const DEFAULT_UA =
   process.env.USER_AGENT ??
-  "Mozilla/5.0 (compatible; PolyglotNewsstand/1.0; +https://github.com/phudinhm/polyglot-newsstand)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 export class FetchError extends Error {
   constructor(

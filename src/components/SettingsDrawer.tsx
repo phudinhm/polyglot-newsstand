@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
-import { FONTS, THEMES } from "@/lib/settings";
+import { ACCENT_COLORS, FONTS, THEMES } from "@/lib/settings";
 import { UI_LANGUAGES } from "@/lib/i18n";
 import { useT } from "@/hooks/useT";
 import { isAIVoice, onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
@@ -102,6 +102,36 @@ export function SettingsDrawer({ open, onClose }: Props) {
                   </span>
                 </button>
               ))}
+            </div>
+          </Section>
+
+          <Section title={t("settings.accentColor")}>
+            <div className="grid grid-cols-4 gap-2">
+              {ACCENT_COLORS.map((c) => {
+                const isSelected = (settings.accentColor || "default") === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => update({ accentColor: c.id })}
+                    data-selected={isSelected}
+                    className={`chip !h-auto !flex-col !items-center !gap-1.5 !rounded-xl !p-2.5 text-center transition-all hover:scale-105 active:scale-95 ${
+                      isSelected ? "!border-accent ring-2 ring-accent/20" : ""
+                    }`}
+                    title={c.label}
+                  >
+                    <span
+                      className="relative h-6 w-6 rounded-full shadow-sm border border-black/15 flex items-center justify-center transition-transform"
+                      style={{ backgroundColor: c.preview }}
+                    >
+                      {isSelected && (
+                        <span className="h-2 w-2 rounded-full bg-white shadow-sm ring-1 ring-black/20" />
+                      )}
+                    </span>
+                    <span className="text-[11px] font-medium leading-tight line-clamp-1">{c.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </Section>
 

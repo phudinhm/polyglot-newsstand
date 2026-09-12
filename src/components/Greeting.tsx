@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   adviceFor,
@@ -11,6 +12,8 @@ import {
   type Greeting as GreetingValue,
 } from "@/lib/greetings";
 import { useLang, useT } from "@/hooks/useT";
+import { getRecent } from "@/lib/recent";
+import { getVocab } from "@/lib/store";
 import { MoonIcon, StarsIcon, SunIcon, SunriseIcon, SunsetIcon } from "./Icons";
 
 const ICONS = {
@@ -35,6 +38,8 @@ export function Greeting({ count }: { count: number }) {
   const [bucket, setBucket] = useState<Bucket>("midday");
   const [icon, setIcon] = useState<keyof typeof ICONS>("sun");
   const [today, setToday] = useState("");
+  const [readToday, setReadToday] = useState(0);
+  const [vocabCount, setVocabCount] = useState(0);
 
   useEffect(() => {
     const apply = () => {
@@ -47,9 +52,23 @@ export function Greeting({ count }: { count: number }) {
       );
     };
     apply();
-    // Re-greet if the app is left open across an hour boundary.
+
+    const syncStats = () => {
+      const now = new Date();
+      const todayPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const recents = getRecent();
+      const countToday = recents.filter((r) => r.readAt?.startsWith(todayPrefix)).length;
+      setReadToday(countToday);
+      setVocabCount(getVocab().length);
+    };
+    syncStats();
+
+    window.addEventListener("pn:store", syncStats);
     const timer = setInterval(apply, 5 * 60 * 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("pn:store", syncStats);
+    };
   }, []);
 
   const Icon = ICONS[icon];
@@ -97,6 +116,23 @@ export function Greeting({ count }: { count: number }) {
               {adviceFor(bucket, lang)}
             </span>
           </p>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <Link
+              href="/saved"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${readToday > 0 ? "bg-translation animate-pulse" : "bg-muted/40"}`} />
+              <span>{readToday > 0 ? `${readToday} read today` : "Daily reading goal: 0/3"}</span>
+            </Link>
+            <Link
+              href="/vocab"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <span>{vocabCount} saved {vocabCount === 1 ? "word" : "words"}</span>
+            </Link>
+          </div>
         </>
       ) : (
         <>

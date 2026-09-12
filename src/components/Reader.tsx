@@ -16,6 +16,7 @@ import { markRead, noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
 import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
+import { markBackAction } from "@/lib/scrollMemory";
 import {
   cancelSpeech,
   clearNowPlaying,
@@ -38,6 +39,7 @@ import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
+import { ScrollToTop } from "./ScrollToTop";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -98,6 +100,7 @@ export function Reader({
   const [structureLine, setStructureLine] = useState<string | null>(null);
   const [spokenChar, setSpokenChar] = useState<number>(-1);
   const [levelled, setLevelled] = useState<Article | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
@@ -144,13 +147,13 @@ export function Reader({
         if (cancelled) return;
         // The publisher blocked us, but the newsstand already had the summary.
         // A shorter read that still translates beats a dead end.
-        // Remember the refusal however it went, so the shelf can act on it.
-        // Only recording it when a summary happened to be around meant a paper
-        // that fails outright was never learned from, and kept being offered.
+        // noteBlocked is a no-op for verified open sources (BR24, SWR, Tagesschau etc.)
+        // so it is safe to call unconditionally here.
         if (sourceId) noteBlocked(sourceId);
         const known = recallItem(url);
+        const isOpenSource = source && !source.paywall;
         if (known?.summary) {
-          setBlocked(true);
+          setBlocked(!isOpenSource);
           setArticle({
             url,
             title: known.title,
@@ -508,13 +511,38 @@ export function Reader({
           e.preventDefault();
           revealLine(line);
         }
+      } else if (e.key === "s") {
+        if (article) {
+          e.preventDefault();
+          setSaved(
+            toggleSaved({
+              url,
+              title: article.title,
+              sourceName: source?.name ?? article.siteName ?? "",
+              lang,
+              savedAt: new Date().toISOString(),
+              image: article.leadImage,
+            }),
+          );
+        }
+      } else if (e.key === "p" || (e.key === " " && activeKey)) {
+        e.preventDefault();
+        if (readingAloud) {
+          togglePause();
+        } else {
+          toggleReadAloud();
+        }
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
       } else if (e.key === "Escape") {
         setActiveKey(null);
+        setShowShortcuts(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lines, activeKey, revealLine, word]);
+  }, [lines, activeKey, revealLine, word, article, readingAloud, url, lang, source]);
 
   // -------------------------------------------------------------- word lookup
   const openWord = useCallback(
@@ -537,7 +565,12 @@ export function Reader({
   // (a shared link, a new tab) has nothing to go back to either way, and
   // that is exactly what history.back() already does nothing on its own.
   function goBack() {
-    router.back();
+    markBackAction();
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
   }
 
   function dismissHint() {
@@ -555,7 +588,7 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-0 z-40 h-0.5 bg-translation transition-[width] duration-150"
+        className="fixed inset-x-0 top-0 z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
         style={{ width: `${progress}%` }}
         aria-hidden
       />
@@ -693,6 +726,16 @@ export function Reader({
             aria-label={t("reader.save")}
           >
             <BookmarkIcon />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowShortcuts((v) => !v)}
+            className="btn hidden min-h-11 !px-2 !py-1.5 text-xs font-semibold text-muted hover:text-fg sm:inline-flex"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+          >
+            ?
           </button>
 
           <button
@@ -836,7 +879,7 @@ export function Reader({
                 <p>
                   {blocked
                     ? "This publisher blocked our request, which usually means a paywall. What you see is the summary the publication itself put in its feed."
-                    : "Only part of this article was readable, most likely a paywall."}{" "}
+                    : "Only the summary from this article's feed was available to load."}{" "}
                   Everything else still works here: tap a line to translate it, or use read aloud.
                 </p>
                 {blocked && sourceId && publisher && (
@@ -873,7 +916,7 @@ export function Reader({
                   </p>
                 )}
                 <a
-                  href={url}
+                  href={article.url || url}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="btn mt-2.5 inline-flex !py-1.5 text-xs"
@@ -1138,6 +1181,64 @@ export function Reader({
         />
       )}
 
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base">Keyboard Shortcuts</h3>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+                className="btn !p-1 text-muted hover:text-fg"
+                aria-label="Close"
+              >
+                <CloseIcon width={16} height={16} />
+              </button>
+            </div>
+            <div className="space-y-2 text-xs divide-y divide-border/60">
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Next / Prev line</span>
+                <span className="flex gap-1 font-mono">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">j</kbd>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">k</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Reveal translation</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">t</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Enter</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Play / Pause read aloud</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">p</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Space</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Save / Bookmark article</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">s</kbd>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Close active line / popups</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">Esc</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ScrollToTop />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

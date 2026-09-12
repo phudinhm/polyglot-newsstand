@@ -57,7 +57,7 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
     thinnestCount === 0 || thinnestCount * 3 < fattest ? thinnest : null;
   const hasEasy = current.some((s) => s.level === "easy");
 
-  const scored = SOURCES.filter((s) => !onShelf.has(s.id)).map((source) => {
+  const scored = SOURCES.filter((s) => !onShelf.has(s.id) && s.paywall !== "hard").map((source) => {
     let score = 0;
     const reasons: Reason[] = [];
 
@@ -77,6 +77,8 @@ export function suggestSources(shelf: string[], limit = 6): Suggestion[] {
     if (source.note) score += 1;
     // Nudge towards the middle of the difficulty range for everyday reading.
     if (source.level === "medium") score += 1;
+    // Penalize metered/soft paywall so open sources come first
+    if (source.paywall === "soft") score -= 3;
 
     return {
       source,

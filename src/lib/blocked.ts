@@ -12,6 +12,8 @@
  * reader's connection and country as much as about the publisher.
  */
 
+import { SOURCE_BY_ID } from "./sources";
+
 const KEY = "pn:blocked-sources:v1";
 
 interface Blocked {
@@ -22,6 +24,16 @@ interface Blocked {
 }
 
 type Store = Record<string, Blocked>;
+
+function isPaywalledSource(sourceId: string): boolean {
+  const source = SOURCE_BY_ID.get(sourceId);
+  // Curated sources with no paywall (paywall === undefined) are free open sources.
+  // Only sources explicitly marked with soft or hard paywalls can be treated as paywalled.
+  if (source && source.paywall !== "hard" && source.paywall !== "soft") {
+    return false;
+  }
+  return true;
+}
 
 function read(): Store {
   if (typeof window === "undefined") return {};
@@ -44,6 +56,9 @@ function write(store: Store): void {
 /** Record that an article from this source would not open. */
 export function noteBlocked(sourceId: string): void {
   if (!sourceId) return;
+  // Never auto-block verified open public sources (e.g. BR24, Tagesschau, SWR)
+  if (!isPaywalledSource(sourceId)) return;
+
   const store = read();
   const existing = store[sourceId];
   store[sourceId] = { count: (existing?.count ?? 0) + 1, at: new Date().toISOString() };
@@ -61,11 +76,37 @@ export function forgetBlocked(sourceId: string): void {
 /**
  * One refusal is enough. A publisher that blocks does it consistently, and
  * making the reader hit the same wall twice to prove it is not a kindness.
+ * Automatically cleans up any previously blocked open sources.
  */
 export function blockedIds(): Set<string> {
-  return new Set(Object.keys(read()));
+  const store = read();
+  const valid = new Set<string>();
+  let modified = false;
+
+  for (const id of Object.keys(store)) {
+    if (!isPaywalledSource(id)) {
+      // Purge false blockages of verified open sources from earlier sessions
+      delete store[id];
+      modified = true;
+    } else {
+      valid.add(id);
+    }
+  }
+
+  if (modified) {
+    write(store);
+  }
+
+  return valid;
 }
 
 export function isBlocked(sourceId: string): boolean {
+  if (!isPaywalledSource(sourceId)) return false;
   return sourceId in read();
 }
+
+/** Reset all recorded device blockages. */
+export function clearAllBlocked(): void {
+  write({});
+}
+

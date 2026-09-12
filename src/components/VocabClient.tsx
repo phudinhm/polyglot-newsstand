@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/hooks/useT";
 import { clearVocab, getVocab, removeVocab, setVocabStatus, vocabToCsv } from "@/lib/store";
+import { restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import type { VocabEntry } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { CheckIcon, DownloadIcon, SearchIcon, TrashIcon } from "./Icons";
@@ -22,6 +23,14 @@ export function VocabClient() {
     window.addEventListener("pn:store", onStore);
     return () => window.removeEventListener("pn:store", onStore);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    restoreScrollPosition({ path: "/vocab" });
+    const onScroll = () => saveScrollPosition("/vocab", window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [ready]);
 
   const filtered = useMemo(() => {
     let list = entries;

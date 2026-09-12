@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getRecent, type RecentArticle } from "@/lib/recent";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { readerHref, timeAgo } from "@/lib/format";
+import { recordArticleClick } from "@/lib/scrollMemory";
 import { SourceAvatar } from "./SourceAvatar";
 import { useT } from "@/hooks/useT";
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
@@ -46,6 +47,7 @@ export function RecentlyRead({ limit = 4 }: { limit?: number }) {
           <Link
             key={item.url}
             href={readerHref({ url: item.url, lang: item.lang, source: item.sourceId })}
+            onClick={() => recordArticleClick(item.url)}
             className="card card-hover w-56 shrink-0 p-3"
           >
             <div className="flex items-center gap-1.5 text-[11px] text-muted">

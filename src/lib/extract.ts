@@ -11,7 +11,7 @@ const NOISE = [
   /^Diese Seite verwendet Cookies/i,
   /^Mehr zum Thema/i,
   /^Weitere Informationen/i,
-  /^Bild:|^Foto:|^Quelle:|^Image caption|^Image source/i,
+  /^Bild:|^Bildrechte:|^Foto:|^Quelle:|^Image caption|^Image source/i,
   /^Anzeige$/i,
   /^Werbung$/i,
   /^Advertisement$/i,
@@ -154,6 +154,27 @@ export function extractArticle(
         kind: tagToKind(node.tagName?.toUpperCase?.() ?? "P"),
         sentences,
       });
+    }
+  }
+
+  // Fallback if Readability fails or scored below threshold:
+  if (!blocks.length) {
+    const fallbackNodes = Array.from(
+      document.querySelectorAll("article p, main p, [itemprop='articleBody'] p, .story-body p, .article-content p, .entry-content p, p"),
+    );
+    let index = 0;
+    for (const node of fallbackNodes) {
+      const text = stripHtml(node.textContent ?? "");
+      if (!text || text.length < 30 || isNoise(text)) continue;
+      const sentences = splitSentences(text, lang);
+      if (!sentences.length) continue;
+      wordCount += countWords(text);
+      blocks.push({
+        id: `b${index++}`,
+        kind: "paragraph",
+        sentences,
+      });
+      if (blocks.length >= 60) break;
     }
   }
 

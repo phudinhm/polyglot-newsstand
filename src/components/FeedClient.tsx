@@ -11,6 +11,7 @@ import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { getReadUrls } from "@/lib/recent";
+import { getSavedFeedVisible, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
@@ -61,9 +62,21 @@ export function FeedClient() {
   const [queryInput, setQueryInput] = useState(initialFilters.query);
   const [query, setQuery] = useState(initialFilters.query);
   const [source, setSource] = useState<string | null>(initialFilters.source);
-  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [visible, setVisible] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = getSavedFeedVisible();
+      if (saved && saved > PAGE_SIZE) return saved;
+    }
+    return PAGE_SIZE;
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => saveScrollPosition("/");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const sync = () => setCustom(getCustomSources());
@@ -155,6 +168,7 @@ export function FeedClient() {
     if (cached) {
       setData(cached.response);
       setLoading(false);
+      restoreScrollPosition({ path: "/" });
       if (cached.stale) void load(controller.signal, true);
     } else {
       void load(controller.signal);
@@ -162,6 +176,12 @@ export function FeedClient() {
 
     return () => controller.abort();
   }, [ready, load, cacheKey]);
+
+  useEffect(() => {
+    if (!loading && data) {
+      restoreScrollPosition({ path: "/" });
+    }
+  }, [loading, data]);
 
   // Filtering a few hundred stories per keystroke is felt on a phone.
   useEffect(() => {
@@ -633,7 +653,19 @@ export function FeedClient() {
       {rest.length > visible && (
         <button
           type="button"
-          onClick={() => setVisible((v) => v + PAGE_SIZE)}
+          onClick={() =>
+            setVisible((v) => {
+              const next = v + PAGE_SIZE;
+              if (typeof window !== "undefined") {
+                try {
+                  sessionStorage.setItem("pn:feed-visible:v1", String(next));
+                } catch {
+                  /* ignore */
+                }
+              }
+              return next;
+            })
+          }
           className="btn mx-auto mt-6 flex"
         >
           {t("feed.showMore")}
