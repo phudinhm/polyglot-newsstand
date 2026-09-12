@@ -147,13 +147,13 @@ export function Reader({
         if (cancelled) return;
         // The publisher blocked us, but the newsstand already had the summary.
         // A shorter read that still translates beats a dead end.
-        // Remember the refusal however it went, so the shelf can act on it.
-        // Only recording it when a summary happened to be around meant a paper
-        // that fails outright was never learned from, and kept being offered.
+        // noteBlocked is a no-op for verified open sources (BR24, SWR, Tagesschau etc.)
+        // so it is safe to call unconditionally here.
         if (sourceId) noteBlocked(sourceId);
         const known = recallItem(url);
+        const isOpenSource = source && !source.paywall;
         if (known?.summary) {
-          setBlocked(true);
+          setBlocked(!isOpenSource);
           setArticle({
             url,
             title: known.title,
@@ -879,7 +879,7 @@ export function Reader({
                 <p>
                   {blocked
                     ? "This publisher blocked our request, which usually means a paywall. What you see is the summary the publication itself put in its feed."
-                    : "Only part of this article was readable, most likely a paywall."}{" "}
+                    : "Only the summary from this article's feed was available to load."}{" "}
                   Everything else still works here: tap a line to translate it, or use read aloud.
                 </p>
                 {blocked && sourceId && publisher && (
@@ -916,7 +916,7 @@ export function Reader({
                   </p>
                 )}
                 <a
-                  href={url}
+                  href={article.url || url}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="btn mt-2.5 inline-flex !py-1.5 text-xs"

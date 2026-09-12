@@ -11,7 +11,7 @@ const NOISE = [
   /^Diese Seite verwendet Cookies/i,
   /^Mehr zum Thema/i,
   /^Weitere Informationen/i,
-  /^Bild:|^Foto:|^Quelle:|^Image caption|^Image source/i,
+  /^Bild:|^Bildrechte:|^Foto:|^Quelle:|^Image caption|^Image source/i,
   /^Anzeige$/i,
   /^Werbung$/i,
   /^Advertisement$/i,
