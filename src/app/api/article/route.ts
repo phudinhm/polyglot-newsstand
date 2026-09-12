@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { TtlCache } from "@/lib/cache";
 import { extractArticle } from "@/lib/extract";
 import { assertSafeUrl, FetchError, fetchText } from "@/lib/fetcher";
+import { isGoogleNewsUrl, resolveGoogleNewsUrl } from "@/lib/googleNews";
 import type { Article, SourceLang } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -20,38 +21,59 @@ export async function GET(req: Request) {
   }
 
   try {
-    const safe = assertSafeUrl(target);
-    const cacheKey = `${safe.toString()}|${lang}`;
+    const rawSafe = assertSafeUrl(target);
+    const requestedUrl = rawSafe.toString();
+    const cacheKey = `${requestedUrl}|${lang}`;
     const cached = articleCache.get(cacheKey);
     if (cached) return NextResponse.json(cached);
+
+    // If this is an obfuscated Google News redirect link, decode it to the real publisher's URL
+    let fetchUrl = requestedUrl;
+    if (isGoogleNewsUrl(requestedUrl)) {
+      fetchUrl = await resolveGoogleNewsUrl(requestedUrl);
+    }
+    const safeFetch = assertSafeUrl(fetchUrl);
+    const fetchUrlString = safeFetch.toString();
+
+    // Check cache for the decoded URL if different
+    if (fetchUrlString !== requestedUrl) {
+      const decodedCached = articleCache.get(`${fetchUrlString}|${lang}`);
+      if (decodedCached) {
+        articleCache.set(cacheKey, decodedCached);
+        return NextResponse.json(decodedCached);
+      }
+    }
 
     // Some publishers answer 406 to a specific Accept header but serve the
     // same page happily to a plain one, so a rejection earns a second try.
     let html: string;
     try {
-      html = await fetchText(safe.toString(), {
+      html = await fetchText(fetchUrlString, {
         timeoutMs: 15_000,
         accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       });
     } catch (first) {
       const status = first instanceof FetchError ? first.status : undefined;
       if (status !== 406 && status !== 403) throw first;
-      html = await fetchText(safe.toString(), { timeoutMs: 15_000, accept: "*/*" });
+      html = await fetchText(fetchUrlString, { timeoutMs: 15_000, accept: "*/*" });
     }
-    const article = extractArticle(html, safe.toString(), lang);
+    const article = extractArticle(html, fetchUrlString, lang);
 
     if (!article.blocks.length) {
       return NextResponse.json(
         {
           error:
             "This publisher does not let us read the article text. Open it on their site, or pick another source.",
-          url: safe.toString(),
+          url: fetchUrlString,
         },
         { status: 422 },
       );
     }
 
     articleCache.set(cacheKey, article);
+    if (fetchUrlString !== requestedUrl) {
+      articleCache.set(`${fetchUrlString}|${lang}`, article);
+    }
     return NextResponse.json(article, {
       headers: { "cache-control": "public, s-maxage=1800, stale-while-revalidate=3600" },
     });
