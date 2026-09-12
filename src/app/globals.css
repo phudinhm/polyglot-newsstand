@@ -23,6 +23,21 @@
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
+[data-theme="modern"] {
+  --bg: #F9F6F0;
+  --surface: #FFFFFF;
+  --surface-2: #F2EFE9;
+  --fg: #2C2C2C;
+  --muted: #737373;
+  --border: #E5E2DB;
+  --accent: #D36C4F;
+  --accent-fg: #FFFFFF;
+  --highlight: rgba(211, 108, 79, 0.12);
+  --translation: #4A7C59;
+  --shadow: 0 4px 12px rgba(0,0,0,0.05), 0 12px 24px -8px rgba(0, 0, 0, 0.08);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
 [data-theme="sepia"] {
   --bg: #f4ecd8;
   --surface: #faf4e4;

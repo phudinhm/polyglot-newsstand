@@ -4,7 +4,7 @@ import type { SourceLang, TargetLang } from "./types";
 import { detectUiLang, type UiLang } from "./i18n";
 import { DEFAULT_SOURCE_IDS } from "./sources";
 
-export type ThemeName = "paper" | "sepia" | "slate" | "ink";
+export type ThemeName = "paper" | "sepia" | "modern" | "slate" | "ink";
 export type FontName = "charter" | "georgia" | "palatino" | "inter" | "verdana";
 
 /**
@@ -90,6 +90,7 @@ export const SETTINGS_KEY = "pn:settings:v1";
 export const THEMES: { id: Settings["theme"]; label: string; hint: string }[] = [
   { id: "paper", label: "Paper", hint: "Bright white, high contrast" },
   { id: "sepia", label: "Sepia", hint: "Warm paper tone, easy on long reads" },
+  { id: "modern", label: "Modern", hint: "Modern parchment, crisp and warm" },
   { id: "slate", label: "Slate", hint: "Soft dark, low glare" },
   { id: "ink", label: "Ink", hint: "Near black, best at night" },
   { id: "system", label: "System", hint: "Follow your device" },
@@ -150,5 +151,5 @@ export function applySettings(s: Settings): void {
   root.style.setProperty("--reading-measure", `${s.measure}ch`);
   root.style.setProperty("--reading-tracking", `${s.tracking}em`);
   root.style.setProperty("--ui-zoom", String(s.zoom ?? 1));
-  root.style.colorScheme = resolved === "paper" || resolved === "sepia" ? "light" : "dark";
+  root.style.colorScheme = resolved === "paper" || resolved === "sepia" || resolved === "modern" ? "light" : "dark";
 }
