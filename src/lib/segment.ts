@@ -108,11 +108,19 @@ function isSelfContained(part: string): boolean {
 /**
  * Split a sentence into word and non-word runs so each word can be tapped for
  * a lookup while punctuation and spacing stay exactly where the author put it.
+ *
+ * A number counts as a word here too: "30.000" is exactly as much vocabulary
+ * to a learner as any noun, and the popover reads it aloud with its own
+ * spelled-out form rather than a bare dictionary miss.
  */
 export function splitWords(sentence: string): { text: string; isWord: boolean }[] {
   const tokens: { text: string; isWord: boolean }[] = [];
   // Letters include the German umlauts and eszett plus any accented Latin.
-  const re = /[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*/gu;
+  // Numbers come as either a thousands-grouped run ("30.000", "1.234,56") or
+  // a plain one ("58", "3,5%"), matched before the plain fallback so the
+  // grouped form is not cut short at its first separator.
+  const re =
+    /[\p{L}\p{M}]+(?:[-'’][\p{L}\p{M}]+)*|\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?%?|\d+(?:[.,]\d+)?%?/gu;
   let lastIndex = 0;
   for (const match of sentence.matchAll(re)) {
     const start = match.index ?? 0;

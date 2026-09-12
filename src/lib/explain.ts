@@ -368,6 +368,7 @@ export const LOOKUP_TEXT: Record<TargetLang, Record<string, string>> = {
     plural: "plural",
     singular: "singular",
     fullEntry: "Full entry on Wiktionary",
+    readAs: "Read as",
   },
   vi: {
     looking: "Đang tra…",
@@ -381,6 +382,7 @@ export const LOOKUP_TEXT: Record<TargetLang, Record<string, string>> = {
     plural: "số nhiều",
     singular: "số ít",
     fullEntry: "Xem đầy đủ trên Wiktionary",
+    readAs: "Đọc là",
   },
   de: {
     looking: "Suche...",
@@ -394,6 +396,7 @@ export const LOOKUP_TEXT: Record<TargetLang, Record<string, string>> = {
     plural: "Plural",
     singular: "Singular",
     fullEntry: "Vollständiger Eintrag auf Wiktionary",
+    readAs: "Gelesen als",
   },
 };
 

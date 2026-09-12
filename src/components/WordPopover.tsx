@@ -5,6 +5,7 @@ import { addVocab, hasVocab } from "@/lib/store";
 import { speak, speechSupported } from "@/lib/tts";
 import { useSettings } from "@/hooks/useSettings";
 import type { DictionaryEntry } from "@/lib/dictionary";
+import { looksLikeNumber, numberToWords } from "@/lib/numberWords";
 import type { SourceLang, TargetLang } from "@/lib/types";
 import { CheckIcon, CloseIcon, ExternalIcon, PlusIcon, SpeakerIcon, SpinnerIcon } from "./Icons";
 import { CaseCard } from "./CaseCard";
@@ -51,11 +52,28 @@ export function WordPopover({
   const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
+  // A number is not a dictionary word - there is nothing to look up, only a
+  // spelled-out reading to compute, so it skips the whole lookup pipeline.
+  const isNumber = looksLikeNumber(query.word);
+  const sourceReading = isNumber ? numberToWords(query.word, lang) : null;
+  const targetReading = isNumber && target !== lang ? numberToWords(query.word, target) : null;
+  // Raw digits read aloud by different TTS engines are unreliable ("30.000"
+  // can come out as "thirty point zero zero zero"); the reading we already
+  // computed is spelled out and unambiguous, so it is what gets spoken.
+  const spokenForm = isNumber ? sourceReading ?? query.word : query.word;
+
   useEffect(() => {
     setSaved(hasVocab(query.word, lang));
   }, [query.word, lang]);
 
   useEffect(() => {
+    if (isNumber) {
+      setLoading(false);
+      setFailed(false);
+      setEntry(null);
+      setExpanded(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setFailed(false);
@@ -79,16 +97,16 @@ export function WordPopover({
     return () => {
       cancelled = true;
     };
-  }, [query.word, lang, target]);
+  }, [query.word, lang, target, isNumber]);
 
   // Hearing the word is as much the point of tapping it as reading its
   // translation is, so it plays the moment the popover opens rather than
   // waiting for a second tap on the speaker button.
   useEffect(() => {
     if (!speechSupported()) return;
-    speak(query.word, { lang, rate: settings.speechRate, voiceUri: settings.voices[lang] });
+    speak(spokenForm, { lang, rate: settings.speechRate, voiceUri: settings.voices[lang] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.word, lang]);
+  }, [spokenForm, lang]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -128,7 +146,7 @@ export function WordPopover({
   function save() {
     addVocab({
       term: headword,
-      translation: entry?.translation || meaning,
+      translation: isNumber ? targetReading ?? sourceReading ?? "" : entry?.translation || meaning,
       context: query.sentence,
       contextTranslation: sentenceTranslation,
       lang,
@@ -197,7 +215,7 @@ export function WordPopover({
               <button
                 type="button"
                 onClick={() =>
-                  speak(headword, {
+                  speak(spokenForm, {
                     lang,
                     rate: settings.speechRate,
                     voiceUri: settings.voices[lang],
@@ -216,17 +234,35 @@ export function WordPopover({
         </div>
 
         <div className="mt-3 min-h-[1.5rem] text-[14px]">
-          {loading && (
+          {isNumber && (
+            <>
+              {sourceReading && (
+                <p className="text-[13px] text-muted">
+                  {ui.readAs} <span className="font-medium text-fg">{sourceReading}</span>
+                </p>
+              )}
+              {targetReading && (
+                <p className="text-translation mt-1.5">
+                  {targetReading}
+                  <span className="ml-1.5 text-[11px] uppercase tracking-wide text-muted">
+                    {target === "vi" ? "vi" : target === "de" ? "de" : "en"}
+                  </span>
+                </p>
+              )}
+            </>
+          )}
+
+          {!isNumber && loading && (
             <span className="flex items-center gap-2 text-muted">
               <SpinnerIcon width={15} height={15} /> {ui.looking}
             </span>
           )}
 
-          {!loading && failed && (
+          {!isNumber && !loading && failed && (
             <span className="text-muted">{ui.nothing}</span>
           )}
 
-          {!loading && entry && (
+          {!isNumber && !loading && entry && (
             <>
               {entry.translation && (
                 <p className="text-translation">
