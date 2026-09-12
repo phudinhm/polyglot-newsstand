@@ -189,13 +189,13 @@ body {
   background-image: url("/paper-texture.png");
   background-attachment: fixed;
   background-repeat: repeat;
-  background-size: 380px auto;
+  background-size: 360px 360px;
   background-blend-mode: multiply;
 }
 
 [data-theme="slate"] body,
 [data-theme="ink"] body {
-  background-blend-mode: overlay;
+  background-blend-mode: soft-light;
 }
 
 [data-texture="off"] body {
