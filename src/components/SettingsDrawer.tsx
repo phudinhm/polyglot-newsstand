@@ -323,12 +323,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
               onChange={(bilingual) => update({ bilingual })}
             />
             <Toggle
-              label="Paper texture"
-              hint="A faint grain over the page, so it reads as a sheet rather than a screen."
-              checked={settings.texture}
-              onChange={(texture) => update({ texture })}
-            />
-            <Toggle
               label="Vocabulary heatmap"
               hint="Underlines words you are learning in amber and words you have marked known in green, and dots the ones that are new to you."
               checked={settings.heatmap}

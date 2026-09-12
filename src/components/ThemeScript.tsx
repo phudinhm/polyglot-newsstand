@@ -15,7 +15,6 @@ export function ThemeScript() {
       lineHeight: DEFAULT_SETTINGS.lineHeight,
       measure: DEFAULT_SETTINGS.measure,
       tracking: DEFAULT_SETTINGS.tracking,
-      texture: DEFAULT_SETTINGS.texture,
       zoom: DEFAULT_SETTINGS.zoom,
     })};
     var raw = localStorage.getItem(${JSON.stringify(SETTINGS_KEY)});
@@ -27,7 +26,6 @@ export function ThemeScript() {
     var r = document.documentElement;
     r.dataset.theme = theme;
     r.dataset.font = s.font || d.font;
-    r.dataset.texture = s.texture === false ? 'off' : 'on';
     r.style.setProperty('--ui-zoom', String(s.zoom || 1));
     r.style.setProperty('--reading-size', (s.fontSize || d.fontSize) + 'px');
     r.style.setProperty('--reading-leading', String(s.lineHeight || d.lineHeight));
