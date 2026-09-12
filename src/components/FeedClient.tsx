@@ -12,6 +12,7 @@ import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { getReadUrls } from "@/lib/recent";
 import { SOURCES } from "@/lib/sources";
+import { newWordCount } from "@/lib/frequency";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
@@ -61,6 +62,7 @@ export function FeedClient() {
   const [queryInput, setQueryInput] = useState(initialFilters.query);
   const [query, setQuery] = useState(initialFilters.query);
   const [source, setSource] = useState<string | null>(initialFilters.source);
+  const [quickFilter, setQuickFilter] = useState<"all" | "easy" | "quick" | "vocab">("all");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -169,7 +171,7 @@ export function FeedClient() {
     return () => clearTimeout(timer);
   }, [queryInput]);
 
-  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source, quickFilter]);
 
   // How much each paper has on the shelf today, for the rail.
   const counts = useMemo(() => {
@@ -207,6 +209,16 @@ export function FeedClient() {
     if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
+    if (quickFilter === "easy") {
+      list = list.filter((i) => i.level === "easy");
+    } else if (quickFilter === "quick") {
+      list = list.filter((i) => {
+        const words = (i.title + " " + (i.summary || "")).trim().split(/\s+/).length;
+        return words <= 50;
+      });
+    } else if (quickFilter === "vocab") {
+      list = list.filter((i) => newWordCount(`${i.title} ${i.summary}`, i.lang) >= 4);
+    }
     if (month !== "all") {
       list = list.filter((i) => {
         if (!i.publishedAt) return false;
@@ -229,7 +241,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
+  }, [data, lang, category, month, query, sort, source, quickFilter, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
   // A tab only ever appears once its category actually has a story behind it.
   // Deriving this from the shelf's sources instead - every category any added
@@ -495,6 +507,44 @@ export function FeedClient() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Smart Quick Focus Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted shrink-0 mr-0.5">Focus:</span>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "easy" ? "all" : "easy"))}
+            data-selected={quickFilter === "easy"}
+            className={`chip !py-1 !text-[11.5px] shrink-0 ${quickFilter === "easy" ? "!bg-translation !border-translation !text-white" : ""}`}
+          >
+            🌱 Easy for learners
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "quick" ? "all" : "quick"))}
+            data-selected={quickFilter === "quick"}
+            className="chip !py-1 !text-[11.5px] shrink-0"
+          >
+            ⚡ Quick read (&lt; 3m)
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "vocab" ? "all" : "vocab"))}
+            data-selected={quickFilter === "vocab"}
+            className="chip !py-1 !text-[11.5px] shrink-0"
+          >
+            📚 Rich vocabulary
+          </button>
+          {quickFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => setQuickFilter("all")}
+              className="text-[11px] text-muted hover:text-accent underline underline-offset-2 ml-1"
+            >
+              Reset
+            </button>
+          )}
         </div>
 
         {/* Twenty-three sections do not fit on one line anywhere, so a phone

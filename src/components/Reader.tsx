@@ -99,6 +99,7 @@ export function Reader({
   const [structureLine, setStructureLine] = useState<string | null>(null);
   const [spokenChar, setSpokenChar] = useState<number>(-1);
   const [levelled, setLevelled] = useState<Article | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
@@ -509,13 +510,38 @@ export function Reader({
           e.preventDefault();
           revealLine(line);
         }
+      } else if (e.key === "s") {
+        if (article) {
+          e.preventDefault();
+          setSaved(
+            toggleSaved({
+              url,
+              title: article.title,
+              sourceName: source?.name ?? article.siteName ?? "",
+              lang,
+              savedAt: new Date().toISOString(),
+              image: article.leadImage,
+            }),
+          );
+        }
+      } else if (e.key === "p" || (e.key === " " && activeKey)) {
+        e.preventDefault();
+        if (readingAloud) {
+          togglePause();
+        } else {
+          toggleReadAloud();
+        }
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
       } else if (e.key === "Escape") {
         setActiveKey(null);
+        setShowShortcuts(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lines, activeKey, revealLine, word]);
+  }, [lines, activeKey, revealLine, word, article, readingAloud, url, lang, source]);
 
   // -------------------------------------------------------------- word lookup
   const openWord = useCallback(
@@ -694,6 +720,16 @@ export function Reader({
             aria-label={t("reader.save")}
           >
             <BookmarkIcon />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowShortcuts((v) => !v)}
+            className="btn hidden min-h-11 !px-2 !py-1.5 text-xs font-semibold text-muted hover:text-fg sm:inline-flex"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+          >
+            ?
           </button>
 
           <button
@@ -1137,6 +1173,63 @@ export function Reader({
           lang={lang}
           onClose={() => setPracticeLine(null)}
         />
+      )}
+
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base">Keyboard Shortcuts</h3>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+                className="btn !p-1 text-muted hover:text-fg"
+                aria-label="Close"
+              >
+                <CloseIcon width={16} height={16} />
+              </button>
+            </div>
+            <div className="space-y-2 text-xs divide-y divide-border/60">
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Next / Prev line</span>
+                <span className="flex gap-1 font-mono">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">j</kbd>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">k</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Reveal translation</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">t</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Enter</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Play / Pause read aloud</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">p</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Space</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Save / Bookmark article</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">s</kbd>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Close active line / popups</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">Esc</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ScrollToTop />
