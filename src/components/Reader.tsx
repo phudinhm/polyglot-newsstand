@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
 import { useTranslator } from "@/hooks/useTranslator";
@@ -41,6 +42,7 @@ import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
   BookmarkIcon,
+  CloseIcon,
   ExternalIcon,
   LanguagesIcon,
   SlidersIcon,
@@ -75,6 +77,7 @@ export function Reader({
 }) {
   const [settings, update] = useSettings();
   const t = useT();
+  const router = useRouter();
   const [article, setArticle] = useState<Article | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +105,7 @@ export function Reader({
   // that option never appears, and a saved preference that no longer applies
   // (an English preference, opening a German piece) falls back quietly
   // rather than being overwritten - it is still right the next time it fits.
-  const targetOptions = (["en", "vi"] as const).filter((t) => t !== lang);
+  const targetOptions = (["en", "vi", "de"] as const).filter((t) => t !== lang);
   const target = targetOptions.includes(settings.target) ? settings.target : targetOptions[0];
   const tr = useTranslator(lang, target);
   const source = sourceId ? SOURCE_BY_ID.get(sourceId) : undefined;
@@ -111,8 +114,6 @@ export function Reader({
   // A refusal is worth remembering: the shelf can stop offering this paper
   // rather than letting the same wall be walked into again.
   const [remembered, setRemembered] = useState(false);
-  const suppressClick = useRef(false);
-  const longPress = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ------------------------------------------------------------ load article
   useEffect(() => {
@@ -305,6 +306,40 @@ export function Reader({
     [sentencesByBlock, tr],
   );
 
+  /**
+   * Opens a line without ever closing it, for a tap on the line itself.
+   *
+   * The row used to toggle either way, which meant a tap meant for a word -
+   * to hear it or look it up - could land on the row first and collapse a
+   * translation that was just opened. Closing now only happens through the
+   * line's own collapse button, so a tap on the row can never fight with a
+   * tap on a word inside it.
+   */
+  const openLine = useCallback(
+    (line: Line) => {
+      setActiveKey(line.key);
+      setRevealed((prev) => {
+        if (prev.has(line.key)) return prev;
+        const next = new Set(prev);
+        next.add(line.key);
+        return next;
+      });
+      setJustOpened(line.key);
+      const batch = sentencesByBlock.get(line.blockId) ?? [line.text];
+      void tr.request(batch);
+    },
+    [sentencesByBlock, tr],
+  );
+
+  const collapseLine = useCallback((line: Line) => {
+    setRevealed((prev) => {
+      if (!prev.has(line.key)) return prev;
+      const next = new Set(prev);
+      next.delete(line.key);
+      return next;
+    });
+  }, []);
+
   // Bilingual mode pays for translations only as paragraphs scroll into view.
   const blockRefs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
@@ -393,6 +428,11 @@ export function Reader({
           speakLine(index + 1, true);
         },
         onError: stopSpeaking,
+        // Something else took over mid-line - a word tapped for its own
+        // pronunciation, most often - so this line is no longer speaking,
+        // full stop. Never treated as this line finishing: continuing on to
+        // the next one would skip past text the reader never actually heard.
+        onInterrupted: stopSpeaking,
       });
     },
     [lines, lang, settings.speechRate, settings.voices, stopSpeaking],
@@ -490,6 +530,16 @@ export function Reader({
     setVocab(vocabIndex(lang));
   }, [lang]);
 
+  // A reader can land here from the home feed, a source's own page, Saved,
+  // Recently Read or Continue Reading - a fixed "/" undid whichever of those
+  // it was and always dropped back to the home feed instead. Real browser
+  // history already knows which one it actually was. A page opened fresh
+  // (a shared link, a new tab) has nothing to go back to either way, and
+  // that is exactly what history.back() already does nothing on its own.
+  function goBack() {
+    router.back();
+  }
+
   function dismissHint() {
     setShowHint(false);
     try {
@@ -534,9 +584,14 @@ export function Reader({
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-1.5 px-3 py-2.5 sm:gap-2">
-          <Link href="/" className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2" aria-label={t("reader.back")}>
+          <button
+            type="button"
+            onClick={goBack}
+            className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
+            aria-label={t("reader.back")}
+          >
             <ArrowLeftIcon />
-          </Link>
+          </button>
           {source ? (
             <Link
               href={`/s/${source.id}`}
@@ -600,7 +655,7 @@ export function Reader({
                 aria-pressed={target === opt}
                 title={t("reader.translateInto")}
               >
-                {opt === "en" ? "EN" : "VI"}
+                {opt === "en" ? "EN" : opt === "de" ? "DE" : "VI"}
               </button>
             ))}
           </div>
@@ -883,11 +938,10 @@ export function Reader({
                             data-speaking={speakingKey === key}
                             className={isLines ? "sentence-row" : "sentence inline"}
                             onClick={() => {
-                              if (suppressClick.current) {
-                                suppressClick.current = false;
-                                return;
-                              }
-                              revealLine(line);
+                              // Once open, only the collapse button closes it -
+                              // a tap here is a tap meant for a word inside it.
+                              if (open) return;
+                              openLine(line);
                             }}
                             onKeyDown={(e) => {
                               if (e.key === " ") {
@@ -919,23 +973,14 @@ export function Reader({
                                         : undefined)
                                     }
                                     data-spoken={spoken || undefined}
-                                    onDoubleClick={(e) => {
+                                    onClick={(e) => {
+                                      // Before the line is open, a tap here is
+                                      // still a tap meant to open it - only
+                                      // once its translation is showing does a
+                                      // tap on a word mean "look this up".
+                                      if (!open) return;
                                       e.stopPropagation();
-                                      suppressClick.current = true;
                                       openWord(e, token.text, sentence);
-                                    }}
-                                    onPointerDown={(e) => {
-                                      const { clientX, clientY } = e;
-                                      longPress.current = setTimeout(() => {
-                                        suppressClick.current = true;
-                                        openWord({ clientX, clientY }, token.text, sentence);
-                                      }, 450);
-                                    }}
-                                    onPointerUp={() => {
-                                      if (longPress.current) clearTimeout(longPress.current);
-                                    }}
-                                    onPointerLeave={() => {
-                                      if (longPress.current) clearTimeout(longPress.current);
                                     }}
                                   >
                                     {token.text}
@@ -1008,15 +1053,31 @@ export function Reader({
                           )}
 
                           {open && (
-                            <div className="translation" lang={target}>
-                              {translation ? (
-                                translation
-                              ) : pending ? (
-                                <span className="inline-flex items-center gap-1.5 opacity-70">
-                                  <SpinnerIcon width={13} height={13} /> translating
-                                </span>
-                              ) : (
-                                <span className="opacity-70">no translation available</span>
+                            <div className="translation flex items-start justify-between gap-2" lang={target}>
+                              <span className="min-w-0">
+                                {translation ? (
+                                  translation
+                                ) : pending ? (
+                                  <span className="inline-flex items-center gap-1.5 opacity-70">
+                                    <SpinnerIcon width={13} height={13} /> translating
+                                  </span>
+                                ) : (
+                                  <span className="opacity-70">no translation available</span>
+                                )}
+                              </span>
+                              {revealed.has(key) && !settings.bilingual && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    collapseLine(line);
+                                  }}
+                                  className="shrink-0 text-muted hover:text-fg"
+                                  aria-label={t("reader.hideTranslation")}
+                                  title={t("reader.hideTranslation")}
+                                >
+                                  <CloseIcon width={13} height={13} />
+                                </button>
                               )}
                             </div>
                           )}

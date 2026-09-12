@@ -7,6 +7,12 @@ import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// A cold cache means every source runs its full recovery chain - up to four
+// sequential attempts, each with its own 9-12s timeout - before it counts as
+// failed. Without this, the platform's shorter default cut the request off
+// mid-flight, silently dropping every source that had not answered yet and
+// leaving only whichever handful happened to be fastest.
+export const maxDuration = 60;
 
 // News moves, but not every second. Five minutes keeps the shelf fresh while
 // staying a polite guest on the publishers' servers.
@@ -15,6 +21,11 @@ const feedCache = new TtlCache<FeedItem[]>(FEED_TTL_MS, 300);
 
 const MAX_SOURCES = 24;
 const MAX_CUSTOM = 12;
+// A handful of sources - Google News chief among them - answer many of this
+// catalog's entries, so firing every fetch at once risks reading as a burst
+// against that one host. Batching keeps that risk down without meaningfully
+// slowing the request: the maxDuration above still leaves room to spare.
+const CONCURRENCY = 8;
 
 /**
  * A publisher that stops answering is the single most common way this app
@@ -69,7 +80,10 @@ async function build(ids: string[], custom: Source[]): Promise<FeedResponse> {
     return { items: [], failed: [], fetchedAt: new Date().toISOString() };
   }
 
-  const settled = await Promise.allSettled(sources.map(loadSource));
+  const settled: PromiseSettledResult<FeedItem[]>[] = [];
+  for (let i = 0; i < sources.length; i += CONCURRENCY) {
+    settled.push(...(await Promise.allSettled(sources.slice(i, i + CONCURRENCY).map(loadSource))));
+  }
 
   const items: FeedItem[] = [];
   const failed: FeedResponse["failed"] = [];

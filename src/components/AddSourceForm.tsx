@@ -9,7 +9,7 @@ import {
   type CustomSource,
 } from "@/lib/customSources";
 import type { SourceLang } from "@/lib/types";
-import { CheckIcon, PlusIcon } from "./Icons";
+import { CheckIcon, PlusIcon, StarIcon } from "./Icons";
 
 type Mode = "site" | "topic" | "rss";
 
@@ -199,12 +199,16 @@ export function AddSourceForm({
 export function CustomSourceRow({
   source,
   enabled,
+  favorite,
   onToggle,
+  onToggleFavorite,
   onRemove,
 }: {
   source: CustomSource;
   enabled: boolean;
+  favorite: boolean;
   onToggle: () => void;
+  onToggleFavorite: () => void;
   onRemove: () => void;
 }) {
   return (
@@ -223,20 +227,33 @@ export function CustomSourceRow({
         <p className="mt-1 truncate text-[11px] text-muted">{source.feed}</p>
       </div>
       <div className="flex shrink-0 flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`btn px-2.5 py-1.5 text-xs ${enabled ? "btn-primary" : ""}`}
-          aria-pressed={enabled}
-        >
-          {enabled ? (
-            <>
-              <CheckIcon width={15} height={15} /> On shelf
-            </>
-          ) : (
-            "Off"
+        <div className="flex gap-1.5">
+          {enabled && (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              className={`btn px-2 py-1.5 ${favorite ? "text-accent" : ""}`}
+              aria-pressed={favorite}
+              aria-label={favorite ? `Unfavorite ${source.name}` : `Favorite ${source.name}`}
+            >
+              <StarIcon width={15} height={15} fill={favorite ? "currentColor" : "none"} />
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            className={`btn flex-1 px-2.5 py-1.5 text-xs ${enabled ? "btn-primary" : ""}`}
+            aria-pressed={enabled}
+          >
+            {enabled ? (
+              <>
+                <CheckIcon width={15} height={15} /> On shelf
+              </>
+            ) : (
+              "Off"
+            )}
+          </button>
+        </div>
         <button type="button" onClick={onRemove} className="btn px-2.5 py-1.5 text-xs">
           Remove
         </button>

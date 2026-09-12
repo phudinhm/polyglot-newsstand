@@ -98,15 +98,6 @@ function tagToKind(tag: string): ArticleBlock["kind"] {
   }
 }
 
-function detectLang(html: string, fallback: SourceLang): SourceLang {
-  const match = /<html[^>]+lang=["']?([a-zA-Z-]{2,5})/i.exec(html);
-  const lang = match?.[1]?.slice(0, 2).toLowerCase();
-  if (lang === "de") return "de";
-  if (lang === "en") return "en";
-  if (lang === "vi") return "vi";
-  return fallback;
-}
-
 function leadImage(html: string, base: string): string | undefined {
   const og = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i.exec(html);
   const raw = og?.[1];
@@ -130,7 +121,12 @@ export function extractArticle(
   url: string,
   fallbackLang: SourceLang,
 ): Article {
-  const lang = detectLang(html, fallbackLang);
+  // The publisher we chose this source under is a far more reliable signal
+  // than the fetched page's own <html lang> - plenty of sites carry a CMS
+  // default (often "en") on every page regardless of what the article is
+  // actually written in, which misdirected the voice, the translation and
+  // the sentence splitting alike.
+  const lang = fallbackLang;
   const { document } = parseHTML(html);
   const reader = new Readability(document as unknown as Document, {
     charThreshold: 200,

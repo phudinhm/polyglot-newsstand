@@ -294,7 +294,10 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "business",
     level: "medium",
-    feed: "https://www.weforum.org/agenda/feed/",
+    // Its own feed and site both answer with a 403 from a datacenter IP - the
+    // enterprise bot-protection Cloudflare in front of weforum.org, not a
+    // paywall. Google News' own copy of its coverage is not blocked the same way.
+    feed: "https://news.google.com/rss/search?q=site:weforum.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.weforum.org/agenda",
     note: "Global economy, technology and policy, written for a mixed international audience.",
   },
@@ -316,7 +319,9 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "business",
     level: "hard",
-    feed: "https://www.imf.org/en/Blogs/rss",
+    // Same story as WEF: imf.org's own WAF returns 403 for both the feed and
+    // the page behind it, no matter the request headers.
+    feed: "https://news.google.com/rss/search?q=site:imf.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.imf.org/en/Blogs",
   },
   {
@@ -1048,7 +1053,8 @@ export const SOURCES: Source[] = [
     lang: "de",
     category: "markets",
     level: "hard",
-    feed: "https://www.finanzen.net/rss/news",
+    // finanzen.net's bot protection returns 403 to the feed itself.
+    feed: "https://news.google.com/rss/search?q=site:finanzen.net&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.finanzen.net",
   },
 
@@ -1144,7 +1150,9 @@ export const SOURCES: Source[] = [
     lang: "de",
     category: "environment",
     level: "medium",
-    feed: "https://rss.dw.com/xml/rss-de-umwelt",
+    // DW retired this section's dedicated RSS feed (and the section page
+    // itself now 404s), unlike DW's other feeds in this catalog.
+    feed: "https://news.google.com/rss/search?q=site:dw.com+Umwelt+OR+Klima+OR+Energiewende&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.dw.com/de/umwelt",
   },
   {
@@ -1269,7 +1277,9 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "media",
     level: "medium",
-    feed: "https://www.theguardian.com/media/rss",
+    // This section's own feed answers with a 406, unlike most of the
+    // Guardian's other section feeds elsewhere in this catalog.
+    feed: "https://news.google.com/rss/search?q=site:theguardian.com+media&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.theguardian.com/media",
   },
   {
@@ -1279,7 +1289,8 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "media",
     level: "medium",
-    feed: "https://www.niemanlab.org/feed/",
+    // Its own feed and site both answer with a 403.
+    feed: "https://news.google.com/rss/search?q=site:niemanlab.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.niemanlab.org",
     note: "Where the news business writes about itself.",
   },
@@ -1290,7 +1301,8 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "law",
     level: "hard",
-    feed: "https://www.theguardian.com/law/rss",
+    // Same 406 as Guardian Media and Guardian Money.
+    feed: "https://news.google.com/rss/search?q=site:theguardian.com+law&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.theguardian.com/law",
   },
   {
@@ -1450,7 +1462,8 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "finance",
     level: "easy",
-    feed: "https://www.theguardian.com/money/rss",
+    // Same 406 as Guardian Media and Guardian Law.
+    feed: "https://news.google.com/rss/search?q=site:theguardian.com+money&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.theguardian.com/money",
     note: "Personal finance in plain English, which is rarer than it should be.",
   },
@@ -1556,7 +1569,8 @@ export const SOURCES: Source[] = [
     lang: "de",
     category: "culture",
     level: "medium",
-    feed: "https://rss.dw.com/xml/rss-de-kultur",
+    // This section's own RSS feed is retired, same as DW Umwelt and DW Wirtschaft.
+    feed: "https://news.google.com/rss/search?q=site:dw.com+Kultur+OR+Kunst+OR+Musik&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.dw.com/de/kultur/s-9106",
   },
   {
@@ -1566,7 +1580,8 @@ export const SOURCES: Source[] = [
     lang: "de",
     category: "business",
     level: "medium",
-    feed: "https://rss.dw.com/xml/rss-de-wirtschaft",
+    // Same as DW Umwelt and DW Kultur: this section's own RSS feed is retired.
+    feed: "https://news.google.com/rss/search?q=site:dw.com+Wirtschaft+OR+Finanzen&hl=de&gl=DE&ceid=DE:de",
     site: "https://www.dw.com/de/wirtschaft/s-1431",
   },
   {
@@ -1730,7 +1745,8 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "finance",
     level: "medium",
-    feed: "https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline",
+    // Its own feed builder answers with a 402, Akamai's bot-protection response.
+    feed: "https://news.google.com/rss/search?q=site:investopedia.com&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.investopedia.com",
     note: "Explains the financial and accounting terms the rest of this shelf assumes you already know.",
   },
@@ -1741,7 +1757,8 @@ export const SOURCES: Source[] = [
     lang: "en",
     category: "business",
     level: "medium",
-    feed: "https://www.fastcompany.com/feed",
+    // Its own feed answers with a 403.
+    feed: "https://news.google.com/rss/search?q=site:fastcompany.com&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.fastcompany.com",
   },
   {

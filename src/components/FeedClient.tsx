@@ -11,7 +11,7 @@ import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { getReadUrls } from "@/lib/recent";
-import { SOURCE_BY_ID, SOURCES } from "@/lib/sources";
+import { SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
@@ -102,18 +102,30 @@ export function FeedClient() {
 
   const sourceKey = settings.sources.join(",");
   const customKey = custom.map((c) => c.feed).join(",");
-  const cacheKey = `${sourceKey}|${customKey}`;
+  const favoritesKey = settings.favorites.join(",");
+  // Folded into the cache key, not just load()'s own deps: toggling a
+  // favorite has to refetch with the new priority order right away, not wait
+  // out however much of the 5-minute staleness window is left.
+  const cacheKey = `${sourceKey}|${customKey}|${favoritesKey}`;
 
   const load = useCallback(
     async (signal?: AbortSignal, background = false) => {
       if (!background) setLoading(true);
       setError(null);
       try {
+        // The feed API only ever fetches the first MAX_SOURCES of these, so a
+        // favorite needs to be near the front of the list to survive a shelf
+        // bigger than that - not wherever it happened to land (Array.sort is
+        // stable, so everything else keeps its existing relative order).
+        const favoriteSet = new Set(settings.favorites);
+        const orderedSources = [...settings.sources].sort(
+          (a, b) => Number(favoriteSet.has(b)) - Number(favoriteSet.has(a)),
+        );
         const res = await fetch("/api/feed", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            sources: settings.sources,
+            sources: orderedSources,
             custom: custom.filter((c) => settings.sources.includes(c.id)),
           }),
           signal,
@@ -131,7 +143,7 @@ export function FeedClient() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sourceKey, customKey],
+    [sourceKey, customKey, favoritesKey],
   );
 
   useEffect(() => {
@@ -219,29 +231,17 @@ export function FeedClient() {
     });
   }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
+  // A tab only ever appears once its category actually has a story behind it.
+  // Deriving this from the shelf's sources instead - every category any added
+  // source is filed under - looked more stable, but the feed only ever
+  // fetches the first MAX_SOURCES of them (see src/app/api/feed/route.ts):
+  // past that cap a source sits on the shelf without ever being fetched, so
+  // its category got a tab that could never show anything. "Add all" is the
+  // fastest way to hit that ceiling - 175 sources on the shelf, 24 fetched.
   const categories = useMemo(() => {
-    const present = new Set<string>();
-    
-    // Add all categories from sources currently on the shelf
-    for (const sourceId of settings.sources) {
-      const source = SOURCE_BY_ID.get(sourceId);
-      if (source) present.add(source.category);
-    }
-    
-    // Add categories from custom sources
-    for (const customSource of custom) {
-      if (settings.sources.includes(customSource.id)) {
-        present.add(customSource.category);
-      }
-    }
-    
-    // Fallback: add whatever is present in data
-    for (const item of data?.items ?? []) {
-      present.add(item.category);
-    }
-
-    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c));
-  }, [data, settings.sources, custom]);
+    const present = new Set((data?.items ?? []).map((i) => i.category));
+    return Object.keys(CATEGORY_LABELS).filter((c) => present.has(c as FeedItem["category"]));
+  }, [data]);
 
   /**
    * When a section comes up empty, the papers that would fill it. Ranked so a
@@ -325,7 +325,13 @@ export function FeedClient() {
 
       <RecentlyRead />
 
-      <SourceRail shelf={settings.sources} selected={source} onSelect={setSource} counts={counts} />
+      <SourceRail
+        shelf={settings.sources}
+        favorites={settings.favorites}
+        selected={source}
+        onSelect={setSource}
+        counts={counts}
+      />
 
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">

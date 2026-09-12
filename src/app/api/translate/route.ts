@@ -35,7 +35,8 @@ export async function POST(req: Request) {
     : [];
   const source: SourceLang =
     body.source === "en" ? "en" : body.source === "vi" ? "vi" : "de";
-  const target: TargetLang = body.target === "vi" ? "vi" : "en";
+  const target: TargetLang =
+    body.target === "vi" ? "vi" : body.target === "de" ? "de" : "en";
 
   if (!texts.length) {
     return NextResponse.json({ error: "Nothing to translate." }, { status: 400 });

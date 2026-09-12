@@ -147,30 +147,90 @@ export interface SpeakOptions {
    * instead of the reader hunting for where the voice has got to.
    */
   onWord?: (charIndex: number, charLength: number) => void;
+  /**
+   * Fires when this request is superseded by a new speak() call before it
+   * finished on its own - tapping a word to hear it mid-line, say. Distinct
+   * from onEnd/onError: the caller's "currently speaking" state needs
+   * resetting, but nothing should be treated as having actually finished
+   * (a continuous read-aloud must not skip ahead to the next line over this).
+   */
+  onInterrupted?: () => void;
 }
 
 let activeAudio: HTMLAudioElement | null = null;
+// The in-flight request's onInterrupted, if it gave one. Cleared whenever
+// that request ends on its own, so a later speak() call only fires it for a
+// request that is genuinely still going.
+let activeInterrupted: (() => void) | null = null;
+
+/**
+ * One persistent element for every cloud line, not a fresh Audio() per tap.
+ *
+ * Tapping "hear this line" down a paragraph fires one of these a second, and
+ * a new HTMLAudioElement per tap gave each its own audio session to fight
+ * over - the exact pattern that leaves mobile browsers dropping a play()
+ * silently until some later gesture nudges the session loose. Reusing one
+ * element and only ever changing its source is the reliable way to play a
+ * quick sequence of short clips.
+ */
+let cloudAudio: HTMLAudioElement | null = null;
+// Bumped on every new request, so a superseded request's play()/onended/
+// onerror can never fire late and clobber the line that is actually
+// speaking now.
+let cloudGeneration = 0;
+
+function ensureCloudAudio(): HTMLAudioElement {
+  if (!cloudAudio) {
+    cloudAudio = new Audio();
+    cloudAudio.setAttribute("playsinline", "true");
+  }
+  return cloudAudio;
+}
 
 export function speak(text: string, options: SpeakOptions): void {
   if (!text.trim()) return;
+  // Whatever was still in flight is being superseded now, not ending on its
+  // own - let it know before wiping its state, so its caller can drop its
+  // "currently speaking" UI instead of it silently going stale.
+  const interrupted = activeInterrupted;
   cancelSpeech();
+  interrupted?.();
 
-  if (options.voiceUri === "google-translate-ai") {
+  // The cloud voice is a placeholder entry, not a real SpeechSynthesisVoice,
+  // and it is also voicesFor()'s top-ranked pick - so an unset voiceUri
+  // resolves to it exactly as often as an explicit choice does. Resolving
+  // the URI first, before touching the Speech Synthesis API at all, is what
+  // catches both: handing that placeholder to utterance.voice throws.
+  const resolvedUri = options.voiceUri || voicesFor(options.lang)[0]?.voiceURI;
+
+  if (resolvedUri === "google-translate-ai") {
     // Route through our own backend proxy to bypass any CORS/Referer blocks
     const url = `/api/tts?lang=${options.lang}&text=${encodeURIComponent(text)}`;
-    activeAudio = new Audio(url);
-    activeAudio.playbackRate = options.rate ?? 1;
-    activeAudio.onended = () => {
+    const audio = ensureCloudAudio();
+    const generation = ++cloudGeneration;
+    audio.playbackRate = options.rate ?? 1;
+    audio.onended = () => {
+      if (generation !== cloudGeneration) return;
       activeAudio = null;
+      activeInterrupted = null;
       options.onEnd?.();
     };
-    activeAudio.onerror = () => {
+    audio.onerror = () => {
+      if (generation !== cloudGeneration) return;
       activeAudio = null;
+      activeInterrupted = null;
       options.onError?.();
     };
     // Simulate word boundary for the whole sentence since we don't have word-level timings
     options.onWord?.(0, text.length);
-    activeAudio.play().catch(() => options.onError?.());
+    audio.src = url;
+    activeAudio = audio;
+    activeInterrupted = options.onInterrupted ?? null;
+    audio.play().catch(() => {
+      if (generation !== cloudGeneration) return;
+      activeInterrupted = null;
+      options.onError?.();
+    });
     return;
   }
 
@@ -181,13 +241,18 @@ export function speak(text: string, options: SpeakOptions): void {
   // Learners need it slower than a native pace, but not comically so.
   utterance.rate = options.rate ?? 0.9;
 
-  const preferred = options.voiceUri
-    ? listVoices().find((v) => v.voiceURI === options.voiceUri)
-    : voicesFor(options.lang)[0];
+  const preferred = listVoices().find((v) => v.voiceURI === resolvedUri);
   if (preferred) utterance.voice = preferred;
 
-  if (options.onEnd) utterance.addEventListener("end", options.onEnd);
-  if (options.onError) utterance.addEventListener("error", options.onError);
+  utterance.addEventListener("end", () => {
+    activeInterrupted = null;
+    options.onEnd?.();
+  });
+  utterance.addEventListener("error", () => {
+    activeInterrupted = null;
+    options.onError?.();
+  });
+  activeInterrupted = options.onInterrupted ?? null;
   if (options.onWord) {
     utterance.addEventListener("boundary", (event) => {
       // Safari reports only word boundaries; Chrome also reports sentences.
@@ -215,7 +280,15 @@ export function isPaused(): boolean {
 }
 
 export function cancelSpeech(): void {
+  // A bare cancel is always an explicit stop - the caller (stopSpeaking, the
+  // page-unmount cleanup) already handles its own state, so this only clears
+  // the hook rather than firing it; speak() fires it itself, deliberately,
+  // right before it would otherwise be clobbered unannounced.
+  activeInterrupted = null;
   if (activeAudio) {
+    // Invalidate the request being cancelled, so its play()/onended/onerror
+    // cannot fire later and be mistaken for whatever speaks next.
+    cloudGeneration++;
     activeAudio.pause();
     activeAudio = null;
   }

@@ -117,10 +117,16 @@ quota degrades rather than breaks.
 | DeepL | `DEEPL_API_KEY` | The best German output by a clear margin. Free tier covers 500,000 characters a month, which is a lot of reading. Free keys end in `:fx` and the right endpoint is selected automatically. |
 | Google Cloud Translation v2 | `GOOGLE_TRANSLATE_API_KEY` | Broadest coverage and dependable Vietnamese. Billed per character. |
 | LibreTranslate | `LIBRETRANSLATE_URL`, `LIBRETRANSLATE_API_KEY` | Self-hosted, so nothing leaves your own infrastructure. |
+| Gemini | `GEMINI_API_KEY` | A general-purpose LLM, not a dedicated translation API, but a solid backup if you already hold a key. Uses `gemini-1.5-flash`. |
+| Groq | `GROQ_API_KEY` | Also general-purpose; the fastest response time of any provider here. Uses `llama-3.3-70b-versatile`. |
+| DeepSeek | `DEEPSEEK_API_KEY` | Also general-purpose. Needs a funded account - an empty balance fails closed and falls through, same as a missing key. Uses `deepseek-chat`. |
 | MyMemory | none, or `MYMEMORY_EMAIL` to raise the quota | The zero-configuration default. Rate limited, fine for casual reading. |
 
 A practical setup: DeepL for German to English, Google for anything to Vietnamese. Add both keys and
-the chain handles it, since a target DeepL cannot serve simply falls through to Google.
+the chain handles it, since a target DeepL cannot serve simply falls through to Google. Gemini, Groq
+and DeepSeek sit below those two and above LibreTranslate/MyMemory - worth adding if you already have
+keys for them, but not worth buying a key for on their own since none is built specifically for
+translation.
 
 Translations are cached in three places, so the same sentence is only ever paid for once: in memory
 on the server, in `localStorage` in your browser, and by Vercel's edge cache for feeds and articles.
