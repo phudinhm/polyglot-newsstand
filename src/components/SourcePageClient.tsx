@@ -8,7 +8,15 @@ import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
-import { ArrowLeftIcon, CheckIcon, ExternalIcon, PlusIcon, RefreshIcon, SpinnerIcon } from "./Icons";
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  ExternalIcon,
+  PlusIcon,
+  RefreshIcon,
+  SpinnerIcon,
+  StarIcon,
+} from "./Icons";
 
 /**
  * One publication at a time.
@@ -88,6 +96,7 @@ export function SourcePageClient({ id }: { id: string }) {
   }, [load]);
 
   const onShelf = source ? settings.sources.includes(source.id) : false;
+  const favorite = source ? settings.favorites.includes(source.id) : false;
 
   function toggleShelf() {
     if (!source) return;
@@ -95,6 +104,17 @@ export function SourcePageClient({ id }: { id: string }) {
       sources: onShelf
         ? settings.sources.filter((s) => s !== source.id)
         : [...settings.sources, source.id],
+    });
+  }
+
+  // Only means something once the source is on the shelf - sanitize() drops
+  // a favorite the moment its source leaves the shelf anyway.
+  function toggleFavorite() {
+    if (!source) return;
+    update({
+      favorites: favorite
+        ? settings.favorites.filter((f) => f !== source.id)
+        : [...settings.favorites, source.id],
     });
   }
 
@@ -149,6 +169,17 @@ export function SourcePageClient({ id }: { id: string }) {
             <button type="button" onClick={() => void load()} disabled={loading} className="btn px-2.5">
               {loading ? <SpinnerIcon /> : <RefreshIcon />}
             </button>
+            {onShelf && (
+              <button
+                type="button"
+                onClick={toggleFavorite}
+                className={`btn px-2.5 ${favorite ? "text-accent" : ""}`}
+                aria-pressed={favorite}
+                aria-label={favorite ? `Unfavorite ${source.name}` : `Favorite ${source.name}`}
+              >
+                <StarIcon width={16} height={16} fill={favorite ? "currentColor" : "none"} />
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleShelf}
