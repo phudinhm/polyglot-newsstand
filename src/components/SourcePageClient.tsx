@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getReadUrls, noteSourceVisit } from "@/lib/recent";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
+import { markBackAction, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import {
@@ -26,6 +28,7 @@ import {
  * shelf without disturbing the shelf.
  */
 export function SourcePageClient({ id }: { id: string }) {
+  const router = useRouter();
   const [settings, update] = useSettings();
   const [source, setSource] = useState<Source | null>(SOURCE_BY_ID.get(id) ?? null);
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -33,6 +36,29 @@ export function SourcePageClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(20);
   const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
+
+  function goBack() {
+    markBackAction();
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/sources");
+    }
+  }
+
+  // Restore scroll position after items load
+  useEffect(() => {
+    if (!loading && items.length > 0) {
+      restoreScrollPosition();
+    }
+  }, [loading, items.length]);
+
+  // Track scroll position on this page
+  useEffect(() => {
+    const onScroll = () => saveScrollPosition();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Opening a paper counts as visiting it, whether or not anything is read.
   useEffect(() => noteSourceVisit(id), [id]);
@@ -136,9 +162,14 @@ export function SourcePageClient({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5">
-      <Link href="/sources" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
+      <button
+        type="button"
+        onClick={goBack}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"
+        aria-label="Back to all sources"
+      >
         <ArrowLeftIcon width={16} height={16} /> All sources
-      </Link>
+      </button>
 
       <header className="card mb-5 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

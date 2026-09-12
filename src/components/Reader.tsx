@@ -16,6 +16,7 @@ import { markRead, noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
 import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
+import { markBackAction } from "@/lib/scrollMemory";
 import {
   cancelSpeech,
   clearNowPlaying,
@@ -99,6 +100,7 @@ export function Reader({
   const [structureLine, setStructureLine] = useState<string | null>(null);
   const [spokenChar, setSpokenChar] = useState<number>(-1);
   const [levelled, setLevelled] = useState<Article | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const chromeActive = useScrollActivity();
 
   const lang = article?.lang ?? fallbackLang;
@@ -509,13 +511,38 @@ export function Reader({
           e.preventDefault();
           revealLine(line);
         }
+      } else if (e.key === "s") {
+        if (article) {
+          e.preventDefault();
+          setSaved(
+            toggleSaved({
+              url,
+              title: article.title,
+              sourceName: source?.name ?? article.siteName ?? "",
+              lang,
+              savedAt: new Date().toISOString(),
+              image: article.leadImage,
+            }),
+          );
+        }
+      } else if (e.key === "p" || (e.key === " " && activeKey)) {
+        e.preventDefault();
+        if (readingAloud) {
+          togglePause();
+        } else {
+          toggleReadAloud();
+        }
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
       } else if (e.key === "Escape") {
         setActiveKey(null);
+        setShowShortcuts(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lines, activeKey, revealLine, word]);
+  }, [lines, activeKey, revealLine, word, article, readingAloud, url, lang, source]);
 
   // -------------------------------------------------------------- word lookup
   const openWord = useCallback(
@@ -538,7 +565,12 @@ export function Reader({
   // (a shared link, a new tab) has nothing to go back to either way, and
   // that is exactly what history.back() already does nothing on its own.
   function goBack() {
-    router.back();
+    markBackAction();
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
   }
 
   function dismissHint() {
@@ -556,7 +588,7 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-0 z-40 h-0.5 bg-translation transition-[width] duration-150"
+        className="fixed inset-x-0 top-0 z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
         style={{ width: `${progress}%` }}
         aria-hidden
       />
@@ -698,20 +730,22 @@ export function Reader({
 
           <button
             type="button"
+            onClick={() => setShowShortcuts((v) => !v)}
+            className="btn hidden min-h-11 !px-2 !py-1.5 text-xs font-semibold text-muted hover:text-fg sm:inline-flex"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+          >
+            ?
+          </button>
+
+          <button
+            type="button"
             onClick={() => setSettingsOpen(true)}
             className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
             aria-label={t("reader.settings")}
           >
             <SlidersIcon />
           </button>
-        </div>
-
-        {/* Top reading progress indicator */}
-        <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-border/30 overflow-hidden">
-          <div
-            className="h-full bg-accent transition-all duration-150 ease-out"
-            style={{ width: `${progress}%` }}
-          />
         </div>
       </header>
 
@@ -1145,6 +1179,63 @@ export function Reader({
           lang={lang}
           onClose={() => setPracticeLine(null)}
         />
+      )}
+
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base">Keyboard Shortcuts</h3>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+                className="btn !p-1 text-muted hover:text-fg"
+                aria-label="Close"
+              >
+                <CloseIcon width={16} height={16} />
+              </button>
+            </div>
+            <div className="space-y-2 text-xs divide-y divide-border/60">
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Next / Prev line</span>
+                <span className="flex gap-1 font-mono">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">j</kbd>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">k</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Reveal translation</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">t</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Enter</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Play / Pause read aloud</span>
+                <span className="flex gap-1 font-mono items-center">
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">p</kbd>
+                  <span className="text-muted text-[10px]">or</span>
+                  <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border">Space</kbd>
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Save / Bookmark article</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">s</kbd>
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted">Close active line / popups</span>
+                <kbd className="rounded bg-surface-2 px-1.5 py-0.5 border border-border font-mono">Esc</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ScrollToTop />

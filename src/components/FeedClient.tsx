@@ -11,7 +11,9 @@ import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { getReadUrls } from "@/lib/recent";
+import { getSavedFeedVisible, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { SOURCES } from "@/lib/sources";
+import { newWordCount } from "@/lib/frequency";
 import type { FeedItem, FeedResponse } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
@@ -61,9 +63,22 @@ export function FeedClient() {
   const [queryInput, setQueryInput] = useState(initialFilters.query);
   const [query, setQuery] = useState(initialFilters.query);
   const [source, setSource] = useState<string | null>(initialFilters.source);
-  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [quickFilter, setQuickFilter] = useState<"all" | "easy" | "quick" | "vocab">("all");
+  const [visible, setVisible] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = getSavedFeedVisible();
+      if (saved && saved > PAGE_SIZE) return saved;
+    }
+    return PAGE_SIZE;
+  });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => saveScrollPosition("/");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const sync = () => setCustom(getCustomSources());
@@ -155,6 +170,7 @@ export function FeedClient() {
     if (cached) {
       setData(cached.response);
       setLoading(false);
+      restoreScrollPosition({ path: "/" });
       if (cached.stale) void load(controller.signal, true);
     } else {
       void load(controller.signal);
@@ -163,13 +179,19 @@ export function FeedClient() {
     return () => controller.abort();
   }, [ready, load, cacheKey]);
 
+  useEffect(() => {
+    if (!loading && data) {
+      restoreScrollPosition({ path: "/" });
+    }
+  }, [loading, data]);
+
   // Filtering a few hundred stories per keystroke is felt on a phone.
   useEffect(() => {
     const timer = setTimeout(() => setQuery(queryInput), 180);
     return () => clearTimeout(timer);
   }, [queryInput]);
 
-  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+  useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source, quickFilter]);
 
   // How much each paper has on the shelf today, for the rail.
   const counts = useMemo(() => {
@@ -207,6 +229,16 @@ export function FeedClient() {
     if (source) list = list.filter((i) => i.sourceId === source);
     if (lang !== "all") list = list.filter((i) => i.lang === lang);
     if (category !== "all") list = list.filter((i) => i.category === category);
+    if (quickFilter === "easy") {
+      list = list.filter((i) => i.level === "easy");
+    } else if (quickFilter === "quick") {
+      list = list.filter((i) => {
+        const words = (i.title + " " + (i.summary || "")).trim().split(/\s+/).length;
+        return words <= 50;
+      });
+    } else if (quickFilter === "vocab") {
+      list = list.filter((i) => newWordCount(`${i.title} ${i.summary}`, i.lang) >= 4);
+    }
     if (month !== "all") {
       list = list.filter((i) => {
         if (!i.publishedAt) return false;
@@ -229,7 +261,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
+  }, [data, lang, category, month, query, sort, source, quickFilter, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
 
   // A tab only ever appears once its category actually has a story behind it.
   // Deriving this from the shelf's sources instead - every category any added
@@ -497,6 +529,44 @@ export function FeedClient() {
           </div>
         </div>
 
+        {/* Smart Quick Focus Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted shrink-0 mr-0.5">Focus:</span>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "easy" ? "all" : "easy"))}
+            data-selected={quickFilter === "easy"}
+            className={`chip !py-1 !text-[11.5px] shrink-0 ${quickFilter === "easy" ? "!bg-translation !border-translation !text-white" : ""}`}
+          >
+            🌱 Easy for learners
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "quick" ? "all" : "quick"))}
+            data-selected={quickFilter === "quick"}
+            className="chip !py-1 !text-[11.5px] shrink-0"
+          >
+            ⚡ Quick read (&lt; 3m)
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuickFilter((c) => (c === "vocab" ? "all" : "vocab"))}
+            data-selected={quickFilter === "vocab"}
+            className="chip !py-1 !text-[11.5px] shrink-0"
+          >
+            📚 Rich vocabulary
+          </button>
+          {quickFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => setQuickFilter("all")}
+              className="text-[11px] text-muted hover:text-accent underline underline-offset-2 ml-1"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
         {/* Twenty-three sections do not fit on one line anywhere, so a phone
             scrolls them sideways and a wider screen wraps them onto two. */}
         <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 sm:flex-wrap sm:overflow-x-visible">
@@ -633,7 +703,19 @@ export function FeedClient() {
       {rest.length > visible && (
         <button
           type="button"
-          onClick={() => setVisible((v) => v + PAGE_SIZE)}
+          onClick={() =>
+            setVisible((v) => {
+              const next = v + PAGE_SIZE;
+              if (typeof window !== "undefined") {
+                try {
+                  sessionStorage.setItem("pn:feed-visible:v1", String(next));
+                } catch {
+                  /* ignore */
+                }
+              }
+              return next;
+            })
+          }
           className="btn mx-auto mt-6 flex"
         >
           {t("feed.showMore")}

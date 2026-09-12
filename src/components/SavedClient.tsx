@@ -6,6 +6,7 @@ import { useT } from "@/hooks/useT";
 import { getSaved, toggleSaved } from "@/lib/store";
 import type { SavedArticle } from "@/lib/types";
 import { readerHref, timeAgo } from "@/lib/format";
+import { recordArticleClick, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { TrashIcon } from "./Icons";
 
 export function SavedClient() {
@@ -17,6 +18,14 @@ export function SavedClient() {
     setItems(getSaved());
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    restoreScrollPosition({ path: "/saved" });
+    const onScroll = () => saveScrollPosition("/saved", window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [ready]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -44,6 +53,7 @@ export function SavedClient() {
           <li key={item.url} className="card flex items-start gap-3 p-3.5">
             <Link
               href={readerHref({ url: item.url, lang: item.lang })}
+              onClick={() => recordArticleClick(item.url)}
               className="min-w-0 flex-1"
             >
               <div className="mb-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">

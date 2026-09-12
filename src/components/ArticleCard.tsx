@@ -8,6 +8,7 @@ import { rememberItem } from "@/lib/handoff";
 import { newWordCount } from "@/lib/frequency";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { isSaved, toggleSaved } from "@/lib/store";
+import { recordArticleClick } from "@/lib/scrollMemory";
 import { BookmarkIcon } from "./Icons";
 import { SourceAvatar } from "./SourceAvatar";
 
@@ -166,6 +167,10 @@ export function FeaturedCard({
       <div className="sm:flex sm:items-stretch">
         <Link
           href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
+          onClick={() => {
+            rememberItem(item);
+            recordArticleClick(item.link);
+          }}
           className="block overflow-hidden sm:order-2 sm:w-[42%] sm:shrink-0"
           tabIndex={-1}
           aria-hidden
@@ -191,7 +196,10 @@ export function FeaturedCard({
           </div>
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
-            onClick={() => rememberItem(item)}
+            onClick={() => {
+              rememberItem(item);
+              recordArticleClick(item.link);
+            }}
             className="mt-1.5 block"
           >
             <h2 className="text-[1.15rem] font-bold leading-snug tracking-tight transition-colors group-hover:text-accent sm:text-[1.55rem]">
@@ -254,7 +262,10 @@ function ArticleCardImpl({
       </div>
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
-        onClick={() => rememberItem(item)}
+        onClick={() => {
+          rememberItem(item);
+          recordArticleClick(item.link);
+        }}
         className="mt-1.5 flex gap-3.5"
       >
         <div className="min-w-0 flex-1">
