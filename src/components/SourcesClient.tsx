@@ -11,6 +11,7 @@ import { suggestSources, type Reason } from "@/lib/suggest";
 import { getCustomSources, removeCustomSource, type CustomSource } from "@/lib/customSources";
 import { getRecent } from "@/lib/recent";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
+import { restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { SourceAvatar } from "./SourceAvatar";
 import type { SourceHealth } from "@/app/api/source-health/route";
 import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
@@ -52,6 +53,13 @@ export function SourcesClient() {
       tally.set(key, found);
     }
     setMostRead([...tally.values()].sort((a, b) => b.count - a.count).slice(0, 5));
+  }, []);
+
+  useEffect(() => {
+    restoreScrollPosition({ path: "/sources" });
+    const onScroll = () => saveScrollPosition("/sources", window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const suggestions = useMemo(() => suggestSources(settings.sources, 4), [settings.sources]);

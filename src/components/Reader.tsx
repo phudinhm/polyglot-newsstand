@@ -16,6 +16,7 @@ import { markRead, noteRead } from "@/lib/recent";
 import { recallItem } from "@/lib/handoff";
 import { forgetBlocked, noteBlocked } from "@/lib/blocked";
 import { getCachedArticle, setCachedArticle } from "@/lib/feedCache";
+import { markBackAction } from "@/lib/scrollMemory";
 import {
   cancelSpeech,
   clearNowPlaying,
@@ -564,7 +565,12 @@ export function Reader({
   // (a shared link, a new tab) has nothing to go back to either way, and
   // that is exactly what history.back() already does nothing on its own.
   function goBack() {
-    router.back();
+    markBackAction();
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
   }
 
   function dismissHint() {
