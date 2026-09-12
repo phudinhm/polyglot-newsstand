@@ -53,6 +53,34 @@
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
+[data-theme="forest"] {
+  --bg: #f2f5f1;
+  --surface: #ffffff;
+  --surface-2: #e6ede5;
+  --fg: #1a251d;
+  --muted: #56685a;
+  --border: #d2ded1;
+  --accent: #2d6a4f;
+  --accent-fg: #ffffff;
+  --highlight: rgba(45, 106, 79, 0.12);
+  --translation: #1b4332;
+  --shadow: 0 1px 2px rgba(26, 37, 29, 0.04), 0 10px 30px rgba(26, 37, 29, 0.07);
+}
+
+[data-theme="nordic"] {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #e7ecf2;
+  --fg: #17212b;
+  --muted: #556475;
+  --border: #d3dbe5;
+  --accent: #1d4ed8;
+  --accent-fg: #ffffff;
+  --highlight: rgba(29, 78, 216, 0.12);
+  --translation: #0e7490;
+  --shadow: 0 1px 2px rgba(23, 33, 43, 0.04), 0 10px 30px rgba(23, 33, 43, 0.07);
+}
+
 [data-theme="slate"] {
   --bg: #1e2126;
   --surface: #262a30;
@@ -149,21 +177,29 @@ body {
 
 /*
  * The paper grain.
+/*
+ * Authentic paper texture simulation.
  *
- * Baked into a background image on the body rather than painted as an overlay
- * element: an overlay would need a stacking context above the content, and
- * anything that raises body's children breaks position: fixed and sticky on
- * the header, the tab bar and the continue-reading bar. This costs nothing and
- * cannot interfere with layout.
+ * Uses the tactile watercolor / newsprint paper texture image provided by the user.
+ * Blends naturally via CSS background-blend-mode: multiply on light themes,
+ * and overlay on dark themes (slate/ink).
+ * Toggled on/off with data-texture="on"/"off" without page jump.
  */
 body {
-  background-image: var(--grain);
+  background-image: url("/paper-texture.png");
   background-attachment: fixed;
-  background-size: 240px 240px;
+  background-repeat: repeat;
+  background-size: 380px auto;
+  background-blend-mode: multiply;
+}
+
+[data-theme="slate"] body,
+[data-theme="ink"] body {
+  background-blend-mode: overlay;
 }
 
 [data-texture="off"] body {
-  background-image: none;
+  background-image: none !important;
 }
 
 ::selection {
@@ -431,7 +467,8 @@ body {
 }
 
 .card {
-  background-color: var(--surface);
+  background-color: color-mix(in srgb, var(--surface) 93%, transparent);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 16px;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
