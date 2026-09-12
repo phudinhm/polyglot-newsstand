@@ -113,7 +113,7 @@ export function VocabClient() {
                 setEntries([]);
               }
             }}
-            className="chip ml-auto"
+            className="btn ml-auto !px-2.5 !py-1.5 text-xs"
           >
             <TrashIcon width={14} height={14} /> {t("vocab.clearAll")}
           </button>
