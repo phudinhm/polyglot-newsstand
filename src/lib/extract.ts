@@ -157,6 +157,27 @@ export function extractArticle(
     }
   }
 
+  // Fallback if Readability fails or scored below threshold:
+  if (!blocks.length) {
+    const fallbackNodes = Array.from(
+      document.querySelectorAll("article p, main p, [itemprop='articleBody'] p, .story-body p, .article-content p, .entry-content p, p"),
+    );
+    let index = 0;
+    for (const node of fallbackNodes) {
+      const text = stripHtml(node.textContent ?? "");
+      if (!text || text.length < 30 || isNoise(text)) continue;
+      const sentences = splitSentences(text, lang);
+      if (!sentences.length) continue;
+      wordCount += countWords(text);
+      blocks.push({
+        id: `b${index++}`,
+        kind: "paragraph",
+        sentences,
+      });
+      if (blocks.length >= 60) break;
+    }
+  }
+
   const title = stripHtml(parsed?.title ?? "") || stripHtml(/<title>([^<]*)<\/title>/i.exec(html)?.[1] ?? "");
 
   return {
