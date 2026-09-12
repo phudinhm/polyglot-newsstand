@@ -13,8 +13,8 @@ import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const CREAM = "#faf4e4";
-const INK = "#96562a";
+const CREAM = "#FFFDF9";
+const INK = "#D36C4F";
 const PUBLIC = join(process.cwd(), "public");
 
 /** The mark itself, drawn in a 64x64 box. */
@@ -22,28 +22,28 @@ const mark = `
   <g transform="rotate(-3 32 32)">
     <g mask="url(#noN)" clip-path="url(#sheet)">
       <rect width="64" height="64" fill="${CREAM}"/>
-      <rect x="32" width="32" height="64" fill="#efe5cd"/>
-      <path d="M54.5 47 L48.5 53 L48.5 47 Z" fill="#ddd0ac"/>
-      <path d="M16.5 15.4 H47.5 M16.5 18.4 H37" stroke="${INK}" stroke-opacity="0.34"
+      <rect x="32" width="32" height="64" fill="#F4EFEA"/>
+      <path d="M54.5 47 L48.5 53 L48.5 47 Z" fill="#E8DFD5"/>
+      <path d="M16.5 15.4 H47.5 M16.5 18.4 H37" stroke="${INK}" stroke-opacity="0.38"
             stroke-width="1.6" stroke-linecap="round"/>
-      <path d="M16.5 50.6 H44" stroke="${INK}" stroke-opacity="0.24"
+      <path d="M16.5 50.6 H44" stroke="${INK}" stroke-opacity="0.28"
             stroke-width="1.5" stroke-linecap="round"/>
     </g>
     <g clip-path="url(#sheet)">
       <rect x="30.9" y="11" width="2.1" height="42" fill="${CREAM}"/>
-      <rect x="33" y="11" width="1.1" height="42" fill="${INK}" fill-opacity="0.16"/>
+      <rect x="33" y="11" width="1.1" height="42" fill="${INK}" fill-opacity="0.2"/>
     </g>
   </g>`;
 
 const defs = `
   <defs>
     <linearGradient id="bg" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#b06a35"/>
+      <stop offset="0" stop-color="#E27D60"/>
       <stop offset="0.55" stop-color="${INK}"/>
-      <stop offset="1" stop-color="#7b4420"/>
+      <stop offset="1" stop-color="#BA5236"/>
     </linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
       <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
     <clipPath id="sheet">
