@@ -8,10 +8,11 @@ import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/li
 import type { SourceLang } from "@/lib/types";
 import { SpeakerIcon } from "./Icons";
 
-const THEME_CYCLE: ThemeName[] = ["paper", "sepia", "slate", "ink"];
+const THEME_CYCLE: ThemeName[] = ["paper", "sepia", "modern", "slate", "ink"];
 const THEME_LABEL: Record<ThemeName, string> = {
   paper: "Paper",
   sepia: "Sepia",
+  modern: "Modern",
   slate: "Slate",
   ink: "Ink",
 };
