@@ -89,6 +89,16 @@ export function SourcesClient() {
     [grouped],
   );
 
+  // How many of the currently visible (search + language filtered) sources
+  // are not already on the shelf, so "Add all" can say what it actually does.
+  const addableCount = useMemo(() => {
+    let n = 0;
+    for (const [, list] of grouped) {
+      for (const source of list) if (!selected.has(source.id)) n += 1;
+    }
+    return n;
+  }, [grouped, selected]);
+
   /**
    * A suggestion has to say why in the reader's language. "Because you already
    * read business" is a reason; the same sentence in English on a Vietnamese
@@ -358,52 +368,62 @@ export function SourcesClient() {
         )}
       </div>
 
-      <div className="no-scrollbar mb-4 flex gap-1.5 overflow-x-auto">
-        {(["all", "de", "en", "vi"] as const).map((value) => (
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto">
+          {(["all", "de", "en", "vi"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setLang(value)}
+              data-selected={lang === value}
+              className="chip"
+            >
+              {value === "all"
+                ? t("sources.langAll")
+                : value === "de"
+                  ? "Deutsch"
+                  : value === "en"
+                    ? "English"
+                    : "Tiếng Việt"}
+            </button>
+          ))}
           <button
-            key={value}
             type="button"
-            onClick={() => setLang(value)}
-            data-selected={lang === value}
-            className="chip"
+            onClick={() => setFavOnly((v) => !v)}
+            data-selected={favOnly}
+            className="chip !gap-1"
           >
-            {value === "all"
-              ? t("sources.langAll")
-              : value === "de"
-                ? "Deutsch"
-                : value === "en"
-                  ? "English"
-                  : "Tiếng Việt"}
+            <StarIcon width={14} height={14} fill={favOnly ? "currentColor" : "none"} />
+            {t("sources.favoritesOnly")}
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setFavOnly((v) => !v)}
-          data-selected={favOnly}
-          className="chip !gap-1"
-        >
-          <StarIcon width={14} height={14} fill={favOnly ? "currentColor" : "none"} />
-          {t("sources.favoritesOnly")}
-        </button>
-        <button
-          type="button"
-          onClick={() => update({ sources: DEFAULT_SETTINGS.sources })}
-          className="chip"
-        >
-          {t("sources.reset")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const visibleIds = grouped.flatMap(([, list]) => list.map((s) => s.id));
-            const next = new Set([...settings.sources, ...visibleIds]);
-            update({ sources: Array.from(next) });
-          }}
-          className="chip"
-        >
-          <PlusIcon width={14} height={14} className="mr-1 inline-block" />
-          {t("sources.addAll")}
-        </button>
+        </div>
+
+        {/* Bulk shelf actions, not filters: kept visually distinct (buttons,
+            not chips) so a tap here can't be mistaken for a language toggle. */}
+        <div className="flex shrink-0 gap-1.5 border-l border-border pl-2">
+          <button type="button" onClick={() => update({ sources: DEFAULT_SETTINGS.sources })} className="btn !px-2.5 !py-1.5 text-xs">
+            {t("sources.reset")}
+          </button>
+          <button
+            type="button"
+            disabled={addableCount === 0}
+            onClick={() => {
+              const visibleIds = grouped.flatMap(([, list]) => list.map((s) => s.id));
+              const next = new Set([...settings.sources, ...visibleIds]);
+              update({ sources: Array.from(next) });
+            }}
+            className="btn !px-2.5 !py-1.5 text-xs"
+            title={
+              addableCount === 0
+                ? "Everything currently shown is already on your shelf."
+                : `Adds ${addableCount} source${addableCount === 1 ? "" : "s"} matching the current search and language filter.`
+            }
+          >
+            <PlusIcon width={14} height={14} />
+            {t("sources.addAll")}
+            {addableCount > 0 && <span className="text-muted">({addableCount})</span>}
+          </button>
+        </div>
       </div>
 
       {matches === 0 && (
