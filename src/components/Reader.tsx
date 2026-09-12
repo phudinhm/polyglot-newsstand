@@ -38,6 +38,7 @@ import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
+import { ScrollToTop } from "./ScrollToTop";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -704,6 +705,14 @@ export function Reader({
             <SlidersIcon />
           </button>
         </div>
+
+        {/* Top reading progress indicator */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-border/30 overflow-hidden">
+          <div
+            className="h-full bg-accent transition-all duration-150 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-8">
@@ -1138,6 +1147,7 @@ export function Reader({
         />
       )}
 
+      <ScrollToTop />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
