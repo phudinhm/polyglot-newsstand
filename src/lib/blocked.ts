@@ -69,3 +69,8 @@ export function blockedIds(): Set<string> {
 export function isBlocked(sourceId: string): boolean {
   return sourceId in read();
 }
+
+/** Reset all recorded device blockages. */
+export function clearAllBlocked(): void {
+  write({});
+}

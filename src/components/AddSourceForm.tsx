@@ -200,6 +200,8 @@ export function CustomSourceRow({
   source,
   enabled,
   favorite,
+  isBlocked,
+  onUnblock,
   onToggle,
   onToggleFavorite,
   onRemove,
@@ -207,6 +209,8 @@ export function CustomSourceRow({
   source: CustomSource;
   enabled: boolean;
   favorite: boolean;
+  isBlocked?: boolean;
+  onUnblock?: () => void;
   onToggle: () => void;
   onToggleFavorite: () => void;
   onRemove: () => void;
@@ -222,6 +226,20 @@ export function CustomSourceRow({
           <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">
             {source.kind === "rss" ? "RSS" : source.kind === "site" ? "Website" : "Topic"}
           </span>
+          {isBlocked && (
+            <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+              🚫 Blocked
+            </span>
+          )}
+          {isBlocked && onUnblock && (
+            <button
+              type="button"
+              onClick={onUnblock}
+              className="text-[10.5px] text-accent underline hover:no-underline"
+            >
+              Unblock
+            </button>
+          )}
         </div>
         {source.note && <p className="mt-1 text-[13px] text-muted">{source.note}</p>}
         <p className="mt-1 truncate text-[11px] text-muted">{source.feed}</p>

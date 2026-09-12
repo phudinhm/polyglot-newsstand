@@ -354,7 +354,8 @@ export const SOURCES: Source[] = [
     // paywall. Google News' own copy of its coverage is not blocked the same way.
     feed: "https://news.google.com/rss/search?q=site:weforum.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.weforum.org/agenda",
-    note: "Global economy, technology and policy, written for a mixed international audience.",
+    note: "Global economy, technology and policy. Blocks automated article fetch.",
+    paywall: "hard",
   },
   {
     id: "mckinsey",
@@ -378,6 +379,8 @@ export const SOURCES: Source[] = [
     // the page behind it, no matter the request headers.
     feed: "https://news.google.com/rss/search?q=site:imf.org&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.imf.org/en/Blogs",
+    note: "IMF policy blog. Site Cloudflare WAF blocks full-text article extraction.",
+    paywall: "hard",
   },
   {
     id: "worldbank-blogs",
@@ -442,7 +445,8 @@ export const SOURCES: Source[] = [
     level: "medium",
     feed: "https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en",
     site: "https://apnews.com",
-    note: "Wire service reporting. Straightforward, factual English without paywalls.",
+    note: "Wire service reporting. AP actively blocks full-text automated fetching; feed summaries only.",
+    paywall: "hard",
   },
   {
     id: "reuters",
@@ -452,6 +456,8 @@ export const SOURCES: Source[] = [
     level: "medium",
     feed: "https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.reuters.com",
+    note: "Global news wire. Metered paywall and strict bot detection.",
+    paywall: "hard",
   },
   {
     id: "pbs-newshour",
@@ -1083,6 +1089,7 @@ export const SOURCES: Source[] = [
     feed: "https://news.google.com/rss/search?q=site:reuters.com+business&hl=en-US&gl=US&ceid=US:en",
     site: "https://www.reuters.com/business",
     note: "Reuters retired its public feeds, so this follows them through Google News.",
+    paywall: "hard",
   },
   {
     id: "bloomberg-gn",

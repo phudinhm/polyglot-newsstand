@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { suggestSources, type Reason } from "@/lib/suggest";
 import { getCustomSources, removeCustomSource, type CustomSource } from "@/lib/customSources";
 import { getRecent } from "@/lib/recent";
+import { blockedIds, forgetBlocked } from "@/lib/blocked";
 import { SourceAvatar } from "./SourceAvatar";
 import type { SourceHealth } from "@/app/api/source-health/route";
 import { AddSourceForm, CustomSourceRow } from "./AddSourceForm";
@@ -21,6 +22,10 @@ export function SourcesClient() {
   const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [query, setQuery] = useState("");
   const [favOnly, setFavOnly] = useState(false);
+  const [freeOnly, setFreeOnly] = useState(false);
+  const [blocked, setBlocked] = useState<Set<string>>(new Set());
+  const [dismissedFlaggedBanner, setDismissedFlaggedBanner] = useState(false);
+  const [cleanedToast, setCleanedToast] = useState(false);
   const [custom, setCustom] = useState<CustomSource[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [health, setHealth] = useState<SourceHealth[] | null>(null);
@@ -31,6 +36,7 @@ export function SourcesClient() {
   const [mostRead, setMostRead] = useState<{ id?: string; name: string; count: number }[]>([]);
 
   useEffect(() => {
+    setBlocked(blockedIds());
     setCustom(getCustomSources());
     // What the reader actually opens, which is rarely what they think it is.
     const tally = new Map<string, { id?: string; name: string; count: number }>();
@@ -54,10 +60,30 @@ export function SourcesClient() {
     [health],
   );
 
+  const flaggedOnShelf = useMemo(() => {
+    return settings.sources
+      .map((id) => SOURCES.find((s) => s.id === id))
+      .filter((s): s is (typeof SOURCES)[number] => {
+        if (!s) return false;
+        return s.paywall === "hard" || blocked.has(s.id);
+      });
+  }, [settings.sources, blocked]);
+
+  function cleanShelf() {
+    const flaggedIds = new Set(flaggedOnShelf.map((s) => s.id));
+    const next = settings.sources.filter((id) => !flaggedIds.has(id));
+    update({ sources: next.length ? next : ["nachrichtenleicht", "tagesschau", "bbc"] });
+    setCleanedToast(true);
+    setTimeout(() => setCleanedToast(false), 4500);
+  }
+
   const grouped = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const visible = SOURCES.filter((source) => {
       if (favOnly && !favorites.has(source.id)) return false;
+      if (freeOnly && (source.paywall === "hard" || source.paywall === "soft" || blocked.has(source.id))) {
+        return false;
+      }
       if (lang !== "all" && source.lang !== lang) return false;
       if (!needle) return true;
       // Search what a reader would actually type: the paper's name, the
@@ -82,7 +108,7 @@ export function SourcesClient() {
       ([a], [b]) =>
         Object.keys(CATEGORY_LABELS).indexOf(a) - Object.keys(CATEGORY_LABELS).indexOf(b),
     );
-  }, [lang, query, favOnly, favorites]);
+  }, [lang, query, favOnly, freeOnly, blocked, favorites]);
 
   const matches = useMemo(
     () => grouped.reduce((total, [, list]) => total + list.length, 0),
@@ -176,6 +202,69 @@ export function SourcesClient() {
           {t("sources.check")}
         </button>
       </header>
+
+      {/* Smart Shelf Scanner & 1-Click Cleaner */}
+      {flaggedOnShelf.length > 0 && !dismissedFlaggedBanner && (
+        <div className="mb-5 rounded-xl border border-accent/40 bg-accent/5 p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🛡️</span>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {flaggedOnShelf.length} {t("sources.flaggedBanner")}
+                </h2>
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                {t("sources.flaggedBannerDesc")}
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {flaggedOnShelf.map((s) => (
+                  <span
+                    key={s.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-[11.5px] font-medium text-foreground"
+                  >
+                    {s.name}
+                    <span className="text-[10.5px] text-accent">
+                      ({s.paywall === "hard" ? t("sources.hardPaywall") : t("sources.blockedOnDevice")})
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDismissedFlaggedBanner(true)}
+              className="rounded p-1 text-muted hover:bg-surface-2 hover:text-foreground"
+              aria-label="Dismiss"
+            >
+              <CloseIcon width={16} height={16} />
+            </button>
+          </div>
+          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={cleanShelf}
+              className="btn btn-primary !px-3 !py-1.5 text-xs"
+            >
+              🧹 {t("sources.cleanNow")} ({flaggedOnShelf.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFreeOnly(true)}
+              className="btn !px-3 !py-1.5 text-xs"
+            >
+              🛡️ {t("sources.freeOnly")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cleanedToast && (
+        <div className="mb-5 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          <span>✓</span>
+          <span>{t("sources.shelfCleaned")}</span>
+        </div>
+      )}
 
       {/* Answers "why can't I see The Guardian" with something specific. */}
       {health && (
@@ -334,6 +423,11 @@ export function SourcesClient() {
                 source={source}
                 enabled={selected.has(source.id)}
                 favorite={favorites.has(source.id)}
+                isBlocked={blocked.has(source.id)}
+                onUnblock={() => {
+                  forgetBlocked(source.id);
+                  setBlocked(blockedIds());
+                }}
                 onToggle={() => toggle(source.id)}
                 onToggleFavorite={() => toggleFavorite(source.id)}
                 onRemove={() => {
@@ -396,6 +490,15 @@ export function SourcesClient() {
             <StarIcon width={14} height={14} fill={favOnly ? "currentColor" : "none"} />
             {t("sources.favoritesOnly")}
           </button>
+          <button
+            type="button"
+            onClick={() => setFreeOnly((v) => !v)}
+            data-selected={freeOnly}
+            className="chip !gap-1"
+          >
+            <span>🛡️</span>
+            {t("sources.freeOnly")}
+          </button>
         </div>
 
         {/* Bulk shelf actions, not filters: kept visually distinct (buttons,
@@ -454,6 +557,36 @@ export function SourcesClient() {
                         </Link>
                         <span className="text-[11px] uppercase text-muted">{source.lang}</span>
                         <span className="text-[11px] text-muted">{LEVEL_LABELS[source.level]}</span>
+                        {blocked.has(source.id) ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                            🚫 {t("sources.blockedOnDevice")}
+                          </span>
+                        ) : source.paywall === "hard" ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                            🔒 {t("sources.hardPaywall")}
+                          </span>
+                        ) : source.paywall === "soft" ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                            ⚠️ {t("sources.softPaywall")}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            ✓ {t("sources.freeBadge")}
+                          </span>
+                        )}
+                        {blocked.has(source.id) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              forgetBlocked(source.id);
+                              setBlocked(blockedIds());
+                            }}
+                            className="text-[11px] text-accent underline hover:no-underline"
+                          >
+                            {t("sources.unblock")}
+                          </button>
+                        )}
                         {status && (
                           <span
                             className={`text-[11px] ${status.ok ? "text-translation" : "text-accent"}`}
