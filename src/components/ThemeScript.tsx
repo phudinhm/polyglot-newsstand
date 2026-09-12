@@ -16,7 +16,6 @@ export function ThemeScript() {
       lineHeight: DEFAULT_SETTINGS.lineHeight,
       measure: DEFAULT_SETTINGS.measure,
       tracking: DEFAULT_SETTINGS.tracking,
-      texture: DEFAULT_SETTINGS.texture,
       zoom: DEFAULT_SETTINGS.zoom,
     })};
     var accents = ${JSON.stringify(ACCENT_COLORS)};
@@ -29,7 +28,6 @@ export function ThemeScript() {
     var r = document.documentElement;
     r.dataset.theme = theme;
     r.dataset.font = s.font || d.font;
-    r.dataset.texture = s.texture === false ? 'off' : 'on';
     r.dataset.accent = s.accentColor || 'default';
     if (s.accentColor && s.accentColor !== 'default') {
       var isDark = theme === 'slate' || theme === 'ink';

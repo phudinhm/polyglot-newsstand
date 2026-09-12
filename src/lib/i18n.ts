@@ -100,8 +100,6 @@ const EN = {
   "settings.flowing": "Flowing text",
   "settings.whileReading": "While reading",
   "settings.accentColor": "Accent color",
-  "settings.paperTexture": "Paper texture",
-  "settings.paperTextureHint": "Simulates authentic print newspaper & book paper grain.",
   "settings.close": "Close",
 
   "sources.title": "Sources",
@@ -265,8 +263,6 @@ const DE: Record<StringKey, string> = {
   "settings.flowing": "Fließtext",
   "settings.whileReading": "Beim Lesen",
   "settings.accentColor": "Akzentfarbe",
-  "settings.paperTexture": "Papierstruktur",
-  "settings.paperTextureHint": "Simuliert echtes Druck- und Zeitungspapier.",
   "settings.close": "Schließen",
 
   "sources.title": "Quellen",
@@ -428,8 +424,6 @@ const VI: Record<StringKey, string> = {
   "settings.flowing": "Văn liền mạch",
   "settings.whileReading": "Khi đang đọc",
   "settings.accentColor": "Màu chủ đạo",
-  "settings.paperTexture": "Chất liệu giấy",
-  "settings.paperTextureHint": "Mô phỏng nền giấy in như trang báo giấy thật.",
   "settings.close": "Đóng",
 
   "sources.title": "Nguồn",

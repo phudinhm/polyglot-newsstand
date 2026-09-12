@@ -20,7 +20,6 @@
   --highlight: rgba(156, 82, 39, 0.1);
   --translation: #3d6555;
   --shadow: 0 1px 2px rgba(28, 27, 25, 0.04), 0 10px 30px rgba(28, 27, 25, 0.07);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
 [data-theme="modern"] {
@@ -35,7 +34,6 @@
   --highlight: rgba(211, 108, 79, 0.12);
   --translation: #4A7C59;
   --shadow: 0 4px 12px rgba(0,0,0,0.05), 0 12px 24px -8px rgba(0, 0, 0, 0.08);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
 [data-theme="sepia"] {
@@ -50,7 +48,6 @@
   --highlight: rgba(148, 84, 42, 0.12);
   --translation: #3c6350;
   --shadow: 0 1px 2px rgba(64, 54, 42, 0.05), 0 10px 30px rgba(64, 54, 42, 0.09);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
 [data-theme="forest"] {
@@ -93,7 +90,6 @@
   --highlight: rgba(227, 160, 106, 0.14);
   --translation: #8fc4ad;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.025'/%3E%3C/svg%3E");
 }
 
 [data-theme="ink"] {
@@ -108,7 +104,6 @@
   --highlight: rgba(221, 154, 99, 0.12);
   --translation: #85bfa7;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.5);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)' opacity='0.025'/%3E%3C/svg%3E");
 }
 
 /* Reading controls, written from JS by applySettings(). */
@@ -173,33 +168,6 @@ body {
   text-rendering: optimizeLegibility;
   padding-bottom: env(safe-area-inset-bottom);
   transition: background-color 200ms ease, color 200ms ease;
-}
-
-/*
- * The paper grain.
-/*
- * Authentic paper texture simulation.
- *
- * Uses the tactile watercolor / newsprint paper texture image provided by the user.
- * Blends naturally via CSS background-blend-mode: multiply on light themes,
- * and overlay on dark themes (slate/ink).
- * Toggled on/off with data-texture="on"/"off" without page jump.
- */
-body {
-  background-image: url("/paper-texture.png");
-  background-attachment: fixed;
-  background-repeat: repeat;
-  background-size: 380px auto;
-  background-blend-mode: multiply;
-}
-
-[data-theme="slate"] body,
-[data-theme="ink"] body {
-  background-blend-mode: overlay;
-}
-
-[data-texture="off"] body {
-  background-image: none !important;
 }
 
 ::selection {
