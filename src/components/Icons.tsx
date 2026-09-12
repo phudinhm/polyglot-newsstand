@@ -212,3 +212,10 @@ export const SparkIcon = (p: P) => (
     <path d="M18 17l.7 1.8L20.5 19.5l-1.8.7L18 22l-.7-1.8L15.5 19.5l1.8-.7z" />
   </svg>
 );
+
+export const ArrowUpIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
+

@@ -19,7 +19,7 @@ export const maxDuration = 60;
 const FEED_TTL_MS = 5 * 60 * 1000;
 const feedCache = new TtlCache<FeedItem[]>(FEED_TTL_MS, 300);
 
-const MAX_SOURCES = 24;
+const MAX_SOURCES = 48;
 const MAX_CUSTOM = 12;
 // A handful of sources - Google News chief among them - answer many of this
 // catalog's entries, so firing every fetch at once risks reading as a burst

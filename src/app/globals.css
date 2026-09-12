@@ -465,6 +465,10 @@ body {
   transition: all 140ms ease;
 }
 
+.chip:active {
+  transform: scale(0.96);
+}
+
 .chip:hover {
   color: var(--fg);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
@@ -475,6 +479,7 @@ body {
   border-color: var(--accent);
   color: var(--accent-fg);
   font-weight: 500;
+  box-shadow: 0 2px 8px -1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .btn {
@@ -491,6 +496,10 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 140ms ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn:hover {

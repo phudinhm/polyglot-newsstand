@@ -8,6 +8,7 @@ import type { StringKey } from "@/lib/i18n";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ContinueReading } from "./ContinueReading";
 import { BookmarkIcon, CardsIcon, NewspaperIcon, SlidersIcon } from "./Icons";
+import { ScrollToTop } from "./ScrollToTop";
 
 const NAV: { href: string; key: StringKey; Icon: typeof NewspaperIcon }[] = [
   { href: "/", key: "nav.newsstand", Icon: NewspaperIcon },
@@ -102,6 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
 
+      <ScrollToTop />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
