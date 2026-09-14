@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getReadUrls, noteSourceVisit } from "@/lib/recent";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
-import { LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
+import { googleNewsSearchFeedUrl, LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
 import { getCustomSources } from "@/lib/customSources";
 import { markBackAction, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
@@ -13,9 +13,11 @@ import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import {
   ArrowLeftIcon,
   CheckIcon,
+  CloseIcon,
   ExternalIcon,
   PlusIcon,
   RefreshIcon,
+  SearchIcon,
   SpinnerIcon,
   StarIcon,
 } from "./Icons";
@@ -36,6 +38,16 @@ export function SourcePageClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(20);
   const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
+  const [queryInput, setQueryInput] = useState("");
+  const [query, setQuery] = useState("");
+
+  // A network round trip per keystroke would hammer Google News, so this
+  // waits for a pause - longer than the feed page's own search, which only
+  // filters what is already in memory and costs nothing to re-run.
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(queryInput.trim()), 500);
+    return () => clearTimeout(timer);
+  }, [queryInput]);
 
   function goBack() {
     markBackAction();
@@ -97,12 +109,18 @@ export function SourcePageClient({ id }: { id: string }) {
     setError(null);
     try {
       const isCurated = SOURCE_BY_ID.has(source.id);
+      // Searching means asking Google News for this one domain's own archive
+      // instead of the source's normal feed, which only ever carries its
+      // latest handful of items regardless of what the reader typed.
+      const body = query
+        ? { sources: [], custom: [{ ...source, feed: googleNewsSearchFeedUrl(query, source) }] }
+        : isCurated
+          ? { sources: [source.id], custom: [] }
+          : { sources: [], custom: [source] };
       const res = await fetch("/api/feed", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(
-          isCurated ? { sources: [source.id], custom: [] } : { sources: [], custom: [source] },
-        ),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`Could not reach this publication (${res.status}).`);
       const data = (await res.json()) as FeedResponse;
@@ -115,7 +133,7 @@ export function SourcePageClient({ id }: { id: string }) {
     } finally {
       setLoading(false);
     }
-  }, [source]);
+  }, [source, query]);
 
   useEffect(() => {
     void load();
@@ -231,6 +249,37 @@ export function SourcePageClient({ id }: { id: string }) {
         </div>
       </header>
 
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
+        <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
+        <input
+          value={queryInput}
+          onChange={(e) => setQueryInput(e.target.value)}
+          placeholder={`Search ${source.name}`}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
+          aria-label={`Search ${source.name}`}
+        />
+        {queryInput && (
+          <button
+            type="button"
+            onClick={() => setQueryInput("")}
+            className="shrink-0 text-muted hover:text-fg"
+            aria-label="Clear search"
+          >
+            <CloseIcon width={14} height={14} />
+          </button>
+        )}
+      </div>
+      {query && (
+        <p className="-mt-2.5 mb-4 text-[12px] text-muted">
+          {loading
+            ? `Searching ${source.name} via Google News…`
+            : `Google News results for "${query}" on ${source.name}, not just what its own feed carries.`}
+        </p>
+      )}
+
       {error && (
         <div className="card mb-4 border-accent/40 p-4">
           <p className="text-sm font-medium">This publication did not answer.</p>
@@ -276,7 +325,9 @@ export function SourcePageClient({ id }: { id: string }) {
       )}
 
       {!loading && !items.length && !error && (
-        <p className="py-10 text-center text-sm text-muted">Nothing published recently.</p>
+        <p className="py-10 text-center text-sm text-muted">
+          {query ? `No results for "${query}" on ${source.name}.` : "Nothing published recently."}
+        </p>
       )}
     </div>
   );
