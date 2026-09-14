@@ -2114,6 +2114,103 @@ export const SOURCES: Source[] = [
     note: "Forbes covers a lot else besides, so this narrows to business and finance, through Google News.",
   },
 
+  // -------------------------------------------------- Sales, GTM & founders
+  //
+  // All five of these are content-marketing blogs before anything else: a VC
+  // firm or a SaaS company writing to build an audience, not a subscription
+  // business, so unlike a newspaper there is no metered wall a few
+  // paragraphs in. Routed through Google News anyway, the same as the rest
+  // of this shelf's harder-to-reach publishers, so an occasional bot check
+  // on the publisher's own domain never breaks the feed itself.
+  {
+    id: "saastr-gn",
+    name: "SaaStr",
+    short: "SaaStr",
+    lang: "en",
+    category: "business",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:saastr.com&hl=en-US&gl=US&ceid=US:en",
+    site: "https://www.saastr.com",
+    note: "The reference blog for SaaS sales and go-to-market, from Jason Lemkin.",
+  },
+  {
+    id: "hubspot-sales-gn",
+    name: "HubSpot Sales Blog",
+    short: "HubSpot Sales",
+    lang: "en",
+    category: "business",
+    level: "easy",
+    feed: "https://news.google.com/rss/search?q=site:hubspot.com+sales&hl=en-US&gl=US&ceid=US:en",
+    site: "https://blog.hubspot.com/sales",
+    note: "Practical sales and GTM tactics, written for beginners - plain, SEO-friendly English.",
+  },
+  {
+    id: "first-round-review-gn",
+    name: "First Round Review",
+    short: "First Round Review",
+    lang: "en",
+    category: "careers",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:firstround.com/review&hl=en-US&gl=US&ceid=US:en",
+    site: "https://firstround.com/review",
+    note: "A venture firm's advice column for founders and operators - hiring, GTM, management.",
+  },
+  {
+    id: "openview-gn",
+    name: "OpenView",
+    short: "OpenView",
+    lang: "en",
+    category: "business",
+    level: "hard",
+    feed: "https://news.google.com/rss/search?q=site:openviewpartners.com&hl=en-US&gl=US&ceid=US:en",
+    site: "https://openviewpartners.com/blog",
+    note: "SaaS go-to-market strategy from a VC that specialises in the growth stage.",
+  },
+  {
+    id: "a16z-gn",
+    name: "a16z",
+    short: "a16z",
+    lang: "en",
+    category: "business",
+    level: "hard",
+    feed: "https://news.google.com/rss/search?q=site:a16z.com&hl=en-US&gl=US&ceid=US:en",
+    site: "https://a16z.com",
+    note: "Andreessen Horowitz on markets, GTM and company-building. Denser, essay-length writing.",
+  },
+  {
+    id: "yc-blog-gn",
+    name: "Y Combinator Blog",
+    short: "Y Combinator",
+    lang: "en",
+    category: "startups",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:ycombinator.com/blog&hl=en-US&gl=US&ceid=US:en",
+    site: "https://www.ycombinator.com/blog",
+    note: "Founder-mode advice on building and selling, from the accelerator that coined the term.",
+  },
+  {
+    id: "entrepreneur-gn",
+    name: "Entrepreneur",
+    short: "Entrepreneur",
+    lang: "en",
+    category: "startups",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:entrepreneur.com&hl=en-US&gl=US&ceid=US:en",
+    site: "https://www.entrepreneur.com",
+    note: "Small-business, sales and franchising coverage, through Google News.",
+  },
+  {
+    id: "omr-gn",
+    name: "OMR",
+    short: "OMR",
+    lang: "de",
+    category: "business",
+    level: "medium",
+    feed: "https://news.google.com/rss/search?q=site:omr.com&hl=de&gl=DE&ceid=DE:de",
+    site: "https://omr.com",
+    note: "Germany's leading marketing, sales and growth publication, through Google News.",
+  },
+
 ];
 
 export const SOURCE_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
