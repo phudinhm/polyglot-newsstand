@@ -2215,6 +2215,30 @@ export const SOURCES: Source[] = [
 
 export const SOURCE_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
 
+/**
+ * A Google News RSS search scoped to one publisher's own domain - the same
+ * reachability trick this catalog already leans on for sources that block a
+ * bot fetching their feed directly, turned into a live query instead of a
+ * fixed one. Lets a reader search a source's own archive rather than only
+ * whatever the last ~50 items its direct feed happens to carry right now.
+ */
+export function googleNewsSearchFeedUrl(query: string, source: Pick<Source, "site" | "lang">): string {
+  let host = source.site;
+  try {
+    host = new URL(source.site).hostname.replace(/^www\./, "");
+  } catch {
+    // source.site was not a full URL - fall back to using it verbatim.
+  }
+  const locale =
+    source.lang === "de"
+      ? { hl: "de", gl: "DE", ceid: "DE:de" }
+      : source.lang === "vi"
+        ? { hl: "vi", gl: "VN", ceid: "VN:vi" }
+        : { hl: "en-US", gl: "US", ceid: "US:en" };
+  const q = encodeURIComponent(`site:${host} ${query}`);
+  return `https://news.google.com/rss/search?q=${q}&hl=${locale.hl}&gl=${locale.gl}&ceid=${locale.ceid}`;
+}
+
 /** What a first-time visitor sees before touching any setting. */
 export const DEFAULT_SOURCE_IDS = [
   "nachrichtenleicht",
