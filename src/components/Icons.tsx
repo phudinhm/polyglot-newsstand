@@ -206,6 +206,13 @@ export const BranchIcon = (p: P) => (
   </svg>
 );
 
+export const CopyIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M15 9V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" />
+  </svg>
+);
+
 export const SparkIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" />

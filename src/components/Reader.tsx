@@ -44,7 +44,9 @@ import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
   BookmarkIcon,
+  CheckIcon,
   CloseIcon,
+  CopyIcon,
   ExternalIcon,
   LanguagesIcon,
   SlidersIcon,
@@ -52,6 +54,7 @@ import {
   MicIcon,
   PauseIcon,
   PlayIcon,
+  SparkIcon,
   SpeakerIcon,
   SpinnerIcon,
   StopIcon,
@@ -117,6 +120,44 @@ export function Reader({
   // A refusal is worth remembering: the shelf can stop offering this paper
   // rather than letting the same wall be walked into again.
   const [remembered, setRemembered] = useState(false);
+
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [askAiOpen, setAskAiOpen] = useState(false);
+  const askAiRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!askAiOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!askAiRef.current?.contains(e.target as Node)) setAskAiOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [askAiOpen]);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
+    } catch {
+      // Clipboard access denied or unavailable on this device - nothing to fall back to.
+    }
+  }
+
+  // Neither provider documents a reliable way to open with a message already
+  // typed, so the prompt goes to the clipboard regardless - a paste away from
+  // working even if a prefill link ever stops.
+  function askAi(provider: "claude" | "gemini") {
+    const title = article?.title;
+    const prompt = `Summarize this article and give me other perspectives on it${title ? `, "${title}"` : ""}: ${url}`;
+    void navigator.clipboard?.writeText(prompt).catch(() => {});
+    const dest =
+      provider === "claude"
+        ? `https://claude.ai/new?q=${encodeURIComponent(prompt)}`
+        : "https://gemini.google.com/app";
+    window.open(dest, "_blank", "noopener,noreferrer");
+    setAskAiOpen(false);
+  }
 
   // ------------------------------------------------------------ load article
   useEffect(() => {
@@ -1132,19 +1173,66 @@ export function Reader({
               ))}
             </div>
 
-            <div className="reading mt-10 border-t border-border pt-5 text-xs text-muted">
-              <p>
+            <div className="reading mt-10 border-t border-border pt-5">
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn !px-2 !py-1.5"
+                  aria-label={t("reader.original")}
+                  title={t("reader.original")}
+                >
+                  <ExternalIcon width={15} height={15} />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void copyLink()}
+                  className="btn !px-2 !py-1.5"
+                  aria-label={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
+                  title={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
+                >
+                  {linkCopied ? (
+                    <CheckIcon width={15} height={15} />
+                  ) : (
+                    <CopyIcon width={15} height={15} />
+                  )}
+                </button>
+                <div className="relative" ref={askAiRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAskAiOpen((v) => !v)}
+                    className="btn !px-2 !py-1.5"
+                    aria-label={t("reader.askAi")}
+                    title={t("reader.askAi")}
+                    aria-expanded={askAiOpen}
+                  >
+                    <SparkIcon width={15} height={15} />
+                  </button>
+                  {askAiOpen && (
+                    <div className="glass-strong absolute bottom-full left-0 z-10 mb-1.5 w-36 rounded-lg border border-border p-1 shadow-[var(--shadow)]">
+                      <button
+                        type="button"
+                        onClick={() => askAi("claude")}
+                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-2"
+                      >
+                        Claude
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => askAi("gemini")}
+                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-2"
+                      >
+                        Gemini
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="mt-2.5 text-[11px] leading-relaxed text-muted/70">
                 Text and images belong to {source?.name ?? article.siteName ?? "the publisher"}.
                 {tr.provider ? ` Translations via ${tr.provider}.` : ""}
               </p>
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="btn mt-3 inline-flex"
-              >
-                <ExternalIcon /> {t("reader.original")}
-              </a>
             </div>
           </article>
         )}
