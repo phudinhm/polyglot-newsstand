@@ -27,11 +27,17 @@
   --surface: #FFFFFF;
   --surface-2: #F2EFE9;
   --fg: #2C2C2C;
-  --muted: #737373;
+  /* #737373 measured 4.40:1 against --bg, a hair under WCAG AA's 4.5:1 for
+     normal text; #6F6F6F clears it with a margin invisible to the eye. */
+  --muted: #6F6F6F;
   --border: #E5E2DB;
-  --accent: #D36C4F;
+  /* A shade darker than the original #D36C4F: that coral read fine as a fill
+     but only hit 3.2-3.5:1 as button text on white and as text on --bg,
+     under WCAG AA's 4.5:1 for normal text. This keeps the same hue and a
+     comfortable margin above it (~4.8-5.1:1) both ways. */
+  --accent: #B74C2E;
   --accent-fg: #FFFFFF;
-  --highlight: rgba(211, 108, 79, 0.12);
+  --highlight: rgba(183, 76, 46, 0.12);
   --translation: #4A7C59;
   --shadow: 0 4px 12px rgba(0,0,0,0.05), 0 12px 24px -8px rgba(0, 0, 0, 0.08);
 }
@@ -191,18 +197,29 @@ body {
   }
 }
 
-/* Frosted glass, the way iOS does it: blur plus a saturation lift so colour
-   showing through the bar stays alive instead of going grey. */
+/*
+ * Frosted glass, the way iOS does it: blur plus a saturation lift so colour
+ * showing through the bar stays alive instead of going grey.
+ *
+ * The -webkit- prefix is deliberately left for the build's own autoprefixer
+ * to add (as it already does correctly for .card below) rather than written
+ * here by hand: when both the prefixed and unprefixed declarations are
+ * present in source with the same value, Lightning CSS's minifier - the CSS
+ * pass Next.js runs in production - dedupes them and keeps only the
+ * -webkit- one, silently dropping the standard property. On any browser
+ * that doesn't also recognise -webkit-backdrop-filter (Chromium builds
+ * without it, some Firefox versions), that leaves this with no blur at
+ * all: just a translucent tint with whatever is underneath showing sharply
+ * through it.
+ */
 .glass {
   background-color: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .glass-strong {
   background-color: color-mix(in srgb, var(--bg) 97%, transparent);
   backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 /*
