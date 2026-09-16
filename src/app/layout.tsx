@@ -59,7 +59,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             .
           </p>
-          <p className="mt-2">Built by Minh Phu Dinh.</p>
+          <p className="mt-2">
+            Built by Minh Phu Dinh. Personal, non-commercial project ·{" "}
+            <Link href="/disclaimer" className="underline underline-offset-2">
+              Disclaimer
+            </Link>
+          </p>
         </footer>
       </body>
     </html>
