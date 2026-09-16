@@ -54,6 +54,12 @@ export function FeedClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Only ever true on a phone: from sm: up the field is always on show and
+  // this stays false, which is also why a saved query opens it - a filter
+  // still in force should never be invisible.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
   const initialFilters = useRef(getFeedFilters()).current;
   const [lang, setLang] = useState<LangFilter>(initialFilters.lang);
   const [category, setCategory] = useState(initialFilters.category);
@@ -71,6 +77,17 @@ export function FeedClient() {
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // A query restored from the last visit has to be visible to be undone.
+  useEffect(() => {
+    if (initialFilters.query) setSearchOpen(true);
+  }, [initialFilters.query]);
+
+  // Opening the field is only half of what the tap asked for; the keyboard
+  // is the other half.
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
 
   useEffect(() => {
     const onScroll = () => saveScrollPosition("/");
@@ -329,8 +346,8 @@ export function FeedClient() {
   }, [data, blocked]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pt-7">
-      <div className="mb-3.5 flex items-start justify-between gap-3">
+    <div className="mx-auto max-w-3xl px-4 pb-8 pt-3.5 sm:pt-7">
+      <div className="mb-3 flex items-start justify-between gap-3 sm:mb-3.5">
         <Greeting count={data?.items.length ?? 0} />
         <button
           type="button"
@@ -356,9 +373,36 @@ export function FeedClient() {
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
+          {/*
+            On a phone the search field was a full row of the sticky bar that
+            stayed there whether or not anyone was searching, and the bar is
+            pinned under the header all the way down the feed. Collapsed to
+            its icon it gives that row back to the news; on a wider screen
+            there is room for the field itself, so it simply stays open.
+          */}
+          {/* Unmounted rather than hidden: .btn sets its own display and wins
+              against a utility class, so the button stayed on screen next to
+              the field it had just opened. */}
+          {!searchOpen && (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="btn !px-2.5 sm:!hidden"
+              aria-label={t("feed.search")}
+              aria-expanded={false}
+            >
+              <SearchIcon width={16} height={16} />
+            </button>
+          )}
+
+          <div
+            className={`flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent sm:flex ${
+              searchOpen ? "flex" : "hidden"
+            }`}
+          >
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
             <input
+              ref={searchRef}
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder={t("feed.search")}
@@ -368,10 +412,15 @@ export function FeedClient() {
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label={t("feed.search")}
             />
-            {queryInput && (
+            {/* Clearing also closes it on a phone: an empty field left open
+                would keep the row it was opened to justify. */}
+            {(queryInput || searchOpen) && (
               <button
                 type="button"
-                onClick={() => setQueryInput("")}
+                onClick={() => {
+                  setQueryInput("");
+                  setSearchOpen(false);
+                }}
                 className="shrink-0 text-muted hover:text-fg"
                 aria-label={t("feed.clearSearch")}
               >
@@ -386,7 +435,7 @@ export function FeedClient() {
                 key={value}
                 type="button"
                 onClick={() => setLang(value)}
-                className={`rounded-md px-2 py-1 text-[12.5px] font-medium transition-colors ${
+                className={`rounded-md px-3 py-2.5 text-[12.5px] font-medium transition-colors sm:px-2 sm:py-1 ${
                   lang === value ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
                 }`}
                 aria-pressed={lang === value}

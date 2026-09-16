@@ -624,4 +624,37 @@ body {
   .sentence-row {
     padding-block: 0.35em;
   }
+
+  /*
+   * A fingertip covers about 44px, which is why both Apple and Google put
+   * their minimum there. Raising it on the two shared controls fixes most of
+   * the interface at once: the buttons were 36px and the chips 28px, small
+   * enough that a thumb reaching across a phone regularly missed.
+   */
+  .btn {
+    min-height: 44px;
+  }
+
+  .chip {
+    min-height: 40px;
+    padding: 0.5rem 0.85rem;
+  }
+
+  /* The translate / save / listen row under the line being read. */
+  .line-action {
+    min-height: 44px;
+  }
+
+  /*
+   * iOS Safari zooms the whole page in when a field under 16px takes focus,
+   * and never zooms back out - so a single tap on the search box leaves the
+   * reader stranded in a magnified layout. The :not() is only here to win
+   * against the utility classes that set these sizes; sliders and checkboxes
+   * have no text to zoom and are left alone.
+   */
+  input:not([type="range"]):not([type="checkbox"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

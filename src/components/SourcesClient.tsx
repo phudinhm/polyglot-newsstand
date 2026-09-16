@@ -123,6 +123,32 @@ export function SourcesClient() {
     [grouped],
   );
 
+  // The full catalogue is over two hundred papers - laid out at once that is
+  // some thirty thousand pixels of phone scrolling, and thirty thousand
+  // pixels of DOM to keep alive. Sections fill up to this budget and the rest
+  // waits behind one tap.
+  const PAGE = 40;
+  const [shown, setShown] = useState(PAGE);
+  useEffect(() => setShown(PAGE), [lang, query, favOnly, freeOnly]);
+
+  // Whole sections up to the budget, so a category heading never appears
+  // above an arbitrarily truncated handful of its own papers.
+  const paged = useMemo(() => {
+    const out: typeof grouped = [];
+    let budget = shown;
+    for (const [category, list] of grouped) {
+      if (budget <= 0) break;
+      out.push([category, list.slice(0, budget)]);
+      budget -= list.length;
+    }
+    return out;
+  }, [grouped, shown]);
+
+  const shownCount = useMemo(
+    () => paged.reduce((total, [, list]) => total + list.length, 0),
+    [paged],
+  );
+
   // How many of the currently visible (search + language filtered) sources
   // are not already on the shelf, so "Add all" can say what it actually does.
   const addableCount = useMemo(() => {
@@ -542,7 +568,7 @@ export function SourcesClient() {
       )}
 
       <div className="space-y-6">
-        {grouped.map(([category, list]) => (
+        {paged.map(([category, list]) => (
           <section key={category}>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
               {t(categoryKey(category))}
@@ -642,6 +668,16 @@ export function SourcesClient() {
           </section>
         ))}
       </div>
+
+      {shownCount < matches && (
+        <button
+          type="button"
+          onClick={() => setShown((n) => n + PAGE)}
+          className="btn mx-auto mt-6 flex"
+        >
+          {t("sources.showMore")} ({matches - shownCount})
+        </button>
+      )}
     </div>
   );
 }

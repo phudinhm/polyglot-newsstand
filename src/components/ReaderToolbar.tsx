@@ -59,7 +59,7 @@ export function ReaderToolbar({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 transition-opacity duration-300 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end ${
+      className={`fixed inset-x-0 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 transition-opacity duration-300 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end ${
         dimmed && !voiceOpen ? "opacity-25 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
       }`}
     >
@@ -148,7 +148,7 @@ export function ReaderToolbar({
             type="button"
             onClick={() => update({ fontSize: settings.fontSize - 1 })}
             disabled={settings.fontSize <= 15}
-            className="grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="grid h-11 w-11 place-items-center rounded-full text-[13px] sm:h-9 sm:w-9 font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
             aria-label={t("reader.smaller")}
           >
             A−
@@ -160,7 +160,7 @@ export function ReaderToolbar({
             type="button"
             onClick={() => update({ fontSize: settings.fontSize + 1 })}
             disabled={settings.fontSize >= 28}
-            className="grid h-9 w-9 place-items-center rounded-full text-[16px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="grid h-11 w-11 place-items-center rounded-full text-[16px] sm:h-9 sm:w-9 font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
             aria-label={t("reader.larger")}
           >
             A+
@@ -174,7 +174,7 @@ export function ReaderToolbar({
                 onClick={() => setVoiceOpen((v) => !v)}
                 aria-expanded={voiceOpen}
                 aria-label={t("reader.voice")}
-                className={`grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-surface-2 ${
+                className={`grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-surface-2 sm:h-9 sm:w-9 ${
                   voiceOpen ? "bg-surface-2" : ""
                 }`}
               >
@@ -187,7 +187,7 @@ export function ReaderToolbar({
           <button
             type="button"
             onClick={() => update({ theme: nextTheme })}
-            className="rounded-full px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-2"
+            className="rounded-full px-3 py-3.5 text-xs font-medium transition-colors hover:bg-surface-2 sm:py-2"
             aria-label={`Switch background to ${THEME_LABEL[nextTheme]}`}
           >
             {THEME_LABEL[nextTheme]}

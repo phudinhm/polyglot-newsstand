@@ -185,7 +185,7 @@ export function FeaturedCard({
               onClick={onToggleSave}
               aria-label={saved ? "Saved" : "Save for later"}
               title={saved ? "Saved" : "Save for later"}
-              className={`shrink-0 rounded-full p-1.5 transition-all ${
+              className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-all sm:h-auto sm:w-auto sm:p-1.5 ${
                 saved
                   ? "text-accent bg-accent/10"
                   : "text-muted hover:text-fg hover:bg-surface-2 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
@@ -251,7 +251,7 @@ function ArticleCardImpl({
           onClick={onToggleSave}
           aria-label={saved ? "Saved" : "Save for later"}
           title={saved ? "Saved" : "Save for later"}
-          className={`shrink-0 rounded-full p-1 transition-all ${
+          className={`-my-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-all sm:my-0 sm:h-auto sm:w-auto sm:p-1 ${
             saved
               ? "text-accent bg-accent/10"
               : "text-muted hover:text-fg hover:bg-surface-2 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"

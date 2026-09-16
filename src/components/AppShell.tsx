@@ -83,7 +83,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isReader && (
         <>
           <ContinueReading />
-          <nav className="glass fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] sm:hidden">
+          {/*
+            Nearly opaque rather than the header's lighter glass: the feed
+            scrolls underneath this bar all day, and at 88% the headlines
+            passing behind it stayed legible enough to read as clutter.
+          */}
+          <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] sm:hidden">
             <div className="flex">
               {NAV.map(({ href, key, Icon }) => (
                 <Link

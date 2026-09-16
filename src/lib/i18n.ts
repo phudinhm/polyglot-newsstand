@@ -144,6 +144,7 @@ const EN = {
   "sources.flaggedBanner": "sources on your shelf have paywalls or blocked requests",
   "sources.flaggedBannerDesc": "These publishers may block articles or show summaries only. Clean your shelf to enjoy smooth reading.",
   "sources.shelfCleaned": "Shelf cleaned successfully",
+  "sources.showMore": "Show more sources",
 
   "vocab.title": "Vocabulary",
   "vocab.search": "Search your words",
@@ -310,6 +311,7 @@ const DE: Record<StringKey, string> = {
   "sources.flaggedBanner": "Quellen im Regal haben Bezahlschranken oder Blockaden",
   "sources.flaggedBannerDesc": "Diese Verlage blockieren Volltexte oder zeigen nur Zusammenfassungen. Bereinige dein Regal für ein flüssiges Leseerlebnis.",
   "sources.shelfCleaned": "Regal erfolgreich bereinigt",
+  "sources.showMore": "Mehr Quellen zeigen",
 
   "vocab.title": "Wortschatz",
   "vocab.search": "Wörter durchsuchen",
@@ -474,6 +476,7 @@ const VI: Record<StringKey, string> = {
   "sources.flaggedBanner": "nguồn trên kệ có tường phí hoặc bị chặn tải",
   "sources.flaggedBannerDesc": "Các nguồn này có thể chặn đọc toàn văn hoặc chỉ hiển thị tóm tắt. Dọn dẹp kệ để trải nghiệm đọc mượt mà nhất.",
   "sources.shelfCleaned": "Đã dọn dẹp kệ báo thành công",
+  "sources.showMore": "Xem thêm nguồn",
 
   "vocab.title": "Từ vựng",
   "vocab.search": "Tìm từ đã lưu",
