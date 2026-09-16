@@ -14,6 +14,7 @@ import { getReadUrls } from "@/lib/recent";
 import { getSavedFeedVisible, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { SOURCES } from "@/lib/sources";
 import type { FeedItem, FeedResponse } from "@/lib/types";
+import { useDropdownTransition } from "@/hooks/useDropdownTransition";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import { Greeting } from "./Greeting";
 import { RecentlyRead } from "./RecentlyRead";
@@ -77,6 +78,30 @@ export function FeedClient() {
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const { mounted: filtersMounted, dropdownState: filtersDropdownState } =
+    useDropdownTransition(filtersOpen);
+
+  const langBarRef = useRef<HTMLDivElement>(null);
+  const langPillRef = useRef<HTMLSpanElement>(null);
+  // Snap the pill to the selected tab on mount and on resize - unanimated,
+  // the way a click's own animated move never is.
+  useEffect(() => {
+    const snap = () => {
+      const bar = langBarRef.current;
+      const pill = langPillRef.current;
+      const active = bar?.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!bar || !pill || !active) return;
+      const prevTransition = pill.style.transition;
+      pill.style.transition = "none";
+      pill.style.transform = `translateX(${active.offsetLeft}px)`;
+      pill.style.width = `${active.offsetWidth}px`;
+      void pill.offsetWidth;
+      pill.style.transition = prevTransition;
+    };
+    snap();
+    window.addEventListener("resize", snap);
+    return () => window.removeEventListener("resize", snap);
+  }, []);
 
   // A query restored from the last visit has to be visible to be undone.
   useEffect(() => {
@@ -396,8 +421,8 @@ export function FeedClient() {
           )}
 
           <div
-            className={`flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent sm:flex ${
-              searchOpen ? "flex" : "hidden"
+            className={`t-search-resize flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent ${
+              searchOpen ? "is-open" : ""
             }`}
           >
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
@@ -429,16 +454,31 @@ export function FeedClient() {
             )}
           </div>
 
-          <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
+          <div
+            className="t-tabs t-tabs-lang rounded-lg border border-border bg-surface/70 p-0.5"
+            ref={langBarRef}
+            role="tablist"
+          >
+            <span className="t-tabs-pill" aria-hidden="true" ref={langPillRef} />
             {(["all", "de", "en", "vi"] as LangFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setLang(value)}
-                className={`rounded-md px-3 py-2.5 text-[12.5px] font-medium transition-colors sm:px-2 sm:py-1 ${
-                  lang === value ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
-                }`}
-                aria-pressed={lang === value}
+                role="tab"
+                aria-selected={lang === value}
+                onClick={(e) => {
+                  setLang(value);
+                  // Move the pill from the clicked tab's own measurements
+                  // rather than waiting on the aria-selected re-render, so
+                  // the slide starts on the same frame as the click.
+                  const pill = langPillRef.current;
+                  const el = e.currentTarget;
+                  if (pill) {
+                    pill.style.transform = `translateX(${el.offsetLeft}px)`;
+                    pill.style.width = `${el.offsetWidth}px`;
+                  }
+                }}
+                className="t-tab rounded-md px-3 py-2.5 text-[12.5px] sm:px-2 sm:py-1"
               >
                 {value === "all" ? t("feed.all") : value.toUpperCase()}
               </button>
@@ -455,8 +495,11 @@ export function FeedClient() {
             >
               <SlidersIcon width={16} height={16} />
             </button>
-            {filtersOpen && (
-              <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong">
+            {filtersMounted && (
+              <div
+                data-origin="top-right"
+                className={`t-dropdown ${filtersDropdownState} absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong`}
+              >
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {t("feed.month")}
                 </label>

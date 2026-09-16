@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { ACCENT_COLORS, FONTS, THEMES } from "@/lib/settings";
 import { UI_LANGUAGES } from "@/lib/i18n";
@@ -21,10 +21,32 @@ const SAMPLE_TRANSLATION: Record<TargetLang, string> = {
   vi: "Chính phủ liên bang đã công bố các biện pháp mới vào thứ Hai.",
 };
 
+// The drawer close transition (panel-reveal) needs the panel mounted for a
+// beat after `open` goes false, or it would vanish before it could play -
+// see the matching comment on useDropdownTransition. --panel-close-dur is
+// 350ms; kept here rather than read from the CSS var so this stays a plain
+// constant like the other transition hooks in the app.
+const PANEL_CLOSE_MS = 350;
+
 export function SettingsDrawer({ open, onClose }: Props) {
   const [settings, update] = useSettings();
   const t = useT();
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [mounted, setMounted] = useState(open);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    clearTimeout(closeTimer.current);
+    if (open) {
+      setMounted(true);
+      const raf = requestAnimationFrame(() => setPanelOpen(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setPanelOpen(false);
+    closeTimer.current = setTimeout(() => setMounted(false), PANEL_CLOSE_MS);
+    return () => clearTimeout(closeTimer.current);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !speechSupported()) return;
@@ -42,14 +64,21 @@ export function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   const voiceLangs: (SourceLang | TargetLang)[] = ["de", "en", "vi"];
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t("settings.title")}>
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
-      <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[27rem] sm:max-h-none sm:rounded-none sm:rounded-l-2xl sm:border-l sm:border-t-0">
+      <div
+        className={`absolute inset-0 bg-black/35 backdrop-blur-[2px] transition-opacity duration-300 ${panelOpen ? "opacity-100" : "opacity-0"}`}
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        data-open={panelOpen}
+        className="t-panel-slide absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[27rem] sm:max-h-none sm:rounded-none sm:rounded-l-2xl sm:border-l sm:border-t-0"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-5 py-4">
           <h2 className="text-base font-semibold">{t("settings.title")}</h2>
           <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t("settings.close")}>

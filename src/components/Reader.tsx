@@ -30,6 +30,7 @@ import {
   startBackgroundKeepAlive,
 } from "@/lib/tts";
 import { useScrollActivity } from "@/hooks/useScrollActivity";
+import { useDropdownTransition } from "@/hooks/useDropdownTransition";
 import { PronunciationPractice } from "./PronunciationPractice";
 import { SentenceStructure } from "./SentenceStructure";
 import { LevelControl } from "./LevelControl";
@@ -70,6 +71,30 @@ interface Line {
 }
 
 const HINT_KEY = "pn:hint-dismissed:v1";
+
+/**
+ * Wraps the hear-line / say-it-back / structure row so it grows in
+ * (transitions-dev "Accordion expand", height-only, no chevron - the
+ * sentence row itself is the toggle) instead of snapping into place. Only
+ * mounted for the active line to begin with, so it starts collapsed and
+ * flips open a frame later; unmounting on the way out stays instant, same
+ * as before, rather than mounting this for every line in the article just
+ * to animate the rare case of tapping straight from one open line to another.
+ */
+function LineActions({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <div className="t-acc" data-open={open}>
+      <div className="t-acc-panel">
+        <div className="t-acc-panel-inner">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export function Reader({
   url,
@@ -124,6 +149,8 @@ export function Reader({
   const [linkCopied, setLinkCopied] = useState(false);
   const [askAiOpen, setAskAiOpen] = useState(false);
   const askAiRef = useRef<HTMLDivElement>(null);
+  const { mounted: askAiMounted, dropdownState: askAiDropdownState } =
+    useDropdownTransition(askAiOpen);
 
   useEffect(() => {
     if (!askAiOpen) return;
@@ -1077,63 +1104,65 @@ export function Reader({
                             )}{" "}
                           </div>
 
-                          {activeKey === key && speechSupported() && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (speakingKey === key) {
-                                  stopSpeaking();
-                                } else {
-                                  setReadingAloud(false);
-                                  speakLine(
-                                    lines.findIndex((l) => l.key === key),
-                                    false,
-                                  );
-                                }
-                              }}
-                              className="line-action"
-                              aria-label={speakingKey === key ? "Stop" : "Hear this line"}
-                            >
-                              {speakingKey === key ? (
-                                <>
-                                  <StopIcon width={15} height={15} /> {t("reader.stop")}
-                                </>
-                              ) : (
-                                <>
-                                  <SpeakerIcon width={15} height={15} /> {t("reader.hearLine")}
-                                </>
-                              )}
-                            </button>
-                          )}
-
                           {activeKey === key && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                stopSpeaking();
-                                setPracticeLine(sentence);
-                              }}
-                              className="line-action"
-                              aria-label="Practise saying this line"
-                            >
-                              <MicIcon width={15} height={15} /> {t("reader.sayItBack")}
-                            </button>
-                          )}
+                            <LineActions>
+                              {speechSupported() && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (speakingKey === key) {
+                                      stopSpeaking();
+                                    } else {
+                                      setReadingAloud(false);
+                                      speakLine(
+                                        lines.findIndex((l) => l.key === key),
+                                        false,
+                                      );
+                                    }
+                                  }}
+                                  className="line-action"
+                                  aria-label={speakingKey === key ? "Stop" : "Hear this line"}
+                                >
+                                  {speakingKey === key ? (
+                                    <>
+                                      <StopIcon width={15} height={15} /> {t("reader.stop")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <SpeakerIcon width={15} height={15} /> {t("reader.hearLine")}
+                                    </>
+                                  )}
+                                </button>
+                              )}
 
-                          {activeKey === key && lang === "de" && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setStructureLine(sentence);
-                              }}
-                              className="line-action"
-                              aria-label="Break this sentence down"
-                            >
-                              <BranchIcon width={15} height={15} /> {t("reader.structure")}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  stopSpeaking();
+                                  setPracticeLine(sentence);
+                                }}
+                                className="line-action"
+                                aria-label="Practise saying this line"
+                              >
+                                <MicIcon width={15} height={15} /> {t("reader.sayItBack")}
+                              </button>
+
+                              {lang === "de" && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setStructureLine(sentence);
+                                  }}
+                                  className="line-action"
+                                  aria-label="Break this sentence down"
+                                >
+                                  <BranchIcon width={15} height={15} /> {t("reader.structure")}
+                                </button>
+                              )}
+                            </LineActions>
                           )}
 
                           {open && (
@@ -1192,11 +1221,14 @@ export function Reader({
                   aria-label={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
                   title={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
                 >
-                  {linkCopied ? (
-                    <CheckIcon width={15} height={15} />
-                  ) : (
-                    <CopyIcon width={15} height={15} />
-                  )}
+                  <span className="t-icon-swap" data-state={linkCopied ? "b" : "a"}>
+                    <span className="t-icon" data-icon="a">
+                      <CopyIcon width={15} height={15} />
+                    </span>
+                    <span className="t-icon" data-icon="b">
+                      <CheckIcon width={15} height={15} />
+                    </span>
+                  </span>
                 </button>
                 <div className="relative" ref={askAiRef}>
                   <button
@@ -1209,8 +1241,11 @@ export function Reader({
                   >
                     <SparkIcon width={15} height={15} />
                   </button>
-                  {askAiOpen && (
-                    <div className="glass-strong absolute bottom-full left-0 z-10 mb-1.5 w-36 rounded-lg border border-border p-1 shadow-[var(--shadow)]">
+                  {askAiMounted && (
+                    <div
+                      data-origin="bottom-left"
+                      className={`t-dropdown ${askAiDropdownState} glass-strong absolute bottom-full left-0 z-10 mb-1.5 w-36 rounded-lg border border-border p-1 shadow-[var(--shadow)]`}
+                    >
                       <button
                         type="button"
                         onClick={() => askAi("claude")}
