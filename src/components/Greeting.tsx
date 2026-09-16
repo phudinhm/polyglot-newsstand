@@ -80,13 +80,13 @@ export function Greeting({ count }: { count: number }) {
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent sm:h-9 sm:w-9"
             >
               <Icon width={19} height={19} />
             </span>
             <h1
               lang={value.lang}
-              className="text-[1.6rem] font-bold leading-tight tracking-tight sm:text-[1.9rem]"
+              className="text-[1.35rem] font-bold leading-tight tracking-tight sm:text-[1.9rem]"
             >
               {value.text}
               <span className="text-accent">.</span>
@@ -117,17 +117,17 @@ export function Greeting({ count }: { count: number }) {
             </span>
           </p>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <Link
               href="/saved"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95 sm:px-2.5 sm:py-1"
             >
               <span className={`h-1.5 w-1.5 rounded-full ${readToday > 0 ? "bg-translation animate-pulse" : "bg-muted/40"}`} />
               <span>{readToday > 0 ? `${readToday} read today` : "Daily reading goal: 0/3"}</span>
             </Link>
             <Link
               href="/vocab"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-[11.5px] font-medium text-muted shadow-sm transition-all hover:border-accent/40 hover:text-fg active:scale-95 sm:px-2.5 sm:py-1"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               <span>{vocabCount} saved {vocabCount === 1 ? "word" : "words"}</span>

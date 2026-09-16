@@ -37,7 +37,7 @@ export function ScrollToTop() {
       onClick={scrollToTop}
       aria-label="Scroll to top"
       title="Scroll to top"
-      className="glass-strong fixed bottom-20 right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:h-11 sm:w-11"
+      className="glass-strong fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6 sm:h-11 sm:w-11"
     >
       <ArrowUpIcon className="text-fg transition-colors hover:text-accent" width={18} height={18} />
     </button>

@@ -36,7 +36,7 @@ export function ContinueReading() {
   if (!current || dismissed || pathname === "/" || pathname?.startsWith("/read")) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[4.25rem] z-30 px-3 sm:inset-x-auto sm:right-5 sm:bottom-6 sm:px-0">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 px-3 sm:inset-x-auto sm:right-5 sm:bottom-6 sm:px-0">
       <div className="slide-in-up sm:slide-in-right pointer-events-auto mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-border p-2.5 shadow-[var(--shadow)] glass-strong sm:mx-0 sm:w-80">
         <Link
           href={readerHref({ url: current.url, lang: current.lang, source: current.sourceId })}
