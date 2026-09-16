@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import type { FeedItem } from "@/lib/types";
 import { readerHref, timeAgo } from "@/lib/format";
 import { rememberItem } from "@/lib/handoff";
@@ -119,6 +119,71 @@ function NewWordsBadge({ item }: { item: FeedItem }) {
   );
 }
 
+/**
+ * The bookmark toggle, shared between the featured and compact cards. Saving
+ * gets a small spring-pop and particle burst (transitions-dev "Like button",
+ * adapted to a bookmark icon); un-saving just reverses the fill without the
+ * celebration, since a toggle firing twice is a correction, not two likes.
+ */
+function BookmarkButton({
+  saved,
+  onToggle,
+  featured = false,
+}: {
+  saved: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+  featured?: boolean;
+}) {
+  const [bursting, setBursting] = useState(false);
+  const particlesRef = useRef<HTMLSpanElement>(null);
+
+  const handleClick = (e: React.MouseEvent) => {
+    const wasSaved = saved;
+    onToggle(e);
+    if (wasSaved) return;
+    const dots = particlesRef.current?.querySelectorAll<HTMLElement>("i");
+    dots?.forEach((dot, i) => {
+      const angle = (i / dots.length) * Math.PI * 2;
+      const dist = 16 + Math.random() * 6;
+      dot.style.setProperty("--px", `${Math.cos(angle) * dist}px`);
+      dot.style.setProperty("--py", `${Math.sin(angle) * dist}px`);
+      dot.style.setProperty("--pdelay", `${i * 15}ms`);
+    });
+    setBursting(true);
+    window.setTimeout(() => setBursting(false), 700);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={saved ? "Saved" : "Save for later"}
+      title={saved ? "Saved" : "Save for later"}
+      data-liked={saved}
+      className={`t-like relative grid h-11 w-11 shrink-0 place-items-center rounded-full transition-all sm:h-auto sm:w-auto ${
+        featured ? "sm:p-1.5" : "-my-2 sm:my-0 sm:p-1"
+      } ${bursting ? "is-bursting" : ""} ${
+        saved
+          ? "text-accent bg-accent/10"
+          : `text-muted hover:text-fg hover:bg-surface-2 ${featured ? "opacity-80" : "opacity-70"} sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100`
+      }`}
+    >
+      <span className="t-like-icon">
+        <BookmarkIcon
+          width={featured ? 16 : 15}
+          height={featured ? 16 : 15}
+          fill={saved ? "currentColor" : "none"}
+        />
+      </span>
+      <span className="t-like-particles" ref={particlesRef} aria-hidden>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <i key={i} />
+        ))}
+      </span>
+    </button>
+  );
+}
+
 /** Publisher thumbnails break often, so a failed image collapses silently. */
 function Thumb({ src, className }: { src?: string; className: string }) {
   const [failed, setFailed] = useState(false);
@@ -180,19 +245,7 @@ export function FeaturedCard({
         <div className="p-4 sm:order-1 sm:flex sm:flex-1 sm:flex-col sm:justify-center sm:p-6">
           <div className="flex items-center justify-between gap-2">
             <Meta item={item} blocked={blocked} read={read} />
-            <button
-              type="button"
-              onClick={onToggleSave}
-              aria-label={saved ? "Saved" : "Save for later"}
-              title={saved ? "Saved" : "Save for later"}
-              className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition-all sm:h-auto sm:w-auto sm:p-1.5 ${
-                saved
-                  ? "text-accent bg-accent/10"
-                  : "text-muted hover:text-fg hover:bg-surface-2 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
-              }`}
-            >
-              <BookmarkIcon width={16} height={16} fill={saved ? "currentColor" : "none"} />
-            </button>
+            <BookmarkButton saved={saved} onToggle={onToggleSave} featured />
           </div>
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
@@ -246,19 +299,7 @@ function ArticleCardImpl({
     <article className="card card-hover group relative overflow-hidden p-3.5 transition-all duration-200 active:scale-[0.995] sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} />
-        <button
-          type="button"
-          onClick={onToggleSave}
-          aria-label={saved ? "Saved" : "Save for later"}
-          title={saved ? "Saved" : "Save for later"}
-          className={`-my-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-all sm:my-0 sm:h-auto sm:w-auto sm:p-1 ${
-            saved
-              ? "text-accent bg-accent/10"
-              : "text-muted hover:text-fg hover:bg-surface-2 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
-          }`}
-        >
-          <BookmarkIcon width={15} height={15} fill={saved ? "currentColor" : "none"} />
-        </button>
+        <BookmarkButton saved={saved} onToggle={onToggleSave} />
       </div>
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}

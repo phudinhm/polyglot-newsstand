@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
+import { useDropdownTransition } from "@/hooks/useDropdownTransition";
 import type { ThemeName } from "@/lib/settings";
 import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang } from "@/lib/types";
@@ -36,6 +37,8 @@ export function ReaderToolbar({
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { mounted: voiceMounted, dropdownState: voiceDropdownState } =
+    useDropdownTransition(voiceOpen);
 
   useEffect(() => {
     if (!voiceOpen || !speechSupported()) return;
@@ -53,9 +56,30 @@ export function ReaderToolbar({
 
   const current: ThemeName = settings.theme === "system" ? "paper" : settings.theme;
   const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
+  const nextThemeLabel = THEME_LABEL[nextTheme];
   // voices state exists only to re-render when the engine warms up.
   void voices;
   const forLang = voicesFor(lang);
+
+  // Text states swap on the theme button's label. The label is derived from
+  // settings rather than commanded directly, so the three-phase sequence
+  // from transitions-dev's vanilla JS (exit, swap the text, enter) is driven
+  // from an effect watching that derived value instead of from the click
+  // handler - the click only ever changes the theme, same as before.
+  const [themeLabel, setThemeLabel] = useState(nextThemeLabel);
+  const [themeSwapPhase, setThemeSwapPhase] = useState<"idle" | "exit" | "enter-start">("idle");
+  const prevThemeLabel = useRef(nextThemeLabel);
+  useEffect(() => {
+    if (nextThemeLabel === prevThemeLabel.current) return;
+    prevThemeLabel.current = nextThemeLabel;
+    setThemeSwapPhase("exit");
+    const exitTimer = setTimeout(() => {
+      setThemeLabel(nextThemeLabel);
+      setThemeSwapPhase("enter-start");
+      requestAnimationFrame(() => setThemeSwapPhase("idle"));
+    }, 150);
+    return () => clearTimeout(exitTimer);
+  }, [nextThemeLabel]);
 
   return (
     <div
@@ -64,8 +88,11 @@ export function ReaderToolbar({
       }`}
     >
       <div className="relative" ref={panelRef}>
-        {voiceOpen && (
-          <div className="glass-strong absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border p-3 shadow-[var(--shadow)]">
+        {voiceMounted && (
+          <div
+            data-origin="bottom-right"
+            className={`t-dropdown ${voiceDropdownState} glass-strong absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border p-3 shadow-[var(--shadow)]`}
+          >
             <div className="flex items-baseline justify-between">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                 {t("settings.speakingRate")}
@@ -188,9 +215,13 @@ export function ReaderToolbar({
             type="button"
             onClick={() => update({ theme: nextTheme })}
             className="rounded-full px-3 py-3.5 text-xs font-medium transition-colors hover:bg-surface-2 sm:py-2"
-            aria-label={`Switch background to ${THEME_LABEL[nextTheme]}`}
+            aria-label={`Switch background to ${nextThemeLabel}`}
           >
-            {THEME_LABEL[nextTheme]}
+            <span
+              className={`t-text-swap ${themeSwapPhase === "exit" ? "is-exit" : ""} ${themeSwapPhase === "enter-start" ? "is-enter-start" : ""}`}
+            >
+              {themeLabel}
+            </span>
           </button>
         </div>
       </div>

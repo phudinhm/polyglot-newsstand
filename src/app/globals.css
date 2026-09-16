@@ -658,3 +658,339 @@ body {
     font-size: 16px;
   }
 }
+
+/* ------------------------------------------------------------ transitions
+ *
+ * transitions-dev tokens and snippets (https://transitions.dev). Only the
+ * pieces this app actually uses are pasted in, verbatim, with app-specific
+ * overrides kept separate and clearly marked so the snippets stay a clean
+ * diff against the reference. Every rule below ends in a
+ * prefers-reduced-motion guard - do not remove those.
+ * -------------------------------------------------------------------- */
+
+:root {
+  /* Motion tokens - shared scale */
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-slow: 400ms;
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+
+  /* Menu dropdown */
+  --dropdown-open-dur: 250ms;
+  --dropdown-close-dur: 150ms;
+  --dropdown-pre-scale: 0.97;
+  --dropdown-closing-scale: 0.99;
+  --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Panel reveal */
+  --panel-open-dur: 400ms;
+  --panel-close-dur: 350ms;
+  --panel-translate-y: 40px;
+  --panel-blur: 2px;
+  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Icon swap */
+  --icon-swap-dur: 250ms;
+  --icon-swap-blur: 2px;
+  --icon-swap-start-scale: 0.25;
+  --icon-swap-ease: ease-in-out;
+  /* Accordion expand */
+  --acc-expand: 250ms;
+  --acc-collapse: 200ms;
+  --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Text states swap */
+  --text-swap-dur: 150ms;
+  --text-swap-translate-y: 4px;
+  --text-swap-blur: 2px;
+  --text-swap-ease: ease-in-out;
+  /* Tabs sliding */
+  --tabs-dur: 250ms;
+  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Card resize (used here for the search field's collapse/expand) */
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Like button (used here for the bookmark toggle) */
+  --like-fill: 150ms;
+  --like-pop: 350ms;
+  --like-pop-ease: cubic-bezier(0.34, 1.96, 0.64, 1);
+  --like-particle-dur: 600ms;
+  --like-particle-dist: 20px;
+  --like-particle-size: 2.5px;
+  --like-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Menu dropdown - filter popover, voice panel, ask-AI popover. */
+.t-dropdown {
+  transform-origin: top left;
+  transform: scale(var(--dropdown-pre-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-open-dur) var(--dropdown-ease),
+    opacity var(--dropdown-open-dur) var(--dropdown-ease);
+  will-change: transform, opacity;
+}
+.t-dropdown[data-origin="top-right"] { transform-origin: top right; }
+.t-dropdown[data-origin="bottom-left"] { transform-origin: bottom left; }
+.t-dropdown[data-origin="bottom-right"] { transform-origin: bottom right; }
+.t-dropdown.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-dropdown.is-closing {
+  transform: scale(var(--dropdown-closing-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-close-dur) var(--dropdown-ease),
+    opacity var(--dropdown-close-dur) var(--dropdown-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-dropdown { transition: none !important; }
+}
+
+/* Panel reveal - the settings drawer. Slides up on a phone (the sheet's own
+   axis); the sm: override below switches the same tokens to slide in from
+   the right, which is the drawer's desktop axis. */
+.t-panel-slide {
+  transform: translateY(var(--panel-translate-y));
+  opacity: 0;
+  filter: blur(var(--panel-blur));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity var(--panel-close-dur) var(--panel-ease),
+    filter var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity, filter;
+}
+.t-panel-slide[data-open="true"] {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+  transition:
+    transform var(--panel-open-dur) var(--panel-ease),
+    opacity var(--panel-open-dur) var(--panel-ease),
+    filter var(--panel-open-dur) var(--panel-ease);
+}
+@media (min-width: 640px) {
+  .t-panel-slide {
+    transform: translateX(var(--panel-translate-y));
+  }
+  .t-panel-slide[data-open="true"] {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-panel-slide { transition: none !important; }
+}
+
+/* Icon swap - the copy-link button swapping to a checkmark. */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--icon-swap-dur) var(--icon-swap-ease),
+    filter var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+  will-change: opacity, filter, transform;
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap .t-icon { transition: none !important; }
+}
+
+/* Accordion expand - the hear-line / say-it-back / structure row under an
+   active sentence. No chevron here: the sentence row itself is the toggle. */
+.t-acc-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--acc-collapse) var(--acc-ease);
+}
+.t-acc[data-open="true"] .t-acc-panel {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--acc-expand) var(--acc-ease);
+}
+.t-acc-panel-inner {
+  overflow: hidden;
+  opacity: 0;
+  filter: blur(2px);
+  transition:
+    opacity var(--acc-collapse) var(--acc-ease),
+    filter var(--acc-collapse) var(--acc-ease);
+}
+.t-acc[data-open="true"] .t-acc-panel-inner {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity var(--acc-expand) var(--acc-ease),
+    filter var(--acc-expand) var(--acc-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-acc-panel, .t-acc-panel-inner { transition: none !important; }
+}
+
+/* Text states swap - the reader toolbar's theme-name label. */
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter var(--text-swap-dur) var(--text-swap-ease),
+    opacity var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-text-swap { transition: none !important; }
+}
+
+/* Tabs sliding - the All/DE/EN/VI language segment. Bar and pill colours are
+   overridden to the app's own tokens instead of the snippet's fixed light-mode
+   defaults, so the pill stays correct in every theme. */
+.t-tabs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.t-tab {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+  transition: color var(--tabs-dur) var(--tabs-ease);
+}
+.t-tabs-pill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 0;
+  border-radius: 8px;
+  transform: translateX(0);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    width var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, width;
+  z-index: 0;
+  pointer-events: none;
+}
+.t-tabs.t-tabs-lang .t-tabs-pill {
+  background-color: var(--accent);
+}
+.t-tabs.t-tabs-lang .t-tab[aria-selected="true"] {
+  color: var(--accent-fg);
+  font-weight: 500;
+}
+.t-tabs.t-tabs-lang .t-tab:not([aria-selected="true"]) {
+  color: var(--muted);
+}
+.t-tabs.t-tabs-lang .t-tab:not([aria-selected="true"]):hover {
+  color: var(--fg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-tabs-pill, .t-tab { transition: none !important; }
+}
+
+/* Card resize, adapted to a max-width collapse - the search field growing
+   from its icon to full width on a phone. A flex-1 field has no fixed pixel
+   width to tween the way the reference snippet's width/height version
+   assumes, so this variant tweens max-width instead, on the same tokens. */
+.t-search-resize {
+  display: flex;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-width var(--resize-dur) var(--resize-ease),
+    opacity var(--resize-dur) var(--resize-ease);
+}
+.t-search-resize.is-open {
+  max-width: 100%;
+  opacity: 1;
+  overflow: visible;
+}
+/* From sm: up the field is never collapsed - see FeedClient's own comment
+   on why a query in force must always stay visible there. */
+@media (min-width: 640px) {
+  .t-search-resize {
+    max-width: 100%;
+    opacity: 1;
+    overflow: visible;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-search-resize { transition: none !important; }
+}
+
+/* Like button, adapted to the bookmark toggle - fill + spring-pop + a small
+   particle burst the first time a story is saved. Unsaving just reverses the
+   fill; the celebration only plays going in. */
+.t-like-icon { display: inline-flex; }
+.t-like[data-liked="true"] .t-like-icon {
+  animation: t-like-pop var(--like-pop) var(--like-pop-ease);
+}
+@keyframes t-like-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.8); }
+  100% { transform: scale(1); }
+}
+.t-like-particles {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  color: var(--accent);
+}
+.t-like-particles i {
+  position: absolute;
+  left: calc(var(--like-particle-size) / -2);
+  top: calc(var(--like-particle-size) / -2);
+  width: var(--like-particle-size);
+  height: var(--like-particle-size);
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+}
+@keyframes t-like-burst {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 1; transform: translate(calc(var(--px) * 0.25), calc(var(--py) * 0.25)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(0.6); }
+}
+.t-like.is-bursting .t-like-particles i {
+  animation: t-like-burst var(--pdur, var(--like-particle-dur)) ease-out var(--pdelay, 0ms) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-like-icon, .t-like-particles i { animation: none !important; }
+}
