@@ -21,6 +21,12 @@ const feedCache = new TtlCache<FeedItem[]>(FEED_TTL_MS, 300);
 
 const MAX_SOURCES = 48;
 const MAX_CUSTOM = 12;
+// Everything gets merged into one pool and sorted by time, so a source that
+// happens to publish a hundred stories a day would otherwise fill that pool
+// with its own headlines and push a quieter paper's one story of the day off
+// the first several pages. Capping each source here, after its own fetch,
+// keeps the shelf a shelf rather than whichever paper posts the most.
+const PER_SOURCE_LIMIT = 20;
 // A handful of sources - Google News chief among them - answer many of this
 // catalog's entries, so firing every fetch at once risks reading as a burst
 // against that one host. Batching keeps that risk down without meaningfully
@@ -80,6 +86,11 @@ async function build(ids: string[], custom: Source[]): Promise<FeedResponse> {
     return { items: [], failed: [], fetchedAt: new Date().toISOString() };
   }
 
+  // The cap only makes sense once there is something to crowd out - a
+  // reader on a single paper's own page, or a per-source archive search,
+  // wants everything that paper has, not twenty of it.
+  const perSourceLimit = sources.length > 1 ? PER_SOURCE_LIMIT : Infinity;
+
   const settled: PromiseSettledResult<FeedItem[]>[] = [];
   for (let i = 0; i < sources.length; i += CONCURRENCY) {
     settled.push(...(await Promise.allSettled(sources.slice(i, i + CONCURRENCY).map(loadSource))));
@@ -90,7 +101,7 @@ async function build(ids: string[], custom: Source[]): Promise<FeedResponse> {
   settled.forEach((result, i) => {
     const source = sources[i];
     if (result.status === "fulfilled") {
-      items.push(...result.value.slice(0, 50));
+      items.push(...result.value.slice(0, perSourceLimit));
     } else {
       failed.push({
         sourceId: source.id,
