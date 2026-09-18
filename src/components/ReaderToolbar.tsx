@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { useT } from "@/hooks/useT";
 import { useDropdownTransition } from "@/hooks/useDropdownTransition";
-import type { ThemeName } from "@/lib/settings";
+import { resolveAutoTheme, type ThemeName } from "@/lib/settings";
 import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang } from "@/lib/types";
 import { SpeakerIcon } from "./Icons";
@@ -54,7 +54,8 @@ export function ReaderToolbar({
     return () => document.removeEventListener("mousedown", onDown);
   }, [voiceOpen]);
 
-  const current: ThemeName = settings.theme === "system" ? "paper" : settings.theme;
+  const current: ThemeName =
+    settings.theme === "system" ? "paper" : settings.theme === "auto" ? resolveAutoTheme() : settings.theme;
   const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
   const nextThemeLabel = THEME_LABEL[nextTheme];
   // voices state exists only to re-render when the engine warms up.
