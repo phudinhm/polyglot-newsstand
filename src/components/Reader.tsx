@@ -761,18 +761,16 @@ export function Reader({
             ))}
           </div>
 
-          <span className="hidden sm:contents">
-            <button
-              type="button"
-              onClick={() => update({ bilingual: !settings.bilingual })}
-              className={`btn !px-2 !py-1.5 ${settings.bilingual ? "btn-primary" : ""}`}
-              aria-pressed={settings.bilingual}
-              aria-label={t("reader.showAll")}
-              title={t("reader.showAll")}
-            >
-              <LanguagesIcon />
-            </button>
-          </span>
+          <button
+            type="button"
+            onClick={() => update({ bilingual: !settings.bilingual })}
+            className={`btn min-h-11 !px-1.5 !py-1.5 sm:!px-2 ${settings.bilingual ? "btn-primary" : ""}`}
+            aria-pressed={settings.bilingual}
+            aria-label={t("reader.showAll")}
+            title={t("reader.showAll")}
+          >
+            <LanguagesIcon />
+          </button>
 
           <button
             type="button"
@@ -796,15 +794,25 @@ export function Reader({
             <BookmarkIcon />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setShowShortcuts((v) => !v)}
-            className="btn hidden min-h-11 !px-2 !py-1.5 text-xs font-semibold text-muted hover:text-fg sm:inline-flex"
-            aria-label="Keyboard shortcuts"
-            title="Keyboard shortcuts (?)"
-          >
-            ?
-          </button>
+          {/*
+            A "?" keyboard-shortcuts button, on a touchscreen with no
+            keyboard, is a button with nothing to open. Unmounted rather
+            than hidden with a utility class for the same reason the mobile
+            search icon is elsewhere in this app: .btn sets its own display
+            from unlayered CSS and beats a Tailwind hidden/sm: pair on the
+            same element, so it stayed on screen at every width.
+          */}
+          <span className="hidden sm:contents">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts((v) => !v)}
+              className="btn min-h-11 !px-2 !py-1.5 text-xs font-semibold text-muted hover:text-fg"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              ?
+            </button>
+          </span>
 
           <button
             type="button"
