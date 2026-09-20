@@ -132,6 +132,13 @@
     Arial, sans-serif;
   --reading-family: var(--font-charter);
   --header-height: 3.5rem;
+  /* Where content actually starts: the header's own height plus whatever the
+     Dynamic Island or notch eats into the top of the screen. Everything that
+     positions itself against the header - sticky bars, scroll targets, the
+     reading-progress badge - measures from here, not from --header-height
+     alone, so a Pro Max doesn't tuck the first line of the day under a
+     camera cutout. */
+  --header-offset: calc(var(--header-height) + env(safe-area-inset-top));
   --ui-zoom: 1;
 }
 
@@ -329,7 +336,7 @@ body {
  */
 .sentence-row {
   scroll-margin-bottom: 9rem;
-  scroll-margin-top: calc(var(--header-height) + 1rem);
+  scroll-margin-top: calc(var(--header-offset) + 1rem);
 }
 
 /* The line being read aloud, so the ear and the eye stay together. */

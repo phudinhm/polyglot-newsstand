@@ -396,7 +396,7 @@ export function FeedClient() {
       />
 
       {/* One light bar instead of two dense rows of chips. */}
-      <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
+      <div className="sticky top-[var(--header-offset)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
           {/*
             On a phone the search field was a full row of the sticky bar that
