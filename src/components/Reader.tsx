@@ -40,7 +40,6 @@ import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
-import { ScrollToTop } from "./ScrollToTop";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -1369,7 +1368,23 @@ export function Reader({
         </div>
       )}
 
-      <ScrollToTop />
+      {/*
+        The header's own back button sits top-left, the thumb's least
+        reachable corner on a large phone. Swipe-to-go-back already covers
+        that gesture, but this floating twin puts the same action right
+        under the scroll-to-top button - the corner a thumb already rests
+        near - without removing the header one for mouse/keyboard use.
+      */}
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label={t("reader.back")}
+        title={t("reader.back")}
+        className="glass-strong fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden"
+      >
+        <ArrowLeftIcon width={18} height={18} />
+      </button>
+
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
