@@ -10,6 +10,7 @@ import { getCustomSources, type CustomSource } from "@/lib/customSources";
 import { getCachedFeed, setCachedFeed } from "@/lib/feedCache";
 import { getFeedFilters, setFeedFilters } from "@/lib/feedFilters";
 import { blockedIds, forgetBlocked } from "@/lib/blocked";
+import { dismissArticle, dismissedUrls, undismissArticle } from "@/lib/dismissed";
 import { getReadUrls } from "@/lib/recent";
 import { getSavedFeedVisible, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import { SOURCES } from "@/lib/sources";
@@ -258,8 +259,21 @@ export function FeedClient() {
   const [blocked, setBlocked] = useState<Set<string>>(() => new Set());
   useEffect(() => setBlocked(blockedIds()), []);
 
+  // Articles removed by hand, once a reader recognizes a paywall or a
+  // publisher that already turned them away. Unlike blockedIds this is per
+  // link, not per source, so it never touches other pieces from the same paper.
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
+  useEffect(() => setDismissed(dismissedUrls()), []);
+
+  const removeArticle = useCallback((item: FeedItem) => {
+    dismissArticle(item.link);
+    setDismissed((prev) => new Set(prev).add(item.link));
+  }, []);
+
   const filtered = useMemo(() => {
     let list: FeedItem[] = data?.items ?? [];
+    // A reader's own removals apply no matter what other filter is active.
+    if (dismissed.size) list = list.filter((i) => !dismissed.has(i.link));
     // Papers that lock most articles stay off the shelf until asked for: a
     // headline you cannot open is worse than one you never saw.
     if (settings.hidePaywalled && !source) {
@@ -291,7 +305,7 @@ export function FeedClient() {
       const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
       return sort === "newest" ? tb - ta : ta - tb;
     });
-  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls]);
+  }, [data, lang, category, month, query, sort, source, settings.hidePaywalled, settings.hideRead, blocked, readUrls, dismissed]);
 
   // A tab only ever appears once its category actually has a story behind it.
   // Deriving this from the shelf's sources instead - every category any added
@@ -369,6 +383,18 @@ export function FeedClient() {
     }
     return [...names].map(([id, name]) => ({ id, name }));
   }, [data, blocked]);
+
+  // Named the same way as blockedNames, but per article rather than per
+  // source: a reader who removed something by mistake deserves its headline
+  // back, not just a count.
+  const dismissedItems = useMemo(() => {
+    if (!dismissed.size) return [];
+    const seen = new Map<string, FeedItem>();
+    for (const item of data?.items ?? []) {
+      if (dismissed.has(item.link) && !seen.has(item.link)) seen.set(item.link, item);
+    }
+    return [...seen.values()];
+  }, [data, dismissed]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-3.5 sm:pt-7">
@@ -591,6 +617,34 @@ export function FeedClient() {
                   </div>
                 )}
 
+                {dismissedItems.length > 0 && (
+                  <div className="mt-2 rounded-lg bg-surface-2 px-2.5 py-2">
+                    <p className="text-[11px] leading-relaxed text-muted">
+                      {t("feed.removedIntro")}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {dismissedItems.slice(0, 12).map((item) => (
+                        <button
+                          key={item.link}
+                          type="button"
+                          onClick={() => {
+                            undismissArticle(item.link);
+                            setDismissed((prev) => {
+                              const next = new Set(prev);
+                              next.delete(item.link);
+                              return next;
+                            });
+                          }}
+                          className="chip max-w-[13rem] truncate !py-1 !text-[11.5px]"
+                          title={item.title}
+                        >
+                          {item.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {extraFilters > 0 && (
                   <button
                     type="button"
@@ -718,6 +772,7 @@ export function FeedClient() {
             item={featured}
             blocked={blocked.has(featured.sourceId)}
             read={readUrls.has(featured.link)}
+            onRemove={removeArticle}
           />
         </div>
       )}
@@ -735,6 +790,7 @@ export function FeedClient() {
                   item={item}
                   blocked={blocked.has(item.sourceId)}
                   read={readUrls.has(item.link)}
+                  onRemove={removeArticle}
                 />
               ))}
             </div>

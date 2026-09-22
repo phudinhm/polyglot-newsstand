@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getReadUrls, noteSourceVisit } from "@/lib/recent";
+import { dismissArticle, dismissedUrls } from "@/lib/dismissed";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { googleNewsSearchFeedUrl, LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from "@/lib/sources";
@@ -38,6 +39,12 @@ export function SourcePageClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(20);
   const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
+  useEffect(() => setDismissed(dismissedUrls()), []);
+  const removeArticle = useCallback((item: FeedItem) => {
+    dismissArticle(item.link);
+    setDismissed((prev) => new Set(prev).add(item.link));
+  }, []);
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
 
@@ -162,9 +169,10 @@ export function SourcePageClient({ id }: { id: string }) {
     });
   }
 
+  const shown = useMemo(() => items.filter((i) => !dismissed.has(i.link)), [items, dismissed]);
   const [featured, rest] = useMemo(
-    () => (items.length > 3 ? [items[0], items.slice(1)] : [null, items]),
-    [items],
+    () => (shown.length > 3 ? [shown[0], shown.slice(1)] : [null, shown]),
+    [shown],
   );
 
   if (!source) {
@@ -308,13 +316,19 @@ export function SourcePageClient({ id }: { id: string }) {
 
       {featured && (
         <div className="mb-4">
-          <FeaturedCard item={featured} read={readUrls.has(featured.link)} />
+          <FeaturedCard item={featured} read={readUrls.has(featured.link)} onRemove={removeArticle} />
         </div>
       )}
 
       <div className="space-y-2.5">
         {rest.slice(0, visible).map((item) => (
-          <ArticleCard key={item.id} item={item} linkSource={false} read={readUrls.has(item.link)} />
+          <ArticleCard
+            key={item.id}
+            item={item}
+            linkSource={false}
+            read={readUrls.has(item.link)}
+            onRemove={removeArticle}
+          />
         ))}
       </div>
 
@@ -324,9 +338,13 @@ export function SourcePageClient({ id }: { id: string }) {
         </button>
       )}
 
-      {!loading && !items.length && !error && (
+      {!loading && !shown.length && !error && (
         <p className="py-10 text-center text-sm text-muted">
-          {query ? `No results for "${query}" on ${source.name}.` : "Nothing published recently."}
+          {query
+            ? `No results for "${query}" on ${source.name}.`
+            : items.length
+              ? "You removed everything here. Open More filters on the newsstand to bring articles back."
+              : "Nothing published recently."}
         </p>
       )}
     </div>
