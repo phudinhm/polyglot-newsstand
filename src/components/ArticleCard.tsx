@@ -9,7 +9,7 @@ import { newWordCount } from "@/lib/frequency";
 import { SOURCE_BY_ID } from "@/lib/sources";
 import { isSaved, toggleSaved } from "@/lib/store";
 import { recordArticleClick } from "@/lib/scrollMemory";
-import { BookmarkIcon } from "./Icons";
+import { BookmarkIcon, CloseIcon } from "./Icons";
 import { SourceAvatar } from "./SourceAvatar";
 
 /**
@@ -184,6 +184,27 @@ function BookmarkButton({
   );
 }
 
+/**
+ * Take a headline off the shelf without opening it - the point when its
+ * badge already says "paywall" or "didn't load last time" and there is
+ * nothing to be gained by tapping through to find out again.
+ */
+function RemoveButton({ onRemove, featured = false }: { onRemove: (e: React.MouseEvent) => void; featured?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label="Remove this article"
+      title="Remove this article - handy once you've seen it's paywalled or blocked"
+      className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-fg sm:h-auto sm:w-auto ${
+        featured ? "sm:p-1.5" : "-my-2 sm:my-0 sm:p-1"
+      } opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100`}
+    >
+      <CloseIcon width={featured ? 16 : 15} height={featured ? 16 : 15} />
+    </button>
+  );
+}
+
 /** Publisher thumbnails break often, so a failed image collapses silently. */
 function Thumb({ src, className }: { src?: string; className: string }) {
   const [failed, setFailed] = useState(false);
@@ -206,10 +227,12 @@ export function FeaturedCard({
   item,
   blocked = false,
   read = false,
+  onRemove,
 }: {
   item: FeedItem;
   blocked?: boolean;
   read?: boolean;
+  onRemove?: (item: FeedItem) => void;
 }) {
   const [saved, setSaved] = useState(() => isSaved(item.link));
 
@@ -245,7 +268,19 @@ export function FeaturedCard({
         <div className="p-4 sm:order-1 sm:flex sm:flex-1 sm:flex-col sm:justify-center sm:p-6">
           <div className="flex items-center justify-between gap-2">
             <Meta item={item} blocked={blocked} read={read} />
-            <BookmarkButton saved={saved} onToggle={onToggleSave} featured />
+            <div className="flex shrink-0 items-center">
+              <BookmarkButton saved={saved} onToggle={onToggleSave} featured />
+              {onRemove && (
+                <RemoveButton
+                  featured
+                  onRemove={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemove(item);
+                  }}
+                />
+              )}
+            </div>
           </div>
           <Link
             href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}
@@ -273,11 +308,13 @@ function ArticleCardImpl({
   linkSource = true,
   blocked = false,
   read = false,
+  onRemove,
 }: {
   item: FeedItem;
   linkSource?: boolean;
   blocked?: boolean;
   read?: boolean;
+  onRemove?: (item: FeedItem) => void;
 }) {
   const [saved, setSaved] = useState(() => isSaved(item.link));
 
@@ -299,7 +336,18 @@ function ArticleCardImpl({
     <article className="card card-hover group relative overflow-hidden p-3.5 transition-all duration-200 active:scale-[0.995] sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} />
-        <BookmarkButton saved={saved} onToggle={onToggleSave} />
+        <div className="flex shrink-0 items-center">
+          <BookmarkButton saved={saved} onToggle={onToggleSave} />
+          {onRemove && (
+            <RemoveButton
+              onRemove={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemove(item);
+              }}
+            />
+          )}
+        </div>
       </div>
       <Link
         href={readerHref({ url: item.link, lang: item.lang, source: item.sourceId })}

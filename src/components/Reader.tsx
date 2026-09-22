@@ -40,7 +40,6 @@ import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
-import { ScrollToTop } from "./ScrollToTop";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -656,14 +655,14 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-0 z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
+        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
         style={{ width: `${progress}%` }}
         aria-hidden
       />
 
       {article && (
         <div
-          className={`glass-strong pointer-events-none fixed right-3 top-[calc(var(--header-height)+0.6rem)] z-40 flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 shadow-[var(--shadow)] transition-opacity duration-300 ${
+          className={`glass-strong pointer-events-none fixed right-3 top-[calc(var(--header-offset)+0.6rem)] z-40 flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 shadow-[var(--shadow)] transition-opacity duration-300 ${
             chromeActive && progress > 2 ? "opacity-100" : "opacity-0"
           }`}
           aria-label={`${Math.round(progress)} percent read`}
@@ -680,7 +679,7 @@ export function Reader({
       )}
 
       <header
-        className={`glass sticky top-0 z-30 border-b border-border transition-opacity duration-300 ${
+        className={`glass sticky top-0 z-30 border-b border-border pt-[env(safe-area-inset-top)] transition-opacity duration-300 ${
           chromeActive ? "opacity-100" : "opacity-30 hover:opacity-100 focus-within:opacity-100"
         }`}
       >
@@ -1369,7 +1368,23 @@ export function Reader({
         </div>
       )}
 
-      <ScrollToTop />
+      {/*
+        The header's own back button sits top-left, the thumb's least
+        reachable corner on a large phone. Swipe-to-go-back already covers
+        that gesture, but this floating twin puts the same action right
+        under the scroll-to-top button - the corner a thumb already rests
+        near - without removing the header one for mouse/keyboard use.
+      */}
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label={t("reader.back")}
+        title={t("reader.back")}
+        className="glass-strong fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden"
+      >
+        <ArrowLeftIcon width={18} height={18} />
+      </button>
+
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

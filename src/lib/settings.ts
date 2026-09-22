@@ -105,8 +105,13 @@ export const FONTS: { id: FontName; label: string; hint: string }[] = [
 ];
 
 export interface Settings {
-  /** "system" follows the OS and flips between paper and ink. */
-  theme: ThemeName | "system";
+  /**
+   * "system" follows the OS and flips between paper and ink. "auto" follows
+   * the clock instead: sepia in the morning, ink from noon through the
+   * night - for a reader whose device theme does not change, or does not
+   * track the same schedule they read on.
+   */
+  theme: ThemeName | "system" | "auto";
   /** Vibrant accent / main brand color */
   accentColor: AccentColorName;
   font: FontName;
@@ -181,7 +186,19 @@ export const THEMES: { id: Settings["theme"]; label: string; hint: string }[] = 
   { id: "slate", label: "Slate", hint: "Soft dark, low glare" },
   { id: "ink", label: "Ink", hint: "Near black, best at night" },
   { id: "system", label: "System", hint: "Follow your device" },
+  { id: "auto", label: "Auto by time", hint: "Sepia in the morning, dark from noon on" },
 ];
+
+/**
+ * The clock side of the "auto" theme: light in the morning, dark from noon
+ * through the night. Kept as its own function - not just inlined in
+ * applySettings - so ThemeScript's pre-hydration copy can describe the exact
+ * same boundary in its own words and the two can never quietly drift apart.
+ */
+export function resolveAutoTheme(date: Date = new Date()): "sepia" | "ink" {
+  const hour = date.getHours();
+  return hour >= 5 && hour < 12 ? "sepia" : "ink";
+}
 
 export function loadSettings(): Settings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
@@ -242,7 +259,9 @@ export function applySettings(s: Settings): void {
       ? window.matchMedia?.("(prefers-color-scheme: dark)").matches
         ? "ink"
         : "paper"
-      : s.theme;
+      : s.theme === "auto"
+        ? resolveAutoTheme()
+        : s.theme;
   root.dataset.theme = resolved;
   root.dataset.font = s.font;
   root.dataset.accent = s.accentColor || "default";

@@ -24,6 +24,12 @@ export function ThemeScript() {
     var theme = s.theme;
     if (theme === 'system') {
       theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'ink' : 'paper';
+    } else if (theme === 'auto') {
+      // Mirrors resolveAutoTheme() in src/lib/settings.ts - this script runs
+      // before hydration and cannot import it, so the boundary is repeated
+      // here in the fewest possible words to keep the two from drifting.
+      var hour = new Date().getHours();
+      theme = hour >= 5 && hour < 12 ? 'sepia' : 'ink';
     }
     var r = document.documentElement;
     r.dataset.theme = theme;

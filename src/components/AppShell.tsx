@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isReader && (
-        <header className="glass sticky top-0 z-30 border-b border-border">
+        <header className="glass sticky top-0 z-30 border-b border-border pt-[env(safe-area-inset-top)]">
           <div className="mx-auto flex h-[var(--header-height)] max-w-5xl items-center gap-3 px-4">
             <Link href="/" className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}

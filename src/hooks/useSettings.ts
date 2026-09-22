@@ -24,6 +24,19 @@ function broadcast(next: Settings) {
   listeners.forEach((fn) => fn(next));
 }
 
+// A reader who leaves a tab open across the "auto" theme's own boundary (say,
+// reading through noon) should see it flip without touching a setting or
+// reloading. applySettings only ever runs on mount or on a real settings
+// change, so nothing else re-checks the clock - this does, on a shared
+// interval rather than one per component that calls useSettings below.
+// Re-applying is a DOM-only op (see applySettings), so this never needs to
+// touch React state or the listener set.
+if (typeof window !== "undefined") {
+  setInterval(() => {
+    if (current?.theme === "auto") applySettings(current);
+  }, 5 * 60 * 1000);
+}
+
 /**
  * One shared settings object across the app. Server render always sees the
  * defaults, then the first client effect swaps in what is stored, which keeps
