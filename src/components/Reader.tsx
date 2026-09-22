@@ -684,14 +684,24 @@ export function Reader({
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-1.5 px-3 py-2.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={goBack}
-            className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
-            aria-label={t("reader.back")}
-          >
-            <ArrowLeftIcon />
-          </button>
+          {/*
+            The floating back button below covers mobile now, in the corner a
+            thumb already reaches. This one stays for desktop and keyboard
+            use, where nothing floats. Wrapped rather than `hidden sm:flex`
+            directly on it: .btn sets its own display from unlayered CSS and
+            beats a Tailwind hidden/sm: pair on the same element (see the "?"
+            shortcuts button below for the same fix).
+          */}
+          <span className="hidden sm:contents">
+            <button
+              type="button"
+              onClick={goBack}
+              className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
+              aria-label={t("reader.back")}
+            >
+              <ArrowLeftIcon />
+            </button>
+          </span>
           {source ? (
             <Link
               href={`/s/${source.id}`}
@@ -1371,16 +1381,25 @@ export function Reader({
       {/*
         The header's own back button sits top-left, the thumb's least
         reachable corner on a large phone. Swipe-to-go-back already covers
-        that gesture, but this floating twin puts the same action right
-        under the scroll-to-top button - the corner a thumb already rests
-        near - without removing the header one for mouse/keyboard use.
+        that gesture, but this floating twin puts the same action in the
+        corner a thumb already rests near, on mobile only - the header one
+        is hidden there now instead of duplicated.
+
+        Stacked above scroll-to-top rather than below it: below shares the
+        same row as the font-size toolbar, and that pill's width varies with
+        the theme name and font-size digit count (21px vs 9px) enough to
+        collide with a fixed right-4 button at some viewport/settings
+        combinations. Scroll-to-top's own footprint is fixed width, so
+        stacking against that instead is never at risk the same way.
       */}
       <button
         type="button"
         onClick={goBack}
         aria-label={t("reader.back")}
         title={t("reader.back")}
-        className="glass-strong fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden"
+        className={`glass-strong fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden ${
+          chromeActive ? "opacity-100" : "opacity-25 hover:opacity-100 focus-within:opacity-100"
+        }`}
       >
         <ArrowLeftIcon width={18} height={18} />
       </button>
