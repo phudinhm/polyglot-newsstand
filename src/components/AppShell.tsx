@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useT } from "@/hooks/useT";
 import type { StringKey } from "@/lib/i18n";
@@ -20,6 +20,7 @@ const NAV: { href: string; key: StringKey; Icon: typeof NewspaperIcon; badgeKey?
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [counts, setCounts] = useState<{ saved: number; vocab: number }>({ saved: 0, vocab: 0 });
@@ -37,6 +38,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("pn:store", sync);
     return () => window.removeEventListener("pn:store", sync);
   }, []);
+
+  // Global navigation shortcuts: comma (,) opens Reading Settings, Alt+1..4 switches main tabs
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "," && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSettingsOpen((prev) => !prev);
+      } else if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        if (e.key === "1") { e.preventDefault(); router.push("/"); }
+        else if (e.key === "2") { e.preventDefault(); router.push("/saved"); }
+        else if (e.key === "3") { e.preventDefault(); router.push("/vocab"); }
+        else if (e.key === "4") { e.preventDefault(); router.push("/sources"); }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [router]);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : Boolean(pathname?.startsWith(href));

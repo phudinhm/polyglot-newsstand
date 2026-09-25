@@ -133,57 +133,81 @@ export function SourceRail({
 
   if (entries.length < 2) return null;
 
+  const selectedEntry = selected ? entries.find((e) => e.id === selected) : null;
+
   return (
-    <div ref={rowRef} className="no-scrollbar -mx-4 mb-3.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
-      <button
-        type="button"
-        onClick={() => onSelect(null)}
-        data-selected={selected === null}
-        className="chip !py-1.5"
+    <div className="mb-3.5 space-y-2">
+      <div
+        ref={rowRef}
+        className="no-scrollbar scroll-fade-r -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5"
       >
-        {t("feed.allPapers")}
-      </button>
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          data-selected={selected === null}
+          className="chip !py-1.5 font-medium"
+        >
+          {t("feed.allPapers")}
+        </button>
 
-      {entries.map((entry) =>
-        entry.filterable ? (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => onSelect(selected === entry.id ? null : entry.id)}
-            data-selected={selected === entry.id}
-            className="relative chip !gap-2 !py-1.5 !pr-1.5"
-            title={
-              entry.favorite
-                ? `${entry.name} · favorite`
-                : entry.recentAt
-                  ? `${entry.name} · opened ${timeAgo(entry.recentAt)}`
-                  : `${entry.name} · ${entry.count ?? 0} stories`
-            }
-          >
-            {entry.favorite ? <FavoriteDot /> : entry.recentAt && <RecentDot />}
-            <SourceAvatar name={entry.name} site={entry.site} size={18} />
-            <span className="max-w-[9rem] truncate">{entry.short}</span>
-            <span className="rounded-full bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1.5 py-0.5 text-[11px] tabular-nums leading-none">
-              {entry.count ?? 0}
-            </span>
-          </button>
-        ) : (
-          <Link
-            key={entry.id}
-            href={`/s/${encodeURIComponent(entry.id)}`}
-            className="chip relative !gap-2 !py-1.5"
-            title={`${entry.name} · opened ${timeAgo(entry.recentAt ?? "")}`}
-          >
-            <RecentDot />
-            <SourceAvatar name={entry.name} site={entry.site} size={18} />
-            <span className="max-w-[9rem] truncate">{entry.short}</span>
-          </Link>
-        ),
+        {entries.map((entry) =>
+          entry.filterable ? (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => onSelect(selected === entry.id ? null : entry.id)}
+              data-selected={selected === entry.id}
+              className="relative chip !gap-2 !py-1.5 !pr-2"
+              title={
+                entry.favorite
+                  ? `${entry.name} · favorite`
+                  : entry.recentAt
+                    ? `${entry.name} · opened ${timeAgo(entry.recentAt)}`
+                    : `${entry.name} · ${entry.count ?? 0} stories`
+              }
+            >
+              {entry.favorite ? <FavoriteDot /> : entry.recentAt && <RecentDot />}
+              <SourceAvatar name={entry.name} site={entry.site} size={18} />
+              <span className="max-w-[9rem] truncate">{entry.short}</span>
+              <span className="rounded-full bg-[color-mix(in_srgb,currentColor_14%,transparent)] px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums leading-none">
+                {entry.count ?? 0}
+              </span>
+            </button>
+          ) : (
+            <Link
+              key={entry.id}
+              href={`/s/${encodeURIComponent(entry.id)}`}
+              className="chip relative !gap-2 !py-1.5"
+              title={`${entry.name} · opened ${timeAgo(entry.recentAt ?? "")}`}
+            >
+              <RecentDot />
+              <SourceAvatar name={entry.name} site={entry.site} size={18} />
+              <span className="max-w-[9rem] truncate">{entry.short}</span>
+            </Link>
+          ),
+        )}
+
+        <Link href="/sources" className="chip !py-1.5">
+          <PlusIcon width={14} height={14} /> {t("feed.morePapers")}
+        </Link>
+      </div>
+
+      {selectedEntry && (
+        <div className="animate-fade-in flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] px-3 py-1.5 text-xs">
+          <span className="flex min-w-0 items-center gap-2 font-medium text-fg">
+            <SourceAvatar name={selectedEntry.name} site={selectedEntry.site} size={16} />
+            <span className="truncate">{selectedEntry.name}</span>
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/s/${encodeURIComponent(selectedEntry.id)}`}
+              className="font-semibold text-accent hover:underline"
+            >
+              Full edition & search →
+            </Link>
+          </div>
+        </div>
       )}
-
-      <Link href="/sources" className="chip !py-1.5">
-        <PlusIcon width={14} height={14} /> {t("feed.morePapers")}
-      </Link>
     </div>
   );
 }

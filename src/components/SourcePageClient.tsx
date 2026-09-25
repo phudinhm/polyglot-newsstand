@@ -10,6 +10,7 @@ import { googleNewsSearchFeedUrl, LANG_LABELS, LEVEL_LABELS, SOURCE_BY_ID } from
 import { getCustomSources } from "@/lib/customSources";
 import { markBackAction, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
+import { SourceAvatar } from "./SourceAvatar";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
 import {
   ArrowLeftIcon,
@@ -199,28 +200,38 @@ export function SourcePageClient({ id }: { id: string }) {
 
       <header className="card mb-5 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{source.name}</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-              <span>{LANG_LABELS[source.lang]}</span>
-              <span aria-hidden>·</span>
-              <span>{LEVEL_LABELS[source.level]}</span>
-              <span aria-hidden>·</span>
-              <a
-                href={source.site}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-1 underline underline-offset-2"
-              >
-                {hostOf(source.site)}
-                <ExternalIcon width={12} height={12} />
-              </a>
+          <div className="flex min-w-0 flex-1 items-start gap-3.5">
+            <SourceAvatar name={source.name} site={source.site} size={38} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{source.name}</h1>
+                {!source.paywall && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    ✓ Open
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+                <span>{LANG_LABELS[source.lang]}</span>
+                <span aria-hidden>·</span>
+                <span>{LEVEL_LABELS[source.level]}</span>
+                <span aria-hidden>·</span>
+                <a
+                  href={source.site}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-fg"
+                >
+                  {hostOf(source.site)}
+                  <ExternalIcon width={12} height={12} />
+                </a>
+              </div>
+              {source.note && (
+                <p className="mt-2 max-w-prose text-[13.5px] leading-relaxed text-muted">
+                  {source.note}
+                </p>
+              )}
             </div>
-            {source.note && (
-              <p className="mt-2 max-w-prose text-[13.5px] leading-relaxed text-muted">
-                {source.note}
-              </p>
-            )}
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => void load()} disabled={loading} className="btn px-2.5">
@@ -257,31 +268,33 @@ export function SourcePageClient({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
-        <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
-        <input
-          value={queryInput}
-          onChange={(e) => setQueryInput(e.target.value)}
-          placeholder={`Search ${source.name}`}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
-          aria-label={`Search ${source.name}`}
-        />
-        {queryInput && (
-          <button
-            type="button"
-            onClick={() => setQueryInput("")}
-            className="shrink-0 text-muted hover:text-fg"
-            aria-label="Clear search"
-          >
-            <CloseIcon width={14} height={14} />
-          </button>
-        )}
+      <div className="sticky top-[var(--header-offset)] z-20 -mx-4 mb-4 px-4 py-2 glass">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-3 py-1.5 focus-within:border-accent">
+          <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
+          <input
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            placeholder={`Search ${source.name}…`}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
+            aria-label={`Search ${source.name}`}
+          />
+          {queryInput && (
+            <button
+              type="button"
+              onClick={() => setQueryInput("")}
+              className="shrink-0 text-muted hover:text-fg"
+              aria-label="Clear search"
+            >
+              <CloseIcon width={14} height={14} />
+            </button>
+          )}
+        </div>
       </div>
       {query && (
-        <p className="-mt-2.5 mb-4 text-[12px] text-muted">
+        <p className="-mt-2 mb-4 text-[12px] text-muted">
           {loading
             ? `Searching ${source.name} via Google News…`
             : `Google News results for "${query}" on ${source.name}, not just what its own feed carries.`}
@@ -347,6 +360,17 @@ export function SourcePageClient({ id }: { id: string }) {
               : "Nothing published recently."}
         </p>
       )}
+
+      {/* Thumb-reachable floating back button on mobile */}
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label="Back"
+        title="Back"
+        className="glass-strong fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden"
+      >
+        <ArrowLeftIcon width={18} height={18} />
+      </button>
     </div>
   );
 }

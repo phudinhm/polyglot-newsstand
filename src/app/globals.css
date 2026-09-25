@@ -490,6 +490,16 @@ body {
   contain-intrinsic-size: auto 120px;
 }
 
+.source-card-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 76px;
+}
+
+.vocab-card-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 88px;
+}
+
 .card {
   background-color: color-mix(in srgb, var(--surface) 96%, transparent);
   border: 1px solid var(--border);
@@ -507,6 +517,10 @@ body {
   transform: translateY(-2.5px);
   box-shadow: var(--shadow);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.card-hover:active {
+  transform: scale(0.992);
 }
 
 .thumb {
