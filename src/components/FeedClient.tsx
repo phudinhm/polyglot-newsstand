@@ -71,11 +71,37 @@ export function FeedClient() {
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const loadMoreRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const onScroll = () => saveScrollPosition("/");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        saveScrollPosition("/");
+        timer = null;
+      }, 150);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  // Press "/" anywhere on the Newsstand to focus the search input.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -190,6 +216,30 @@ export function FeedClient() {
   }, [queryInput]);
 
   useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+
+  // Automatically load the next page of stories as the reader approaches the bottom.
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => {
+            const next = v + PAGE_SIZE;
+            try {
+              sessionStorage.setItem("pn:feed-visible:v1", String(next));
+            } catch {
+              /* ignore */
+            }
+            return next;
+          });
+        }
+      },
+      { rootMargin: "280px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [visible, data]);
 
   // How much each paper has on the shelf today, for the rail.
   const counts = useMemo(() => {
@@ -356,11 +406,18 @@ export function FeedClient() {
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-height)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-surface/75 px-2.5 py-1.5 transition-all focus-within:border-accent focus-within:bg-surface">
             <SearchIcon className="shrink-0 text-muted" width={16} height={16} />
             <input
+              ref={searchInputRef}
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (queryInput) setQueryInput("");
+                  else e.currentTarget.blur();
+                }
+              }}
               placeholder={t("feed.search")}
               autoComplete="off"
               autoCorrect="off"
@@ -368,26 +425,33 @@ export function FeedClient() {
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label={t("feed.search")}
             />
-            {queryInput && (
+            {queryInput ? (
               <button
                 type="button"
-                onClick={() => setQueryInput("")}
+                onClick={() => {
+                  setQueryInput("");
+                  searchInputRef.current?.focus();
+                }}
                 className="shrink-0 text-muted hover:text-fg"
                 aria-label={t("feed.clearSearch")}
               >
                 <CloseIcon width={14} height={14} />
               </button>
+            ) : (
+              <kbd className="hidden rounded border border-border bg-surface-2/80 px-1.5 py-0.5 font-mono text-[10px] text-muted sm:inline-block">
+                /
+              </kbd>
             )}
           </div>
 
-          <div className="flex rounded-lg border border-border bg-surface/70 p-0.5">
+          <div className="flex rounded-xl border border-border bg-surface/75 p-0.5">
             {(["all", "de", "en", "vi"] as LangFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setLang(value)}
-                className={`rounded-md px-2 py-1 text-[12.5px] font-medium transition-colors ${
-                  lang === value ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"
+                className={`rounded-lg px-2 py-1 text-[12.5px] font-medium transition-all ${
+                  lang === value ? "bg-accent text-accent-fg shadow-xs" : "text-muted hover:text-fg"
                 }`}
                 aria-pressed={lang === value}
               >
@@ -407,7 +471,7 @@ export function FeedClient() {
               <SlidersIcon width={16} height={16} />
             </button>
             {filtersOpen && (
-              <div className="absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong">
+              <div className="animate-popover absolute right-0 top-full z-30 mt-1.5 w-64 rounded-2xl border border-border p-3.5 shadow-[var(--shadow)] glass-strong">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {t("feed.month")}
                 </label>
@@ -540,6 +604,30 @@ export function FeedClient() {
             </button>
           ))}
         </div>
+
+        {!untouched && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+            <span className="text-muted">
+              Showing <strong className="font-semibold text-fg">{filtered.length}</strong>{" "}
+              {filtered.length === 1 ? "story" : "stories"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setLang("all");
+                setCategory("all");
+                setMonth("all");
+                setQueryInput("");
+                setQuery("");
+                setSource(null);
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2.5 py-0.5 font-medium text-accent transition-colors hover:bg-accent/20"
+            >
+              <CloseIcon width={11} height={11} />
+              {t("feed.resetFilters")}
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -652,6 +740,7 @@ export function FeedClient() {
 
       {rest.length > visible && (
         <button
+          ref={loadMoreRef}
           type="button"
           onClick={() =>
             setVisible((v) => {
@@ -668,7 +757,7 @@ export function FeedClient() {
           }
           className="btn mx-auto mt-6 flex"
         >
-          {t("feed.showMore")}
+          {t("feed.showMore")} ({rest.length - visible})
         </button>
       )}
 

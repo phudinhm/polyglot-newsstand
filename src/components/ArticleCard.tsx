@@ -18,6 +18,12 @@ import { SourceAvatar } from "./SourceAvatar";
  * difficulty chip was noise, but "this one is written for learners" is the one
  * signal worth interrupting for.
  */
+const EASY_LABELS: Record<FeedItem["lang"], string> = {
+  de: "Easy German",
+  en: "Easy English",
+  vi: "Dễ đọc",
+};
+
 function Meta({
   item,
   linkSource = true,
@@ -52,6 +58,9 @@ function Meta({
           {item.sourceName}
         </span>
       )}
+      <span className="rounded bg-surface-2 px-1.2 py-0.2 text-[9.5px] font-semibold uppercase tracking-wider text-muted">
+        {item.lang}
+      </span>
       {item.publishedAt && (
         <>
           <span aria-hidden>·</span>
@@ -82,7 +91,7 @@ function Meta({
       )}
       {item.level === "easy" && (
         <span className="rounded-full bg-[color-mix(in_srgb,var(--translation)_16%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation">
-          Easy German
+          {EASY_LABELS[item.lang] ?? "Easy"}
         </span>
       )}
       <NewWordsBadge item={item} />
@@ -91,7 +100,7 @@ function Meta({
           className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-muted"
           title="You have already read this one."
         >
-          read
+          ✓ read
         </span>
       )}
     </div>
@@ -120,10 +129,18 @@ function NewWordsBadge({ item }: { item: FeedItem }) {
 }
 
 /** Publisher thumbnails break often, so a failed image collapses silently. */
-function Thumb({ src, className }: { src?: string; className: string }) {
+function Thumb({
+  src,
+  className,
+  wrapperClassName,
+}: {
+  src?: string;
+  className: string;
+  wrapperClassName?: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) return null;
-  return (
+  const img = (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
@@ -134,6 +151,7 @@ function Thumb({ src, className }: { src?: string; className: string }) {
       className={`thumb ${className}`}
     />
   );
+  return wrapperClassName ? <div className={wrapperClassName}>{img}</div> : img;
 }
 
 /** The lead story, given the room a front page would give it. */
@@ -243,7 +261,11 @@ function ArticleCardImpl({
   };
 
   return (
-    <article className="card card-hover group relative overflow-hidden p-3.5 transition-all duration-200 active:scale-[0.995] sm:p-4">
+    <article
+      className={`card card-hover group relative overflow-hidden p-3.5 transition-all duration-200 active:scale-[0.995] sm:p-4 ${
+        read ? "opacity-80 hover:opacity-100" : ""
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} />
         <button
@@ -269,16 +291,20 @@ function ArticleCardImpl({
         className="mt-1.5 flex gap-3.5"
       >
         <div className="min-w-0 flex-1">
-          <h2 className="text-[16px] font-semibold leading-snug transition-colors group-hover:text-accent sm:text-[17px]">{item.title}</h2>
+          <h2 className="text-[16px] font-semibold leading-snug transition-colors group-hover:text-accent sm:text-[17px]">
+            {item.title}
+          </h2>
           {item.summary && (
             <p className="mt-1.5 line-clamp-2 text-[13.5px] leading-relaxed text-muted">
               {item.summary}
             </p>
           )}
         </div>
-        <div className="overflow-hidden rounded-xl shrink-0">
-          <Thumb src={item.image} className="h-[5rem] w-[5rem] object-cover transition-transform duration-300 ease-out group-hover:scale-105 sm:h-[6rem] sm:w-[8.5rem]" />
-        </div>
+        <Thumb
+          src={item.image}
+          wrapperClassName="overflow-hidden rounded-xl shrink-0"
+          className="h-[5rem] w-[5rem] object-cover transition-transform duration-300 ease-out group-hover:scale-105 sm:h-[6rem] sm:w-[8.5rem]"
+        />
       </Link>
     </article>
   );

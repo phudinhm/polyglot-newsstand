@@ -39,7 +39,6 @@ import { splitSentences } from "@/lib/segment";
 import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
-import { ScrollToTop } from "./ScrollToTop";
 import { WordPopover, type WordQuery } from "./WordPopover";
 import {
   ArrowLeftIcon,
@@ -588,8 +587,8 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-0 z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
-        style={{ width: `${progress}%` }}
+        className="fixed inset-x-0 top-0 z-50 h-[3px] bg-accent transition-[width] duration-150 ease-out"
+        style={{ width: `${progress}%`, boxShadow: progress > 0 ? "0 0 8px var(--accent)" : "none" }}
         aria-hidden
       />
 
@@ -1132,19 +1131,28 @@ export function Reader({
               ))}
             </div>
 
-            <div className="reading mt-10 border-t border-border pt-5 text-xs text-muted">
+            <div className="reading mt-10 border-t border-border pb-8 pt-6 text-xs text-muted">
               <p>
                 Text and images belong to {source?.name ?? article.siteName ?? "the publisher"}.
                 {tr.provider ? ` Translations via ${tr.provider}.` : ""}
               </p>
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="btn mt-3 inline-flex"
-              >
-                <ExternalIcon /> {t("reader.original")}
-              </a>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="btn btn-primary inline-flex"
+                >
+                  <ArrowLeftIcon width={15} height={15} /> {t("reader.back")}
+                </button>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn inline-flex"
+                >
+                  <ExternalIcon /> {t("reader.original")}
+                </a>
+              </div>
             </div>
           </article>
         )}
@@ -1183,11 +1191,11 @@ export function Reader({
 
       {showShortcuts && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
           onClick={() => setShowShortcuts(false)}
         >
           <div
-            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            className="animate-popover card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1238,7 +1246,6 @@ export function Reader({
         </div>
       )}
 
-      <ScrollToTop />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

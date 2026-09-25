@@ -6,7 +6,7 @@ import { useT } from "@/hooks/useT";
 import type { ThemeName } from "@/lib/settings";
 import { onVoicesReady, regionOf, speak, speechSupported, voicesFor } from "@/lib/tts";
 import type { SourceLang } from "@/lib/types";
-import { SpeakerIcon } from "./Icons";
+import { LanguagesIcon, SpeakerIcon } from "./Icons";
 
 const THEME_CYCLE: ThemeName[] = ["paper", "sepia", "modern", "forest", "nordic", "slate", "ink"];
 const THEME_LABEL: Record<ThemeName, string> = {
@@ -21,8 +21,7 @@ const THEME_LABEL: Record<ThemeName, string> = {
 
 /**
  * The adjustments a reader reaches for mid-article, put where a thumb already
- * is: text size, background, and the voice reading to them. Everything else
- * stays in the settings drawer.
+ * is: text size, bilingual toggle, background, and the voice reading to them.
  */
 export function ReaderToolbar({
   dimmed = false,
@@ -59,13 +58,13 @@ export function ReaderToolbar({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 transition-opacity duration-300 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end ${
-        dimmed && !voiceOpen ? "opacity-25 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
+      className={`fixed inset-x-0 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-30 flex justify-center px-4 transition-all duration-300 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:justify-end ${
+        dimmed && !voiceOpen ? "opacity-30 hover:opacity-100 focus-within:opacity-100" : "opacity-100"
       }`}
     >
       <div className="relative" ref={panelRef}>
         {voiceOpen && (
-          <div className="glass-strong absolute bottom-full right-0 mb-2 w-72 rounded-xl border border-border p-3 shadow-[var(--shadow)]">
+          <div className="glass-strong animate-popover absolute bottom-full right-0 mb-2.5 w-72 rounded-2xl border border-border p-3.5 shadow-[var(--shadow)]">
             <div className="flex items-baseline justify-between">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                 {t("settings.speakingRate")}
@@ -143,12 +142,12 @@ export function ReaderToolbar({
           </div>
         )}
 
-        <div className="glass-strong flex items-center gap-1 rounded-full border border-border p-1 shadow-[var(--shadow)]">
+        <div className="glass-strong flex items-center gap-1 rounded-full border border-border p-1.5 shadow-[var(--shadow)]">
           <button
             type="button"
             onClick={() => update({ fontSize: settings.fontSize - 1 })}
             disabled={settings.fontSize <= 15}
-            className="grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="grid h-9 w-9 place-items-center rounded-full text-[13px] font-semibold leading-none transition-all hover:bg-surface-2 active:scale-90 disabled:opacity-40"
             aria-label={t("reader.smaller")}
           >
             A−
@@ -160,10 +159,26 @@ export function ReaderToolbar({
             type="button"
             onClick={() => update({ fontSize: settings.fontSize + 1 })}
             disabled={settings.fontSize >= 28}
-            className="grid h-9 w-9 place-items-center rounded-full text-[16px] font-semibold leading-none transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="grid h-9 w-9 place-items-center rounded-full text-[16px] font-semibold leading-none transition-all hover:bg-surface-2 active:scale-90 disabled:opacity-40"
             aria-label={t("reader.larger")}
           >
             A+
+          </button>
+
+          <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+          <button
+            type="button"
+            onClick={() => update({ bilingual: !settings.bilingual })}
+            aria-pressed={settings.bilingual}
+            aria-label={t("reader.showAll")}
+            title={t("reader.showAll")}
+            className={`grid h-9 w-9 place-items-center rounded-full transition-all active:scale-90 ${
+              settings.bilingual
+                ? "bg-accent text-accent-fg shadow-xs"
+                : "text-fg hover:bg-surface-2"
+            }`}
+          >
+            <LanguagesIcon width={16} height={16} />
           </button>
 
           {speechSupported() && (
@@ -174,8 +189,8 @@ export function ReaderToolbar({
                 onClick={() => setVoiceOpen((v) => !v)}
                 aria-expanded={voiceOpen}
                 aria-label={t("reader.voice")}
-                className={`grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-surface-2 ${
-                  voiceOpen ? "bg-surface-2" : ""
+                className={`grid h-9 w-9 place-items-center rounded-full transition-all hover:bg-surface-2 active:scale-90 ${
+                  voiceOpen ? "bg-surface-2 text-accent" : ""
                 }`}
               >
                 <SpeakerIcon width={16} height={16} />
@@ -187,7 +202,7 @@ export function ReaderToolbar({
           <button
             type="button"
             onClick={() => update({ theme: nextTheme })}
-            className="rounded-full px-3 py-2 text-xs font-medium transition-colors hover:bg-surface-2"
+            className="rounded-full px-3 py-2 text-xs font-medium transition-all hover:bg-surface-2 active:scale-95"
             aria-label={`Switch background to ${THEME_LABEL[nextTheme]}`}
           >
             {THEME_LABEL[nextTheme]}
@@ -197,3 +212,4 @@ export function ReaderToolbar({
     </div>
   );
 }
+
