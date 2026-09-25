@@ -410,6 +410,16 @@ export function Reader({
     });
   }, []);
 
+  const [titleRevealed, setTitleRevealed] = useState(true);
+  const activeTitle = (levelled ?? article)?.title ?? "";
+
+  // Always translate the article title immediately so the headline is understood right away.
+  useEffect(() => {
+    if (!activeTitle) return;
+    setTitleRevealed(true);
+    void tr.request([activeTitle]);
+  }, [activeTitle, target, tr]);
+
   // Bilingual mode pays for translations only as paragraphs scroll into view.
   const blockRefs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
@@ -907,9 +917,72 @@ export function Reader({
                 className="reading mb-6 !max-w-[var(--reading-measure)] max-h-[min(42vh,18rem)] w-full rounded-xl border border-border object-cover"
               />
             )}
-            <h1 className="reading !max-w-[var(--reading-measure)] text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]">
-              {article.title}
-            </h1>
+            <div className="reading !max-w-[var(--reading-measure)]">
+              <h1
+                lang={lang}
+                onClick={() => {
+                  if (!titleRevealed) {
+                    setTitleRevealed(true);
+                    void tr.request([activeTitle]);
+                  }
+                }}
+                className="cursor-pointer text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]"
+              >
+                {settings.wordLookup
+                  ? splitWords(activeTitle).map((token, ti) => {
+                      if (!token.isWord) return <span key={ti}>{token.text}</span>;
+                      const status = vocab.get(token.text.toLowerCase());
+                      return (
+                        <span
+                          key={ti}
+                          className="word"
+                          data-vocab={
+                            status ??
+                            (settings.heatmap && !isCommon(token.text, lang) ? "new" : undefined)
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWord(e, token.text, activeTitle);
+                          }}
+                        >
+                          {token.text}
+                        </span>
+                      );
+                    })
+                  : activeTitle}
+              </h1>
+
+              {(settings.bilingual || titleRevealed) && (
+                <div
+                  lang={target}
+                  className="translation mt-2 flex items-start justify-between gap-2 text-[1.05rem] font-medium !leading-snug sm:text-[1.15rem]"
+                >
+                  <span className="min-w-0">
+                    {tr.get(activeTitle) ? (
+                      tr.get(activeTitle)
+                    ) : tr.isPending(activeTitle) ? (
+                      <span className="inline-flex items-center gap-1.5 text-sm opacity-70">
+                        <SpinnerIcon width={13} height={13} /> translating title…
+                      </span>
+                    ) : null}
+                  </span>
+                  {!settings.bilingual && tr.get(activeTitle) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTitleRevealed(false);
+                      }}
+                      className="mt-0.5 shrink-0 text-muted hover:text-fg"
+                      aria-label={t("reader.hideTranslation")}
+                      title={t("reader.hideTranslation")}
+                    >
+                      <CloseIcon width={13} height={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <p className="reading mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs !leading-normal text-muted">
               {publisher && (
                 <span className="inline-flex items-center gap-1.5">
@@ -1040,7 +1113,29 @@ export function Reader({
                   className={`para ${block.kind === "quote" ? "quote" : ""}`}
                 >
                   {block.kind === "heading" ? (
-                    <h2>{block.sentences.join(" ")}</h2>
+                    <div>
+                      <h2
+                        className="cursor-pointer"
+                        onClick={() => {
+                          const headingLine: Line = {
+                            key: `${block.id}:0`,
+                            text: block.sentences.join(" "),
+                            blockId: block.id,
+                            kind: "heading",
+                            first: true,
+                          };
+                          revealLine(headingLine);
+                        }}
+                      >
+                        {block.sentences.join(" ")}
+                      </h2>
+                      {(settings.bilingual || revealed.has(`${block.id}:0`)) && (
+                        <div className="translation mt-1 text-base font-medium" lang={target}>
+                          {tr.get(block.sentences.join(" ")) ??
+                            block.sentences.map((s) => tr.get(s)).filter(Boolean).join(" ")}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     block.sentences.map((sentence, i) => {
                       const key = `${block.id}:${i}`;
