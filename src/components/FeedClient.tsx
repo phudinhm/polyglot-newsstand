@@ -81,6 +81,7 @@ export function FeedClient() {
   const filterRef = useRef<HTMLDivElement>(null);
   const { mounted: filtersMounted, dropdownState: filtersDropdownState } =
     useDropdownTransition(filtersOpen);
+  const loadMoreRef = useRef<HTMLButtonElement>(null);
 
   const langBarRef = useRef<HTMLDivElement>(null);
   const langPillRef = useRef<HTMLSpanElement>(null);
@@ -102,7 +103,7 @@ export function FeedClient() {
     snap();
     window.addEventListener("resize", snap);
     return () => window.removeEventListener("resize", snap);
-  }, []);
+  }, [lang]);
 
   // A query restored from the last visit has to be visible to be undone.
   useEffect(() => {
@@ -116,9 +117,34 @@ export function FeedClient() {
   }, [searchOpen]);
 
   useEffect(() => {
-    const onScroll = () => saveScrollPosition("/");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        saveScrollPosition("/");
+        timer = null;
+      }, 150);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  // Press "/" anywhere on the Newsstand to focus the search input.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        setSearchOpen(true);
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -233,6 +259,30 @@ export function FeedClient() {
   }, [queryInput]);
 
   useEffect(() => setVisible(PAGE_SIZE), [lang, category, month, sort, query, source]);
+
+  // Automatically load the next page of stories as the reader approaches the bottom.
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => {
+            const next = v + PAGE_SIZE;
+            try {
+              sessionStorage.setItem("pn:feed-visible:v1", String(next));
+            } catch {
+              /* ignore */
+            }
+            return next;
+          });
+        }
+      },
+      { rootMargin: "280px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [visible, data]);
 
   // How much each paper has on the shelf today, for the rail.
   const counts = useMemo(() => {
@@ -424,16 +474,6 @@ export function FeedClient() {
       {/* One light bar instead of two dense rows of chips. */}
       <div className="sticky top-[var(--header-offset)] z-20 -mx-4 mb-4 space-y-2 px-4 pb-2.5 pt-2 glass">
         <div className="flex items-center gap-2">
-          {/*
-            On a phone the search field was a full row of the sticky bar that
-            stayed there whether or not anyone was searching, and the bar is
-            pinned under the header all the way down the feed. Collapsed to
-            its icon it gives that row back to the news; on a wider screen
-            there is room for the field itself, so it simply stays open.
-          */}
-          {/* Unmounted rather than hidden: .btn sets its own display and wins
-              against a utility class, so the button stayed on screen next to
-              the field it had just opened. */}
           {!searchOpen && (
             <button
               type="button"
@@ -447,7 +487,7 @@ export function FeedClient() {
           )}
 
           <div
-            className={`t-search-resize flex-1 items-center gap-2 rounded-lg border border-border bg-surface/70 px-2.5 py-1.5 focus-within:border-accent ${
+            className={`t-search-resize flex-1 items-center gap-2 rounded-xl border border-border bg-surface/75 px-2.5 py-1.5 transition-all focus-within:border-accent focus-within:bg-surface ${
               searchOpen ? "is-open" : ""
             }`}
           >
@@ -456,6 +496,15 @@ export function FeedClient() {
               ref={searchRef}
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (queryInput) setQueryInput("");
+                  else {
+                    setSearchOpen(false);
+                    e.currentTarget.blur();
+                  }
+                }
+              }}
               placeholder={t("feed.search")}
               autoComplete="off"
               autoCorrect="off"
@@ -463,9 +512,7 @@ export function FeedClient() {
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted"
               aria-label={t("feed.search")}
             />
-            {/* Clearing also closes it on a phone: an empty field left open
-                would keep the row it was opened to justify. */}
-            {(queryInput || searchOpen) && (
+            {(queryInput || searchOpen) ? (
               <button
                 type="button"
                 onClick={() => {
@@ -477,11 +524,15 @@ export function FeedClient() {
               >
                 <CloseIcon width={14} height={14} />
               </button>
+            ) : (
+              <kbd className="hidden rounded border border-border bg-surface-2/80 px-1.5 py-0.5 font-mono text-[10px] text-muted sm:inline-block">
+                /
+              </kbd>
             )}
           </div>
 
           <div
-            className="t-tabs t-tabs-lang rounded-lg border border-border bg-surface/70 p-0.5"
+            className="t-tabs t-tabs-lang rounded-xl border border-border bg-surface/75 p-0.5"
             ref={langBarRef}
             role="tablist"
           >
@@ -494,9 +545,6 @@ export function FeedClient() {
                 aria-selected={lang === value}
                 onClick={(e) => {
                   setLang(value);
-                  // Move the pill from the clicked tab's own measurements
-                  // rather than waiting on the aria-selected re-render, so
-                  // the slide starts on the same frame as the click.
                   const pill = langPillRef.current;
                   const el = e.currentTarget;
                   if (pill) {
@@ -504,7 +552,7 @@ export function FeedClient() {
                     pill.style.width = `${el.offsetWidth}px`;
                   }
                 }}
-                className="t-tab rounded-md px-3 py-2.5 text-[12.5px] sm:px-2 sm:py-1"
+                className="t-tab rounded-md px-2.5 py-2 text-[12.5px] sm:px-2 sm:py-1"
               >
                 {value === "all" ? t("feed.all") : value.toUpperCase()}
               </button>
@@ -524,7 +572,7 @@ export function FeedClient() {
             {filtersMounted && (
               <div
                 data-origin="top-right"
-                className={`t-dropdown ${filtersDropdownState} absolute right-0 top-full z-30 mt-1.5 w-60 rounded-xl border border-border p-3 shadow-[var(--shadow)] glass-strong`}
+                className={`t-dropdown ${filtersDropdownState} absolute right-0 top-full z-30 mt-1.5 w-64 rounded-2xl border border-border p-3.5 shadow-[var(--shadow)] glass-strong`}
               >
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {t("feed.month")}
@@ -686,6 +734,30 @@ export function FeedClient() {
             </button>
           ))}
         </div>
+
+        {!untouched && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+            <span className="text-muted">
+              Showing <strong className="font-semibold text-fg">{filtered.length}</strong>{" "}
+              {filtered.length === 1 ? "story" : "stories"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setLang("all");
+                setCategory("all");
+                setMonth("all");
+                setQueryInput("");
+                setQuery("");
+                setSource(null);
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2.5 py-0.5 font-medium text-accent transition-colors hover:bg-accent/20"
+            >
+              <CloseIcon width={11} height={11} />
+              {t("feed.resetFilters")}
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -800,6 +872,7 @@ export function FeedClient() {
 
       {rest.length > visible && (
         <button
+          ref={loadMoreRef}
           type="button"
           onClick={() =>
             setVisible((v) => {
@@ -816,7 +889,7 @@ export function FeedClient() {
           }
           className="btn mx-auto mt-6 flex"
         >
-          {t("feed.showMore")}
+          {t("feed.showMore")} ({rest.length - visible})
         </button>
       )}
 

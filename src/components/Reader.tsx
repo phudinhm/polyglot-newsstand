@@ -655,8 +655,8 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
-        style={{ width: `${progress}%` }}
+        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-[3px] bg-accent transition-[width] duration-150 ease-out"
+        style={{ width: `${progress}%`, boxShadow: progress > 0 ? "0 0 8px var(--accent)" : "none" }}
         aria-hidden
       />
 
@@ -1219,17 +1219,24 @@ export function Reader({
               ))}
             </div>
 
-            <div className="reading mt-10 border-t border-border pt-5">
-              <div className="flex items-center gap-1.5">
+            <div className="reading mt-10 border-t border-border pb-8 pt-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="btn btn-primary inline-flex !py-1.5"
+                >
+                  <ArrowLeftIcon width={15} height={15} /> {t("reader.back")}
+                </button>
                 <a
                   href={url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="btn !px-2 !py-1.5"
+                  className="btn !px-2.5 !py-1.5"
                   aria-label={t("reader.original")}
                   title={t("reader.original")}
                 >
-                  <ExternalIcon width={15} height={15} />
+                  <ExternalIcon width={15} height={15} /> {t("reader.original")}
                 </a>
                 <button
                   type="button"
@@ -1281,7 +1288,7 @@ export function Reader({
                   )}
                 </div>
               </div>
-              <p className="mt-2.5 text-[11px] leading-relaxed text-muted/70">
+              <p className="mt-3 text-[11.5px] leading-relaxed text-muted/80">
                 Text and images belong to {source?.name ?? article.siteName ?? "the publisher"}.
                 {tr.provider ? ` Translations via ${tr.provider}.` : ""}
               </p>
@@ -1323,11 +1330,11 @@ export function Reader({
 
       {showShortcuts && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
           onClick={() => setShowShortcuts(false)}
         >
           <div
-            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            className="animate-popover card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1378,26 +1385,12 @@ export function Reader({
         </div>
       )}
 
-      {/*
-        The header's own back button sits top-left, the thumb's least
-        reachable corner on a large phone. Swipe-to-go-back already covers
-        that gesture, but this floating twin puts the same action in the
-        corner a thumb already rests near, on mobile only - the header one
-        is hidden there now instead of duplicated.
-
-        Stacked above scroll-to-top rather than below it: below shares the
-        same row as the font-size toolbar, and that pill's width varies with
-        the theme name and font-size digit count (21px vs 9px) enough to
-        collide with a fixed right-4 button at some viewport/settings
-        combinations. Scroll-to-top's own footprint is fixed width, so
-        stacking against that instead is never at risk the same way.
-      */}
       <button
         type="button"
         onClick={goBack}
         aria-label={t("reader.back")}
         title={t("reader.back")}
-        className={`glass-strong fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden ${
+        className={`glass-strong fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden ${
           chromeActive ? "opacity-100" : "opacity-25 hover:opacity-100 focus-within:opacity-100"
         }`}
       >

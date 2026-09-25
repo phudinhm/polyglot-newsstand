@@ -11,6 +11,7 @@ export function ThemeScript() {
     var d = ${JSON.stringify({
       theme: DEFAULT_SETTINGS.theme,
       accentColor: DEFAULT_SETTINGS.accentColor,
+      paperTexture: DEFAULT_SETTINGS.paperTexture,
       font: DEFAULT_SETTINGS.font,
       fontSize: DEFAULT_SETTINGS.fontSize,
       lineHeight: DEFAULT_SETTINGS.lineHeight,
@@ -34,6 +35,7 @@ export function ThemeScript() {
     var r = document.documentElement;
     r.dataset.theme = theme;
     r.dataset.font = s.font || d.font;
+    r.dataset.texture = s.paperTexture !== false ? 'paper' : 'none';
     r.dataset.accent = s.accentColor || 'default';
     if (s.accentColor && s.accentColor !== 'default') {
       var isDark = theme === 'slate' || theme === 'ink';

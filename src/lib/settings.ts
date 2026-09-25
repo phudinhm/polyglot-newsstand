@@ -139,6 +139,8 @@ export interface Settings {
   wordLookup: boolean;
   /** Colour words by whether you already know them. */
   heatmap: boolean;
+  /** Simulate tactile paper background texture. */
+  paperTexture: boolean;
   /** Keep papers that lock most articles off the shelf until asked for. */
   hidePaywalled: boolean;
   /** Keep articles already read off the shelf too. */
@@ -169,6 +171,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bilingual: false,
   wordLookup: true,
   heatmap: true,
+  paperTexture: true,
   hidePaywalled: true,
   hideRead: false,
   sources: DEFAULT_SOURCE_IDS,
@@ -265,6 +268,7 @@ export function applySettings(s: Settings): void {
   root.dataset.theme = resolved;
   root.dataset.font = s.font;
   root.dataset.accent = s.accentColor || "default";
+  root.dataset.texture = s.paperTexture !== false ? "on" : "off";
 
   const isDark = resolved === "slate" || resolved === "ink";
   if (s.accentColor && s.accentColor !== "default") {

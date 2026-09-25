@@ -43,17 +43,24 @@ export function getRouteKey(path?: string): string {
   return window.location.pathname + window.location.search;
 }
 
+let storageTimer: ReturnType<typeof setTimeout> | null = null;
+
 /** Save current scroll position for a route. */
 export function saveScrollPosition(path?: string, y?: number): void {
   if (typeof window === "undefined") return;
   const key = getRouteKey(path);
   const pos = Math.round(y ?? window.scrollY);
   memory.set(key, pos);
-  try {
-    sessionStorage.setItem(`${KEY_PREFIX}${key}`, String(pos));
-  } catch {
-    /* ignore storage quota */
-  }
+  if (storageTimer) return;
+  storageTimer = setTimeout(() => {
+    storageTimer = null;
+    try {
+      const latest = memory.get(key) ?? pos;
+      sessionStorage.setItem(`${KEY_PREFIX}${key}`, String(latest));
+    } catch {
+      /* ignore storage quota */
+    }
+  }, 150);
 }
 
 /** Read saved scroll position for a route. */

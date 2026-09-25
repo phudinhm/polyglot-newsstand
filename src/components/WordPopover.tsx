@@ -121,11 +121,17 @@ export function WordPopover({
       setAnchor(undefined);
       return;
     }
-    const WIDTH = 340;
-    const HEIGHT = 460;
+    const WIDTH = 360;
+    const EST_HEIGHT = 380;
+    const spaceBelow = window.innerHeight - query.y - 20;
+    const top =
+      spaceBelow >= EST_HEIGHT || query.y < EST_HEIGHT
+        ? Math.min(query.y + 16, Math.max(16, window.innerHeight - EST_HEIGHT - 16))
+        : Math.max(16, query.y - EST_HEIGHT - 12);
+
     setAnchor({
       left: Math.min(Math.max(query.x - WIDTH / 2, 16), window.innerWidth - WIDTH - 16),
-      top: Math.min(query.y + 14, Math.max(16, window.innerHeight - HEIGHT)),
+      top,
     });
   }, [query.x, query.y]);
 
@@ -161,13 +167,14 @@ export function WordPopover({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
+      <div className="animate-fade-in fixed inset-0 z-40 bg-black/20 sm:bg-transparent" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-label={`Dictionary entry for ${query.word}`}
         style={anchor}
-        className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] w-auto overflow-y-auto rounded-2xl border border-border bg-surface p-4 shadow-[var(--shadow)] sm:inset-auto sm:w-[22.5rem] sm:max-h-[30rem]"
+        className="animate-popover glass-strong fixed inset-x-0 bottom-0 z-50 max-h-[76vh] w-auto overflow-y-auto rounded-t-3xl border-t border-border p-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:inset-auto sm:w-[22.5rem] sm:max-h-[30rem] sm:rounded-2xl sm:border sm:pb-4 sm:shadow-[var(--shadow)]"
       >
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-border sm:hidden" aria-hidden />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
