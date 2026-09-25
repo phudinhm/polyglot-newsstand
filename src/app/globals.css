@@ -202,7 +202,9 @@ body {
  * On mobile/touch viewports, background-attachment: scroll prevents CPU repainting
  * on every scroll frame, keeping scrolling at 60-120fps.
  */
-body {
+body,
+.glass {
+  background-color: var(--bg);
   background-image: url("/paper-texture.png");
   background-attachment: fixed;
   background-repeat: repeat;
@@ -210,18 +212,17 @@ body {
   background-blend-mode: multiply;
 }
 
-@media (max-width: 768px), (hover: none) {
-  body {
-    background-attachment: scroll;
-  }
-}
-
 [data-theme="slate"] body,
-[data-theme="ink"] body {
+[data-theme="slate"] .glass,
+[data-theme="ink"] body,
+[data-theme="ink"] .glass {
   background-blend-mode: soft-light;
 }
 
-[data-texture="off"] body {
+[data-texture="off"] body,
+[data-texture="off"] .glass,
+[data-texture="none"] body,
+[data-texture="none"] .glass {
   background-image: none !important;
 }
 
@@ -246,18 +247,16 @@ body {
 }
 
 /*
- * Frosted glass, the way iOS does it: blur plus a saturation lift so colour
- * showing through the bar stays alive instead of going grey.
+ * Seamless sticky surface: matches the surrounding page background (--bg + paper texture)
+ * pixel-for-pixel so sticky filter bars never show a mismatched box against the page margin.
  */
 .glass {
-  background-color: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+  background-color: var(--bg);
 }
 
 .glass-strong {
-  background-color: color-mix(in srgb, var(--bg) 96%, transparent);
-  backdrop-filter: saturate(190%) blur(24px);
+  background-color: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: saturate(180%) blur(24px);
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.24);
 }
 
