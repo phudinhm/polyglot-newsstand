@@ -77,13 +77,16 @@ export function SettingsDrawer({ open, onClose }: Props) {
       />
       <div
         data-open={panelOpen}
-        className="t-panel-slide absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[27rem] sm:max-h-none sm:rounded-none sm:rounded-l-2xl sm:border-l sm:border-t-0"
+        className="t-panel-slide absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl border-t border-border bg-surface pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[27rem] sm:max-h-none sm:rounded-none sm:rounded-l-2xl sm:border-l sm:border-t-0"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-5 py-4">
-          <h2 className="text-base font-semibold">{t("settings.title")}</h2>
-          <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t("settings.close")}>
-            <CloseIcon />
-          </button>
+        <div className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur-md">
+          <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-border sm:hidden" aria-hidden />
+          <div className="flex items-center justify-between px-5 py-3.5 sm:py-4">
+            <h2 className="text-base font-semibold">{t("settings.title")}</h2>
+            <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t("settings.close")}>
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-7 px-5 py-5">
@@ -132,6 +135,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 </button>
               ))}
             </div>
+            <Toggle
+              label="Paper texture overlay"
+              hint="Simulates the smooth, tactile surface of a real broadsheet newspaper."
+              checked={settings.paperTexture !== false}
+              onChange={(paperTexture) => update({ paperTexture })}
+            />
           </Section>
 
           <Section title={t("settings.accentColor")}>

@@ -22,6 +22,7 @@ export function SourcesClient() {
   const t = useT();
   const [lang, setLang] = useState<"all" | "de" | "en" | "vi">("all");
   const [query, setQuery] = useState("");
+  const [shelfOnly, setShelfOnly] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
   const [freeOnly, setFreeOnly] = useState(false);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
@@ -88,6 +89,7 @@ export function SourcesClient() {
   const grouped = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const visible = SOURCES.filter((source) => {
+      if (shelfOnly && !selected.has(source.id)) return false;
       if (favOnly && !favorites.has(source.id)) return false;
       if (freeOnly && (source.paywall === "hard" || source.paywall === "soft" || blocked.has(source.id))) {
         return false;
@@ -116,23 +118,17 @@ export function SourcesClient() {
       ([a], [b]) =>
         Object.keys(CATEGORY_LABELS).indexOf(a) - Object.keys(CATEGORY_LABELS).indexOf(b),
     );
-  }, [lang, query, favOnly, freeOnly, blocked, favorites]);
+  }, [lang, query, shelfOnly, favOnly, freeOnly, blocked, favorites, selected]);
 
   const matches = useMemo(
     () => grouped.reduce((total, [, list]) => total + list.length, 0),
     [grouped],
   );
 
-  // The full catalogue is over two hundred papers - laid out at once that is
-  // some thirty thousand pixels of phone scrolling, and thirty thousand
-  // pixels of DOM to keep alive. Sections fill up to this budget and the rest
-  // waits behind one tap.
-  const PAGE = 40;
+  const PAGE = 48;
   const [shown, setShown] = useState(PAGE);
-  useEffect(() => setShown(PAGE), [lang, query, favOnly, freeOnly]);
+  useEffect(() => setShown(PAGE), [lang, query, shelfOnly, favOnly, freeOnly]);
 
-  // Whole sections up to the budget, so a category heading never appears
-  // above an arbitrarily truncated handful of its own papers.
   const paged = useMemo(() => {
     const out: typeof grouped = [];
     let budget = shown;
@@ -148,6 +144,18 @@ export function SourcesClient() {
     () => paged.reduce((total, [, list]) => total + list.length, 0),
     [paged],
   );
+
+  // Auto-expand catalog sections as the user scrolls down
+  useEffect(() => {
+    if (shownCount >= matches) return;
+    const onScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 450) {
+        setShown((n) => n + PAGE);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [shownCount, matches]);
 
   // How many of the currently visible (search + language filtered) sources
   // are not already on the shelf, so "Add all" can say what it actually does.
@@ -475,36 +483,59 @@ export function SourcesClient() {
         </section>
       )}
 
-      <div className="mb-3">
-        <div className="relative">
-          <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-            <SearchIcon width={16} height={16} />
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("sources.search")}
-            aria-label={t("sources.search")}
-            className="input w-full !pl-9"
-          />
+      <div className="sticky top-[var(--header-offset)] z-20 -mx-4 mb-4 space-y-2 px-4 py-2.5 glass">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[12rem]">
+            <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
+              <SearchIcon width={16} height={16} />
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("sources.search")}
+              aria-label={t("sources.search")}
+              className="input w-full !pl-9 !py-1.5"
+            />
+          </div>
+          <div className="flex shrink-0 gap-1.5">
+            <button
+              type="button"
+              onClick={() => update({ sources: DEFAULT_SETTINGS.sources })}
+              className="btn !px-2.5 !py-1.5 text-xs"
+            >
+              {t("sources.reset")}
+            </button>
+            <button
+              type="button"
+              disabled={addableCount === 0}
+              onClick={() => {
+                const visibleIds = grouped.flatMap(([, list]) => list.map((s) => s.id));
+                const next = new Set([...settings.sources, ...visibleIds]);
+                update({ sources: Array.from(next) });
+              }}
+              className="btn !px-2.5 !py-1.5 text-xs"
+              title={
+                addableCount === 0
+                  ? "Everything currently shown is already on your shelf."
+                  : `Adds ${addableCount} source${addableCount === 1 ? "" : "s"} matching the current search and language filter.`
+              }
+            >
+              <PlusIcon width={14} height={14} />
+              {t("sources.addAll")}
+              {addableCount > 0 && <span className="text-muted">({addableCount})</span>}
+            </button>
+          </div>
         </div>
-        {query.trim() && (
-          <p className="mt-1.5 text-[12.5px] tabular-nums text-muted">
-            {matches} {t("sources.matches")}
-          </p>
-        )}
-      </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto">
+        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
           {(["all", "de", "en", "vi"] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setLang(value)}
               data-selected={lang === value}
-              className="chip"
+              className="chip !py-1.5"
             >
               {value === "all"
                 ? t("sources.langAll")
@@ -517,9 +548,18 @@ export function SourcesClient() {
           ))}
           <button
             type="button"
+            onClick={() => setShelfOnly((v) => !v)}
+            data-selected={shelfOnly}
+            className="chip !gap-1 !py-1.5"
+          >
+            <CheckIcon width={13} height={13} />
+            On shelf ({settings.sources.length})
+          </button>
+          <button
+            type="button"
             onClick={() => setFavOnly((v) => !v)}
             data-selected={favOnly}
-            className="chip !gap-1"
+            className="chip !gap-1 !py-1.5"
           >
             <StarIcon width={14} height={14} fill={favOnly ? "currentColor" : "none"} />
             {t("sources.favoritesOnly")}
@@ -528,40 +568,43 @@ export function SourcesClient() {
             type="button"
             onClick={() => setFreeOnly((v) => !v)}
             data-selected={freeOnly}
-            className="chip !gap-1"
+            className="chip !gap-1 !py-1.5"
           >
             <span>🛡️</span>
             {t("sources.freeOnly")}
           </button>
         </div>
 
-        {/* Bulk shelf actions, not filters: kept visually distinct (buttons,
-            not chips) so a tap here can't be mistaken for a language toggle. */}
-        <div className="flex shrink-0 gap-1.5 border-l border-border pl-2">
-          <button type="button" onClick={() => update({ sources: DEFAULT_SETTINGS.sources })} className="btn !px-2.5 !py-1.5 text-xs">
-            {t("sources.reset")}
-          </button>
-          <button
-            type="button"
-            disabled={addableCount === 0}
-            onClick={() => {
-              const visibleIds = grouped.flatMap(([, list]) => list.map((s) => s.id));
-              const next = new Set([...settings.sources, ...visibleIds]);
-              update({ sources: Array.from(next) });
-            }}
-            className="btn !px-2.5 !py-1.5 text-xs"
-            title={
-              addableCount === 0
-                ? "Everything currently shown is already on your shelf."
-                : `Adds ${addableCount} source${addableCount === 1 ? "" : "s"} matching the current search and language filter.`
-            }
-          >
-            <PlusIcon width={14} height={14} />
-            {t("sources.addAll")}
-            {addableCount > 0 && <span className="text-muted">({addableCount})</span>}
-          </button>
-        </div>
+        {grouped.length > 1 && (
+          <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pt-0.5 text-xs">
+            <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-wider text-muted">
+              Jump:
+            </span>
+            {grouped.map(([cat, list]) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => {
+                  // Ensure all categories are rendered if jumping to one further down
+                  setShown(1000);
+                  requestAnimationFrame(() => {
+                    document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  });
+                }}
+                className="shrink-0 rounded-full border border-border/80 bg-surface/80 px-2.5 py-0.5 text-[11.5px] font-medium text-muted transition-colors hover:border-accent/40 hover:text-fg"
+              >
+                {t(categoryKey(cat))} <span className="opacity-60">({list.length})</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {query.trim() && (
+        <p className="mb-3 text-[12.5px] tabular-nums text-muted">
+          {matches} {t("sources.matches")}
+        </p>
+      )}
 
       {matches === 0 && (
         <p className="card p-5 text-center text-sm text-muted">{t("sources.noMatch")}</p>
@@ -569,9 +612,10 @@ export function SourcesClient() {
 
       <div className="space-y-6">
         {paged.map(([category, list]) => (
-          <section key={category}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              {t(categoryKey(category))}
+          <section key={category} id={`cat-${category}`} className="scroll-mt-40">
+            <h2 className="mb-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">
+              <span>{t(categoryKey(category))}</span>
+              <span className="tabular-nums opacity-70">{list.length}</span>
             </h2>
             <div className="space-y-2">
               {list.map((source) => {
@@ -581,15 +625,19 @@ export function SourcesClient() {
                 return (
                   <div
                     key={source.id}
-                    className={`card flex items-center gap-3 p-3.5 ${on ? "border-accent/40" : ""}`}
+                    className={`card source-card-item flex items-center gap-3 p-3.5 transition-all ${
+                      on ? "border-accent/45 border-l-4 border-l-accent" : ""
+                    }`}
                   >
-                    <SourceAvatar name={source.name} site={source.site} size={26} />
+                    <SourceAvatar name={source.name} site={source.site} size={28} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/s/${source.id}`} className="text-sm font-semibold hover:underline">
+                        <Link href={`/s/${source.id}`} className="text-sm font-semibold hover:text-accent hover:underline">
                           {source.name}
                         </Link>
-                        <span className="text-[11px] uppercase text-muted">{source.lang}</span>
+                        <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+                          {source.lang}
+                        </span>
                         <span className="text-[11px] text-muted">{LEVEL_LABELS[source.level]}</span>
                         {blocked.has(source.id) ? (
                           <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">
@@ -636,8 +684,6 @@ export function SourcesClient() {
                         <p className="mt-1 text-[12.5px] leading-relaxed text-muted">{source.note}</p>
                       )}
                     </div>
-                    {/* Favoriting only means something once a source is on the
-                        shelf, so the star only appears alongside it. */}
                     {on && (
                       <button
                         type="button"

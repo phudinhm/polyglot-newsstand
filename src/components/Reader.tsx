@@ -411,6 +411,16 @@ export function Reader({
     });
   }, []);
 
+  const [titleRevealed, setTitleRevealed] = useState(true);
+  const activeTitle = (levelled ?? article)?.title ?? "";
+
+  // Always translate the article title immediately so the headline is understood right away.
+  useEffect(() => {
+    if (!activeTitle) return;
+    setTitleRevealed(true);
+    void tr.request([activeTitle]);
+  }, [activeTitle, target, tr]);
+
   // Bilingual mode pays for translations only as paragraphs scroll into view.
   const blockRefs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
@@ -656,8 +666,8 @@ export function Reader({
   return (
     <div className="min-h-screen">
       <div
-        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-[2.5px] bg-accent transition-[width] duration-150 ease-out"
-        style={{ width: `${progress}%` }}
+        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-[3px] bg-accent transition-[width] duration-150 ease-out"
+        style={{ width: `${progress}%`, boxShadow: progress > 0 ? "0 0 8px var(--accent)" : "none" }}
         aria-hidden
       />
 
@@ -901,9 +911,72 @@ export function Reader({
                 className="reading mb-6 !max-w-[var(--reading-measure)] max-h-[min(42vh,18rem)] w-full rounded-xl border border-border object-cover"
               />
             )}
-            <h1 className="reading !max-w-[var(--reading-measure)] text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]">
-              {article.title}
-            </h1>
+            <div className="reading !max-w-[var(--reading-measure)]">
+              <h1
+                lang={lang}
+                onClick={() => {
+                  if (!titleRevealed) {
+                    setTitleRevealed(true);
+                    void tr.request([activeTitle]);
+                  }
+                }}
+                className="cursor-pointer text-balance text-2xl font-bold !leading-[1.18] sm:text-[1.85rem]"
+              >
+                {settings.wordLookup
+                  ? splitWords(activeTitle).map((token, ti) => {
+                      if (!token.isWord) return <span key={ti}>{token.text}</span>;
+                      const status = vocab.get(token.text.toLowerCase());
+                      return (
+                        <span
+                          key={ti}
+                          className="word"
+                          data-vocab={
+                            status ??
+                            (settings.heatmap && !isCommon(token.text, lang) ? "new" : undefined)
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWord(e, token.text, activeTitle);
+                          }}
+                        >
+                          {token.text}
+                        </span>
+                      );
+                    })
+                  : activeTitle}
+              </h1>
+
+              {(settings.bilingual || titleRevealed) && (
+                <div
+                  lang={target}
+                  className="translation mt-2 flex items-start justify-between gap-2 text-[1.05rem] font-medium !leading-snug sm:text-[1.15rem]"
+                >
+                  <span className="min-w-0">
+                    {tr.get(activeTitle) ? (
+                      tr.get(activeTitle)
+                    ) : tr.isPending(activeTitle) ? (
+                      <span className="inline-flex items-center gap-1.5 text-sm opacity-70">
+                        <SpinnerIcon width={13} height={13} /> translating title…
+                      </span>
+                    ) : null}
+                  </span>
+                  {!settings.bilingual && tr.get(activeTitle) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTitleRevealed(false);
+                      }}
+                      className="mt-0.5 shrink-0 text-muted hover:text-fg"
+                      aria-label={t("reader.hideTranslation")}
+                      title={t("reader.hideTranslation")}
+                    >
+                      <CloseIcon width={13} height={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <p className="reading mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs !leading-normal text-muted">
               {publisher && (
                 <span className="inline-flex items-center gap-1.5">
@@ -1034,7 +1107,29 @@ export function Reader({
                   className={`para ${block.kind === "quote" ? "quote" : ""}`}
                 >
                   {block.kind === "heading" ? (
-                    <h2>{block.sentences.join(" ")}</h2>
+                    <div>
+                      <h2
+                        className="cursor-pointer"
+                        onClick={() => {
+                          const headingLine: Line = {
+                            key: `${block.id}:0`,
+                            text: block.sentences.join(" "),
+                            blockId: block.id,
+                            kind: "heading",
+                            first: true,
+                          };
+                          revealLine(headingLine);
+                        }}
+                      >
+                        {block.sentences.join(" ")}
+                      </h2>
+                      {(settings.bilingual || revealed.has(`${block.id}:0`)) && (
+                        <div className="translation mt-1 text-base font-medium" lang={target}>
+                          {tr.get(block.sentences.join(" ")) ??
+                            block.sentences.map((s) => tr.get(s)).filter(Boolean).join(" ")}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     block.sentences.map((sentence, i) => {
                       const key = `${block.id}:${i}`;
@@ -1213,17 +1308,24 @@ export function Reader({
               ))}
             </div>
 
-            <div className="reading mt-10 border-t border-border pt-5">
-              <div className="flex items-center gap-1.5">
+            <div className="reading mt-10 border-t border-border pb-8 pt-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="btn btn-primary inline-flex !py-1.5"
+                >
+                  <ArrowLeftIcon width={15} height={15} /> {t("reader.back")}
+                </button>
                 <a
                   href={url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="btn btn-icon"
+                  className="btn !px-2.5 !py-1.5"
                   aria-label={t("reader.original")}
                   title={t("reader.original")}
                 >
-                  <ExternalIcon width={15} height={15} />
+                  <ExternalIcon width={15} height={15} /> {t("reader.original")}
                 </a>
                 <button
                   type="button"
@@ -1275,7 +1377,7 @@ export function Reader({
                   )}
                 </div>
               </div>
-              <p className="mt-2.5 text-[11px] leading-relaxed text-muted/70">
+              <p className="mt-3 text-[11.5px] leading-relaxed text-muted/80">
                 Text and images belong to {source?.name ?? article.siteName ?? "the publisher"}.
                 {tr.provider ? ` Translations via ${tr.provider}.` : ""}
               </p>
@@ -1317,11 +1419,11 @@ export function Reader({
 
       {showShortcuts && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
           onClick={() => setShowShortcuts(false)}
         >
           <div
-            className="card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
+            className="animate-popover card max-w-sm w-full p-5 space-y-4 shadow-2xl glass-strong border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -1372,26 +1474,12 @@ export function Reader({
         </div>
       )}
 
-      {/*
-        The header's own back button sits top-left, the thumb's least
-        reachable corner on a large phone. Swipe-to-go-back already covers
-        that gesture, but this floating twin puts the same action in the
-        corner a thumb already rests near, on mobile only - the header one
-        is hidden there now instead of duplicated.
-
-        Stacked above scroll-to-top rather than below it: below shares the
-        same row as the font-size toolbar, and that pill's width varies with
-        the theme name and font-size digit count (21px vs 9px) enough to
-        collide with a fixed right-4 button at some viewport/settings
-        combinations. Scroll-to-top's own footprint is fixed width, so
-        stacking against that instead is never at risk the same way.
-      */}
       <button
         type="button"
         onClick={goBack}
         aria-label={t("reader.back")}
         title={t("reader.back")}
-        className={`glass-strong fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden ${
+        className={`glass-strong fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border shadow-[var(--shadow)] transition-all duration-200 hover:scale-105 active:scale-95 sm:hidden ${
           chromeActive ? "opacity-100" : "opacity-25 hover:opacity-100 focus-within:opacity-100"
         }`}
       >
