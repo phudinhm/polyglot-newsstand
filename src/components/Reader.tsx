@@ -41,6 +41,7 @@ import { SettingsDrawer } from "./SettingsDrawer";
 import { ReaderToolbar } from "./ReaderToolbar";
 import { SourceAvatar } from "./SourceAvatar";
 import { WordPopover, type WordQuery } from "./WordPopover";
+import { BackButton } from "./BackButton";
 import {
   ArrowLeftIcon,
   BookmarkIcon,
@@ -693,14 +694,7 @@ export function Reader({
             shortcuts button below for the same fix).
           */}
           <span className="hidden sm:contents">
-            <button
-              type="button"
-              onClick={goBack}
-              className="btn min-h-11 !px-1.5 !py-1.5 sm:!px-2"
-              aria-label={t("reader.back")}
-            >
-              <ArrowLeftIcon />
-            </button>
+            <BackButton onClick={goBack} label={t("reader.back")} />
           </span>
           {source ? (
             <Link
@@ -1225,7 +1219,7 @@ export function Reader({
                   href={url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="btn !px-2 !py-1.5"
+                  className="btn btn-icon"
                   aria-label={t("reader.original")}
                   title={t("reader.original")}
                 >
@@ -1234,7 +1228,7 @@ export function Reader({
                 <button
                   type="button"
                   onClick={() => void copyLink()}
-                  className="btn !px-2 !py-1.5"
+                  className="btn btn-icon"
                   aria-label={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
                   title={linkCopied ? t("reader.linkCopied") : t("reader.copyLink")}
                 >
@@ -1251,7 +1245,7 @@ export function Reader({
                   <button
                     type="button"
                     onClick={() => setAskAiOpen((v) => !v)}
-                    className="btn !px-2 !py-1.5"
+                    className="btn btn-icon"
                     aria-label={t("reader.askAi")}
                     title={t("reader.askAi")}
                     aria-expanded={askAiOpen}

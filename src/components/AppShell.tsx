@@ -17,6 +17,54 @@ const NAV: { href: string; key: StringKey; Icon: typeof NewspaperIcon }[] = [
   { href: "/sources", key: "nav.sources", Icon: SlidersIcon },
 ];
 
+/**
+ * The same four destinations render twice - a text+icon row on desktop, an
+ * icon-over-label tab bar on a phone - because the two layouts genuinely
+ * differ in shape. One component for both keeps the active-state logic (the
+ * only part that must actually agree between them) in a single place,
+ * rather than two className strings that can quietly drift apart.
+ */
+function NavLink({
+  href,
+  label,
+  Icon,
+  active,
+  variant,
+}: {
+  href: string;
+  label: string;
+  Icon: typeof NewspaperIcon;
+  active: boolean;
+  variant: "desktop" | "mobile";
+}) {
+  if (variant === "mobile") {
+    return (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
+          active ? "text-accent" : "text-muted"
+        }`}
+      >
+        <Icon width={20} height={20} />
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
+        active ? "bg-surface-2 font-medium text-fg" : "text-muted hover:text-fg"
+      }`}
+    >
+      <Icon />
+      {label}
+    </Link>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const t = useT();
@@ -47,19 +95,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <nav className="ml-auto hidden items-center gap-1 sm:flex">
               {NAV.map(({ href, key, Icon }) => (
-                <Link
+                <NavLink
                   key={href}
                   href={href}
-                  aria-current={isActive(href) ? "page" : undefined}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
-                    isActive(href)
-                      ? "bg-surface-2 font-medium text-fg"
-                      : "text-muted hover:text-fg"
-                  }`}
-                >
-                  <Icon />
-                  {t(key)}
-                </Link>
+                  label={t(key)}
+                  Icon={Icon}
+                  active={isActive(href)}
+                  variant="desktop"
+                />
               ))}
             </nav>
 
@@ -91,17 +134,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="glass-strong fixed inset-x-0 bottom-0 z-30 border-t border-border pb-[env(safe-area-inset-bottom)] sm:hidden">
             <div className="flex">
               {NAV.map(({ href, key, Icon }) => (
-                <Link
+                <NavLink
                   key={href}
                   href={href}
-                  aria-current={isActive(href) ? "page" : undefined}
-                  className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
-                    isActive(href) ? "text-accent" : "text-muted"
-                  }`}
-                >
-                  <Icon width={20} height={20} />
-                  {t(key)}
-                </Link>
+                  label={t(key)}
+                  Icon={Icon}
+                  active={isActive(href)}
+                  variant="mobile"
+                />
               ))}
             </div>
           </nav>

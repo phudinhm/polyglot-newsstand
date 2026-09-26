@@ -11,8 +11,8 @@ import { getCustomSources } from "@/lib/customSources";
 import { markBackAction, restoreScrollPosition, saveScrollPosition } from "@/lib/scrollMemory";
 import type { FeedItem, FeedResponse, Source } from "@/lib/types";
 import { ArticleCard, FeaturedCard } from "./ArticleCard";
+import { BackButton } from "./BackButton";
 import {
-  ArrowLeftIcon,
   CheckIcon,
   CloseIcon,
   ExternalIcon,
@@ -188,14 +188,7 @@ export function SourcePageClient({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-8 pt-5">
-      <button
-        type="button"
-        onClick={goBack}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"
-        aria-label="Back to all sources"
-      >
-        <ArrowLeftIcon width={16} height={16} /> All sources
-      </button>
+      <BackButton onClick={goBack} label="All sources" showLabel className="mb-4" />
 
       <header className="card mb-5 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -223,16 +216,24 @@ export function SourcePageClient({ id }: { id: string }) {
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void load()} disabled={loading} className="btn px-2.5">
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="btn btn-icon"
+              aria-label="Refresh"
+              title="Refresh"
+            >
               {loading ? <SpinnerIcon /> : <RefreshIcon />}
             </button>
             {onShelf && (
               <button
                 type="button"
                 onClick={toggleFavorite}
-                className={`btn px-2.5 ${favorite ? "text-accent" : ""}`}
+                className={`btn btn-icon ${favorite ? "text-accent" : ""}`}
                 aria-pressed={favorite}
                 aria-label={favorite ? `Unfavorite ${source.name}` : `Favorite ${source.name}`}
+                title={favorite ? `Unfavorite ${source.name}` : `Favorite ${source.name}`}
               >
                 <StarIcon width={16} height={16} fill={favorite ? "currentColor" : "none"} />
               </button>
@@ -339,13 +340,43 @@ export function SourcePageClient({ id }: { id: string }) {
       )}
 
       {!loading && !shown.length && !error && (
-        <p className="py-10 text-center text-sm text-muted">
-          {query
-            ? `No results for "${query}" on ${source.name}.`
-            : items.length
-              ? "You removed everything here. Open More filters on the newsstand to bring articles back."
-              : "Nothing published recently."}
-        </p>
+        <div className="card p-6 text-center sm:p-8">
+          {query ? (
+            <>
+              <p className="font-medium">No results for &quot;{query}&quot; on {source.name}.</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                Try a different search term, or clear it to see the paper&apos;s latest.
+              </p>
+              <button
+                type="button"
+                onClick={() => setQueryInput("")}
+                className="btn mt-4 !px-3 !py-1.5 text-[13px]"
+              >
+                Clear search
+              </button>
+            </>
+          ) : items.length ? (
+            <>
+              <p className="font-medium">You removed everything here.</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                Open More filters on the newsstand to bring articles back.
+              </p>
+              <Link href="/" className="btn mt-4 inline-flex !px-3 !py-1.5 text-[13px]">
+                Go to the newsstand
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">Nothing published recently.</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
+                Check back later, or browse other papers in the meantime.
+              </p>
+              <Link href="/sources" className="btn mt-4 inline-flex !px-3 !py-1.5 text-[13px]">
+                Browse all sources
+              </Link>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

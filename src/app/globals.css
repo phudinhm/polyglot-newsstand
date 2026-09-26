@@ -551,6 +551,23 @@ body {
   cursor: not-allowed;
 }
 
+/*
+ * One variant for every icon-only button, instead of each call site picking
+ * its own padding override. Square padding keeps the icon centred, and the
+ * mobile rule below guarantees a real 44px target on both axes - a
+ * narrow-but-tall button (comfortable height, cramped width) still misses
+ * a thumb as often as a short one.
+ */
+.btn-icon {
+  padding: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .btn-icon {
+    min-width: 2.75rem;
+  }
+}
+
 .input {
   background-color: color-mix(in srgb, var(--surface) 85%, transparent);
   border: 1px solid var(--border);
