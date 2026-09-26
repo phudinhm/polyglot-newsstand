@@ -89,12 +89,7 @@ function Meta({
           {item.paywall === "hard" ? "paywall" : "metered"}
         </span>
       )}
-      {item.level === "easy" && (
-        <span className="rounded-full bg-[color-mix(in_srgb,var(--translation)_16%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation">
-          {EASY_LABELS[item.lang] ?? "Easy"}
-        </span>
-      )}
-      <NewWordsBadge item={item} />
+      <LearningBadge item={item} />
       {read && (
         <span
           className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-muted"
@@ -108,22 +103,26 @@ function Meta({
 }
 
 /**
- * A quiet nudge toward the point of the app: this headline alone carries a
- * few words worth learning. Only shown past a small threshold, so it reads
- * as a genuine signal rather than decorating every single card.
+ * A quiet nudge toward the point of the app: this headline alone carries
+ * something worth learning. "Easy German" and the new-word count used to be
+ * two separate pills, competing with the rest of the meta row for a reader's
+ * eye - one badge here says the same thing at a glance.
  */
-function NewWordsBadge({ item }: { item: FeedItem }) {
+function LearningBadge({ item }: { item: FeedItem }) {
   const count = useMemo(
     () => newWordCount(`${item.title} ${item.summary}`, item.lang),
     [item.title, item.summary, item.lang],
   );
-  if (count < 4) return null;
+  const easy = item.level === "easy";
+  if (!easy && count < 4) return null;
+  const easyLabel = EASY_LABELS[item.lang] ?? "Easy";
+  const label = easy && count >= 4 ? `${easyLabel} · ${count} new` : easy ? easyLabel : `${count} new words`;
   return (
     <span
-      className="rounded-full bg-[color-mix(in_srgb,var(--translation)_10%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation"
+      className="rounded-full bg-[color-mix(in_srgb,var(--translation)_12%,transparent)] px-1.5 py-0.5 text-[10.5px] font-medium text-translation"
       title="Roughly how many words here are worth adding to your vocabulary."
     >
-      {count} new words
+      {label}
     </span>
   );
 }
