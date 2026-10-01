@@ -106,7 +106,7 @@ export function PronunciationPractice({
       >
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-[15px] font-semibold">Say it back</h2>
-          <button type="button" onClick={onClose} className="btn !px-1.5 !py-1.5" aria-label="Close">
+          <button type="button" onClick={onClose} className="btn btn-icon" aria-label="Close">
             <CloseIcon width={16} height={16} />
           </button>
         </div>

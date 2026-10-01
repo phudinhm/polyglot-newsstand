@@ -29,6 +29,7 @@ function Meta({
   linkSource = true,
   blocked = false,
   read = false,
+  showReadBadge = true,
 }: {
   item: FeedItem;
   linkSource?: boolean;
@@ -36,6 +37,13 @@ function Meta({
   blocked?: boolean;
   /** True when this device has already read this piece. */
   read?: boolean;
+  /**
+   * The compact card already dims itself to signal "read" (see its own
+   * opacity-80 class); a second "✓ read" pill there repeats the same fact
+   * twice in one glance. The featured card has no other read-signal, so it
+   * keeps the pill.
+   */
+  showReadBadge?: boolean;
 }) {
   const site = SOURCE_BY_ID.get(item.sourceId)?.site;
   const readTime = useMemo(() => {
@@ -90,7 +98,7 @@ function Meta({
         </span>
       )}
       <LearningBadge item={item} />
-      {read && (
+      {read && showReadBadge && (
         <span
           className="rounded-full border border-border px-1.5 py-0.5 text-[10.5px] font-medium text-muted"
           title="You have already read this one."
@@ -356,7 +364,7 @@ function ArticleCardImpl({
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} />
+        <Meta item={item} linkSource={linkSource} blocked={blocked} read={read} showReadBadge={false} />
         <div className="flex shrink-0 items-center">
           <BookmarkButton saved={saved} onToggle={onToggleSave} />
           {onRemove && (
