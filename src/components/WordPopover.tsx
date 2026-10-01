@@ -228,13 +228,13 @@ export function WordPopover({
                     voiceUri: settings.voices[lang],
                   })
                 }
-                className="btn !px-1.5 !py-1.5"
+                className="btn btn-icon"
                 aria-label={`Hear ${headword}`}
               >
                 <SpeakerIcon width={16} height={16} />
               </button>
             )}
-            <button type="button" onClick={onClose} className="btn !px-1.5 !py-1.5" aria-label="Close">
+            <button type="button" onClick={onClose} className="btn btn-icon" aria-label="Close">
               <CloseIcon width={16} height={16} />
             </button>
           </div>
@@ -395,7 +395,7 @@ export function WordPopover({
               href={entry.url}
               target="_blank"
               rel="noreferrer noopener"
-              className="btn !px-2.5"
+              className="btn btn-icon"
               aria-label="Open the full dictionary entry"
               title={ui.fullEntry}
             >

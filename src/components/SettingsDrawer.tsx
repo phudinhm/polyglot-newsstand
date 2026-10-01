@@ -83,7 +83,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
           <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-border sm:hidden" aria-hidden />
           <div className="flex items-center justify-between px-5 py-3.5 sm:py-4">
             <h2 className="text-base font-semibold">{t("settings.title")}</h2>
-            <button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t("settings.close")}>
+            <button type="button" onClick={onClose} className="btn btn-icon" aria-label={t("settings.close")}>
               <CloseIcon />
             </button>
           </div>
@@ -326,7 +326,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
                         </select>
                         <button
                           type="button"
-                          className="btn !px-2"
+                          className="btn btn-icon"
                           disabled={!available.length}
                           onClick={() =>
                             speak(
